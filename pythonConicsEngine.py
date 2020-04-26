@@ -26,6 +26,33 @@ global shape_to_remove
 def mag(x):
 	return numpy.sqrt(x.dot(x))
 
+def rotate_point(point, angle, center_point=(0, 0)):
+    """Rotates a point around center_point(origin by default)
+    Angle is in degrees.
+    Rotation is counter-clockwise
+    """
+    angle_rad = math.radians(angle % 360)
+    # Shift the point so that center_point becomes the origin
+    new_point = (point[0] - center_point[0], point[1] - center_point[1])
+    new_point = (new_point[0] * math.cos(angle_rad) - new_point[1] * math.sin(angle_rad),
+                 new_point[0] * math.sin(angle_rad) + new_point[1] * math.cos(angle_rad))
+    # Reverse the shifting we have done
+    new_point = (new_point[0] + center_point[0], new_point[1] + center_point[1])
+    return new_point
+
+def rotate_polygon(polygon, angle, center_point=(0, 0)):
+    """Rotates the given polygon which consists of corners represented as (x,y)
+    around center_point (origin by default)
+    Rotation is counter-clockwise
+    Angle is in degrees
+    """
+    rotated_polygon = []
+    for corner in polygon:
+        rotated_corner = rotate_point(corner, angle, center_point)
+        rotated_polygon.append(rotated_corner)
+    return rotated_polygon
+
+
 class Orbit():
 	# a 		Semi Major Axis
 	# e 		Eccentricity
@@ -47,6 +74,14 @@ class Orbit():
 # 	def semiLatusRectum(self):
 # 		self.l = (math.pow(self.b,2) / self.a) # https://en.wikipedia.org/wiki/Ellipse
 
+class Atmosphere():
+	def __init__(self):
+		self.height = 100
+
+		self.color = (0,50,200)
+
+		self.seaLevelDrag = 0.1
+
 class Module():
 	def __init__(self):
 		self.type = ''
@@ -58,15 +93,18 @@ class Module():
 		self.active = False
 
 class Actor():
-	def __init__(self):
+	def __init__(self, position, velocity):
 		self.type = 'actor'
 		self.mass = 1
 		self.radius = 5
-		inertia = pymunk.moment_for_circle(self.mass, 0, self.radius, (0,0))
+
+		size = self.radius
+		self.points = [(-size, -size), (-size, size), (size,size), (size, -size)]
+		inertia = pymunk.moment_for_poly(self.mass, self.points, (0,0))
 		self.body = pymunk.Body(self.mass, inertia)
-		self.body.position = 1, -10050
-		self.body.apply_impulse_at_local_point([50,0], [0,0])
-		self.shape = pymunk.Circle(self.body, self.radius, (0,0))
+		self.body.position = position
+		self.body.apply_impulse_at_local_point(velocity, [0,0])
+		self.shape = pymunk.Poly(self.body, self.points)
 		self.shape.friction = 0.5
 
 		self.orbit = None #initpos_to_orbit(self.)
@@ -77,6 +115,10 @@ class Actor():
 		self.modules = []		
 		self.availableResources = []
 		self.requiredResources = []
+
+
+		self.color = (200,50,50)
+
 	# def enterFreefall(self, attractor):
 	# 	self.orbit = func_initpos_to_orbit()
 	# 	self.freefalling = True
@@ -93,13 +135,17 @@ class Actor():
 class Attractor():
 	def __init__(self):
 		self.type = 'attractor'
-		self.mass = 20000000
-		self.radius = 10000
+		self.mass = 50000000
+		self.radius = 20000
 		inertia = pymunk.moment_for_circle(self.mass, 0, self.radius, (0,0))
 		self.body = pymunk.Body(self.mass, inertia)
 		self.body.position = 1, 1
 		self.shape = pymunk.Circle(self.body, self.radius, (0,0))
 		self.shape.friction = 0.5
+
+		self.atmosphere = Atmosphere()
+
+		self.color = (190,165,145)
 
 class World():
 	def __init__(self):
@@ -202,21 +248,34 @@ class World():
 		if self.viewpointObject == None:
 			return position
 		else:
-			transformedPosition = position - self.viewpointObject.body.position
+			transformedPosition = position - self.viewpointObject.body.position # offset everything by the position of the viewpointObject, so it is always in the middle of the screen.
 
-			transformedPosition = transformedPosition * self.zoom
+			transformedPosition = transformedPosition * self.zoom  # shrink or expand everything around the 0,0 point
 
-			transformedPosition[0] += 0.5 * self.resolution[0] # add half the width of the screen
+			transformedPosition[0] += 0.5 * self.resolution[0] # add half the width of the screen, to get to the middle. 0,0 is naturally on the corner.
 			transformedPosition[1] += 0.5 * self.resolution[1] # add half the height.
 
 			return transformedPosition
 
+	def rotatePolygon(self, points, angle):
+		# def Rotate2D(pts,cnt,ang=pi/4):
+		return Rotate2D(points,(0,0),angle)
+	
 
 	def drawCircle(self,color, position, radius):
 		transformedPosition = self.transformForView(position)
 		pygame.draw.circle(self.screen, color, [int(transformedPosition[0]), int(transformedPosition[1])], int((radius * self.zoom)))
 
 	# def drawEllipse(self, orbit):
+	def drawActor(self, actor):
+	
+		rotatedPoints = rotate_polygon(actor.points,actor.body.angle) 
+		transformedPoints = []
+
+		for rotatedPoint in rotatedPoints:
+			transformedPoints.append(self.transformForView(rotatedPoint + actor.body.position))
+
+		pygame.draw.lines(self.screen, actor.color, True, transformedPoints)
 		
         
 	def graphics(self):
@@ -226,10 +285,13 @@ class World():
 		### Draw stuff
 		# self.space.debug_draw(self.draw_options)
 
-		for actor in self.actors:
-			self.drawCircle((120,100,100), actor.body.position, actor.radius)
+	
 		for attractor in self.attractors:
-			self.drawCircle((0,30,200), attractor.body.position, attractor.radius)
+			if attractor.atmosphere != None:
+				self.drawCircle(attractor.atmosphere.color, attractor.body.position, attractor.radius + attractor.atmosphere.height)
+			self.drawCircle(attractor.color, attractor.body.position, attractor.radius)
+		for actor in self.actors:
+			self.drawActor(actor)
 
 
 		### Flip screen
@@ -245,8 +307,10 @@ class World():
 	def start(self):
 
 		newPlanet = Attractor()
-		newButt = Actor()
+		newButt = Actor((10, -20060), [100,0])
+		twoButt = Actor((1, -20050), [50,0])
 		self.add(newButt)
+		self.add(twoButt)
 		self.add(newPlanet)
 		self.viewpointObject = self.actors[0]
 
