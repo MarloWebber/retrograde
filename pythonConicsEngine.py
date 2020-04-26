@@ -87,7 +87,7 @@ class Orbit():
 
 class Atmosphere():
 	def __init__(self,planet):
-		self.height = 1000
+		self.height = 2000
 		self.density = 1
 
 		self.color = (0,50,200)
@@ -104,17 +104,25 @@ class Atmosphere():
 
 class Module():
 	def __init__(self, offset=[0,0]):
-		self.type = ''
+		self.type = 'generator'
 		self.mass = 1
 
 		self.produces = {
-			'electricity': 1
+			'electricity': 0.0001
 		}
 
 		self.consumes = {
-			'fuel': 1
+			'fuel': 0.0001
+		}
+		self.stores = {
+			'fuel': 100,
+			'electricity': 1
 		}
 		
+		self.currentStores = {
+			'fuel': 100,
+			'electricity': 1
+		}
 
 		self.active = False
 
@@ -145,8 +153,8 @@ class Actor():
 			self.mass += module.mass
 			self.points += module.points
 
-		print self.mass
-		print self.points
+		# print self.mass
+		# print self.points
 
 		inertia = pymunk.moment_for_poly(self.mass, self.points, (0,0))
 		self.body = pymunk.Body(self.mass, inertia)
@@ -160,13 +168,11 @@ class Actor():
 		self.freefalling = True
 		self.interacting = False
 
-		self.modules = []		
-		self.availableResources = []
-
-
 		self.color = (200,50,50)
 
 		self.image = None #preprocessed image used to 'blit' onto the screen.
+
+		self.availableResources = {}
 
 	# def enterFreefall(self, attractor):
 	# 	self.orbit = func_initpos_to_orbit()
@@ -177,8 +183,70 @@ class Actor():
 
 	def doResources(self):
 		# self.
+
 		for module in self.modules:
-			pass
+			for availableResource in module.currentStores.keys():
+				self.availableResources[availableResource] = 0
+
+		for module in self.modules:
+			for availableResource, availableQuantity in module.currentStores.items():
+				# print availableResource
+				# print availableQuantity
+				# print self.availableResources
+				if self.availableResources[availableResource] == None:
+					self.availableResources[availableResource] = availableQuantity
+				else:
+					self.availableResources[availableResource] += availableQuantity
+
+		for module in self.modules:		# first, allow all the modules to produce what they need, so you know what is available.
+			if module.active:
+				for resource, quantity in module.produces.items():
+					self.availableResources[resource] += quantity
+
+
+		for module in self.modules:
+			module.active = False
+			for needResource, needQuantity in module.consumes.items():
+				for providerModule in self.modules:
+					if providerModule.currentStores[needResource] > 0:
+						if providerModule.currentStores[needResource] < needQuantity:
+							needQuantity -= providerModule.currentStores[needResource]
+							providerModule.currentStores[needResource] = 0
+						else:
+							providerModule.currentStores[needResource] -= needQuantity
+							module.active = True
+							break
+			for giveResource, giveQuantity in module.produces.items():
+				for accepterModule in self.modules:
+					remainingCapacity = accepterModule.stores[giveResource] - accepterModule.currentStores[giveResource]
+					if remainingCapacity > 0:
+						if remainingCapacity > giveQuantity:
+							accepterModule.currentStores += giveQuantity
+							break
+						else:
+							accepterModule.currentStores = accepterModule.stores[giveResource]
+							giveQuantity -= remainingCapacity
+							
+								
+
+		# previousAvailableResources = self.availableResources		
+		# for resource, quantity in self.availableResources:
+		# 	quantity = 0
+
+		# for module in self.modules:
+
+		# 	for resource, quantity in module.contains.items():
+		# 		self.availableResources[resource] += 
+
+		# for module in self.modules:
+
+		# 	for resource, quantity in module.requires.items():
+		# 		if self.previousAvailableResources[resource] < module.requires[resource]
+		# 			module.active = False
+
+		# 	if module.active:
+		# 		for resource, quantity in module.provides.items():
+		# 			self.availableResources[resource] += module.provides[resource]
 
 
 
@@ -186,7 +254,7 @@ class Attractor():
 	def __init__(self):
 		self.type = 'attractor'
 		
-		self.radius = 160000
+		self.radius = 320000
 		self.density = 0.5
 
 		self.mass = self.density * (math.pi * (self.radius * self.radius))
@@ -225,7 +293,7 @@ class World():
 		self.actors = []
 		self.attractors = []
 
-		self.resolution = (600,600)
+		self.resolution = (840,680)
 		self.screen = pygame.display.set_mode(self.resolution)
 		self.draw_options = pymunk.pygame_util.DrawOptions(self.screen)
 		self.draw_options.flags = self.draw_options.flags ^ pymunk.pygame_util.DrawOptions.DRAW_COLLISION_POINTS 
@@ -242,6 +310,10 @@ class World():
 		self.timestepSize = 0.2/60.0 #1.0/60.0
 
 		pygame.key.set_repeat(50,50) # holding a key down repeats the instruction. https://www.pygame.org/docs/ref/key.html
+
+		self.font = pygame.font.SysFont('dejavusans', 15)
+
+
 
 	def gravitate(self, actor, attractor):
 		distance = attractor.body.position - actor.body.position # scalar distance between two bodies
@@ -300,8 +372,11 @@ class World():
 
 	def physics(self):
 		### Update physics
-
+		# print 'physics'
 		for actor in self.actors:
+			# print 'actor'
+			actor.doResources()
+
 			for attractor in self.attractors:
 				if actor.freefalling:
 					if actor.orbit == None:
@@ -388,11 +463,20 @@ class World():
 		for actor in self.actors:
 			self.drawActor(actor)
 
+		# print self.actors[0].availableResources
+
+		i = 0
+		for availableResource, availableQuantity in actor.availableResources.items():
+			textsurface = self.font.render(str(availableResource) + ': ' + str(availableQuantity), False, (255, 255, 255))
+			self.screen.blit(textsurface,(30,i * 30))
+			i += 1
 
 		### Flip screen
 		pygame.display.flip()
 		self.clock.tick(150)
 		pygame.display.set_caption("fps: " + str(self.clock.get_fps()))
+
+		
 
 	def step(self):
 		self.inputs()
@@ -402,8 +486,8 @@ class World():
 	def start(self):
 
 		newPlanet = Attractor()
-		newButt = Actor((10, -161100), [9000,0])
-		twoButt = Actor((1, -160050), [50,0])
+		newButt = Actor((10, -322100), [14000,0])
+		twoButt = Actor((1, -320050), [50,0])
 		self.add(newButt)
 		self.add(twoButt)
 		self.add(newPlanet)
