@@ -10,7 +10,7 @@ import pymunk.pygame_util
 
 import numpy
 
-import initpos_to_orbit
+import initpos_to_orbit as orbmech
 
 # def draw_collision(arbiter, space, data):
 #     for c in arbiter.contact_point_set.points:
@@ -59,9 +59,12 @@ class Actor():
 		self.shape = pymunk.Circle(self.body, self.radius, (0,0))
 		self.shape.friction = 0.5
 
-		# self.orbit = initpos_to_orbit(self.)
-		self.freefalling = False
+		self.orbit = None #initpos_to_orbit(self.)
 
+		self.freefalling = True
+		self.interacting = False
+
+		
 	# def enterFreefall(self, attractor):
 	# 	self.orbit = func_initpos_to_orbit()
 	# 	self.freefalling = True
@@ -72,8 +75,8 @@ class Actor():
 class Attractor():
 	def __init__(self):
 		self.type = 'attractor'
-		self.mass = 100000000
-		self.radius = 200
+		self.mass = 100000
+		self.radius = 5
 		inertia = pymunk.moment_for_circle(self.mass, 0, self.radius, (0,0))
 		self.body = pymunk.Body(self.mass, inertia)
 		self.body.position = 140, 400
@@ -87,7 +90,7 @@ class World():
 		self.clock = pygame.time.Clock()
 		self.space = pymunk.Space()
 		self.space.gravity = (0.0, 0.0)
-		self.gravitationalConstant = 0.001
+		self.gravitationalConstant = 1
 
 		self.actors = []
 		self.attractors = []
@@ -99,7 +102,6 @@ class World():
 		self.ch = self.space.add_collision_handler(0, 0)
 		self.ch.data["surface"] = self.screen
 		# self.ch.post_solve = draw_collision
-
 
 	def gravitate(self, actor, attractor):
 		distance = attractor.body.position - actor.body.position # scalar distance between two bodies
@@ -141,7 +143,16 @@ class World():
 
 		for actor in self.actors:
 			for attractor in self.attractors:
-				self.gravitate(actor, attractor)
+				if actor.freefalling:
+					if actor.orbit == None:
+						self.gravitate(actor, attractor)
+						actor.orbit = orbmech.initpos_to_orbit_2d(actor.body.position, actor.body.velocity, self.gravitationalConstant * attractor.body.mass)
+						print(actor.orbit)
+					else:
+						self.gravitate(actor, attractor)
+				else:
+					self.gravitate(actor, attractor)
+
 
 		dt = 0.2/60.0 #1.0/60.0
 		self.space.step(dt)

@@ -1,6 +1,6 @@
 import numpy as np
 
-def func_initpos_to_orbit(r_vec,v_vec,mu):
+def initpos_to_orbit(r_vec,v_vec,mu):
 	#r_vec is a vector giving cartesian coordinates of orbiting object,
 	#v_vec is velocity
 	#mu is gravitational parameter of object being orbited (=G * mass of object)
@@ -66,3 +66,9 @@ def func_initpos_to_orbit(r_vec,v_vec,mu):
 # v_vec1 = np.array([0.005, 0.004])
 # mu1 = 0.001
 # print initpos_to_orbit(r_vec1,v_vec1,mu1)
+
+def initpos_to_orbit_2d(r_vec,v_vec,mu):
+	r_vec_3 = np.array([r_vec[0], r_vec[1], 0])
+	v_vec_3 = np.array([v_vec[0], v_vec[1], 0])
+
+	return initpos_to_orbit(r_vec_3,v_vec_3,mu)
