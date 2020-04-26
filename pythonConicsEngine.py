@@ -47,6 +47,16 @@ class Orbit():
 # 	def semiLatusRectum(self):
 # 		self.l = (math.pow(self.b,2) / self.a) # https://en.wikipedia.org/wiki/Ellipse
 
+class Module():
+	def __init__(self):
+		self.type = ''
+		self.mass = 1
+
+		self.provides = []
+		self.consumes = []
+
+		self.active = False
+
 class Actor():
 	def __init__(self):
 		self.type = 'actor'
@@ -64,13 +74,21 @@ class Actor():
 		self.freefalling = True
 		self.interacting = False
 
-		
+		self.modules = []		
+		self.availableResources = []
+		self.requiredResources = []
 	# def enterFreefall(self, attractor):
 	# 	self.orbit = func_initpos_to_orbit()
 	# 	self.freefalling = True
 
 	# def leaveFreefall(self):
 	# 	self.freefalling = False
+
+	def doResources():
+		# self.
+		for module in self.modules:
+			pass
+
 
 class Attractor():
 	def __init__(self):
@@ -95,13 +113,19 @@ class World():
 		self.actors = []
 		self.attractors = []
 
-		self.screen = pygame.display.set_mode((600, 600))
+		self.resolution = (600,600)
+		self.screen = pygame.display.set_mode(self.resolution)
 		self.draw_options = pymunk.pygame_util.DrawOptions(self.screen)
 		self.draw_options.flags = self.draw_options.flags ^ pymunk.pygame_util.DrawOptions.DRAW_COLLISION_POINTS 
 
 		self.ch = self.space.add_collision_handler(0, 0)
 		self.ch.data["surface"] = self.screen
 		# self.ch.post_solve = draw_collision
+
+		self.viewpointObject = None
+		self.zoom = 1
+		self.pan = [0,0]
+		self.rotate = 0
 
 	def gravitate(self, actor, attractor):
 		distance = attractor.body.position - actor.body.position # scalar distance between two bodies
@@ -157,8 +181,22 @@ class World():
 		dt = 0.2/60.0 #1.0/60.0
 		self.space.step(dt)
 
+
+	def transformForView(self, position):
+		if self.viewpointObject == None:
+			return position
+		else:
+			transformedPosition = position - self.viewpointObject.body.position
+
+			transformedPosition[0] += 0.5 * self.resolution[0] # add half the width of the screen
+			transformedPosition[1] += 0.5 * self.resolution[1] # add half the height.
+
+			return transformedPosition
+
+
 	def drawCircle(self,color, position, radius):
-		pygame.draw.circle(self.screen, color, [int(position[0]), int(position[1])], radius)
+		transformedPosition = self.transformForView(position)
+		pygame.draw.circle(self.screen, color, [int(transformedPosition[0]), int(transformedPosition[1])], radius)
 
 	# def drawEllipse(self, orbit):
 		
@@ -192,7 +230,7 @@ class World():
 		newButt = Actor()
 		self.add(newButt)
 		self.add(newPlanet)
-
+		self.viewpointObject = self.actors[0]
 
 		self.running = True
 		while self.running:
