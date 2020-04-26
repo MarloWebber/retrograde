@@ -192,7 +192,7 @@ class World():
 		self.clock = pygame.time.Clock()
 		self.space = pymunk.Space()
 		self.space.gravity = (0.0, 0.0)
-		self.gravitationalConstant = 1
+		self.gravitationalConstant = 300
 
 		self.actors = []
 		self.attractors = []
@@ -211,6 +211,8 @@ class World():
 		self.pan = [0,0]
 		self.rotate = 0
 
+		self.timestepSize = 0.2/60.0 #1.0/60.0
+
 		pygame.key.set_repeat(50,50) # holding a key down repeats the instruction. https://www.pygame.org/docs/ref/key.html
 
 	def gravitate(self, actor, attractor):
@@ -221,7 +223,7 @@ class World():
 
 		components = numpy.divide(distance, magnitude)
 
-		force = components * appliedGravity
+		force = components * appliedGravity * self.timestepSize
 
 		# print force
 
@@ -249,6 +251,12 @@ class World():
 			if event.type == KEYDOWN and event.key == K_MINUS:
 				self.zoom -= self.zoom * 0.5
 				# print self.zoom
+
+			if event.type == KEYDOWN and event.key == K_COMMA:
+				self.timestepSize += self.timestepSize * 0.5
+
+			if event.type == KEYDOWN and event.key == K_PERIOD:
+				self.timestepSize -= self.timestepSize * 0.5
 			# elif event.type == KEYDOWN and event.key == K_p:
 			# 	pygame.image.save(screen, "contact_with_friction.png")
         
@@ -277,9 +285,7 @@ class World():
 				else:
 					self.gravitate(actor, attractor)
 
-
-		dt = 0.2/60.0 #1.0/60.0
-		self.space.step(dt)
+		self.space.step(self.timestepSize)
 
 
 	def transformForView(self, position):
@@ -351,7 +357,7 @@ class World():
 	def start(self):
 
 		newPlanet = Attractor()
-		newButt = Actor((10, -160060), [100,0])
+		newButt = Actor((10, -161100), [9000,0])
 		twoButt = Actor((1, -160050), [50,0])
 		self.add(newButt)
 		self.add(twoButt)
