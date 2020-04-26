@@ -26,18 +26,18 @@ global shape_to_remove
 def mag(x):
 	return numpy.sqrt(x.dot(x))
 
-def rotate_point(point, angle, center_point=(0, 0)):
+def rotate_point(point, angle_rad, center_point=(0, 0)):
     """Rotates a point around center_point(origin by default)
     Angle is in degrees.
     Rotation is counter-clockwise
     """
-    angle_rad = math.radians(angle % 360)
+    # angle_rad = math.radians(angle % 360)
     # Shift the point so that center_point becomes the origin
     new_point = (point[0] - center_point[0], point[1] - center_point[1])
     new_point = (new_point[0] * math.cos(angle_rad) - new_point[1] * math.sin(angle_rad),
                  new_point[0] * math.sin(angle_rad) + new_point[1] * math.cos(angle_rad))
     # Reverse the shifting we have done
-    new_point = (new_point[0] + center_point[0], new_point[1] + center_point[1])
+    new_point = [new_point[0] + center_point[0], new_point[1] + center_point[1]]
     return new_point
 
 def rotate_polygon(polygon, angle, center_point=(0, 0)):
@@ -103,23 +103,51 @@ class Atmosphere():
 		self.body.position = planet.body.position
 
 class Module():
-	def __init__(self):
+	def __init__(self, offset=[0,0]):
 		self.type = ''
 		self.mass = 1
 
-		self.provides = []
-		self.consumes = []
+		self.produces = {
+			'electricity': 1
+		}
+
+		self.consumes = {
+			'fuel': 1
+		}
+		
 
 		self.active = False
+
+		self.mass = 1.5
+		self.radius = 5
+
+		self.offset = offset # x,y position on the ship
+
+		size = self.radius
+		self.points = [[-size, -size], [-size, size], [size,size], [size, -size]]
+		for point in self.points:
+			point[0] += self.offset[0]
+			point[1] += self.offset[1]
+
 
 class Actor():
 	def __init__(self, position, velocity):
 		self.type = 'actor'
-		self.mass = 1
-		self.radius = 5
 
-		size = self.radius
-		self.points = [(-size, -size), (-size, size), (size,size), (size, -size)]
+		self.mass = 0
+		self.points = []
+
+		self.modules = []
+		self.modules.append(Module([6,0]))
+		self.modules.append(Module([-6,0]))
+
+		for module in self.modules:
+			self.mass += module.mass
+			self.points += module.points
+
+		print self.mass
+		print self.points
+
 		inertia = pymunk.moment_for_poly(self.mass, self.points, (0,0))
 		self.body = pymunk.Body(self.mass, inertia)
 		self.body.position = position
@@ -134,7 +162,6 @@ class Actor():
 
 		self.modules = []		
 		self.availableResources = []
-		self.requiredResources = []
 
 
 		self.color = (200,50,50)
@@ -148,10 +175,11 @@ class Actor():
 	# def leaveFreefall(self):
 	# 	self.freefalling = False
 
-	def doResources():
+	def doResources(self):
 		# self.
 		for module in self.modules:
 			pass
+
 
 
 class Attractor():
@@ -287,13 +315,26 @@ class World():
 
 		self.space.step(self.timestepSize)
 
+	def rotatePolygon(self, points, angle):
+		# def Rotate2D(pts,cnt,ang=pi/4):
+		return Rotate2D(points,(0,0),angle)
+	
 
 	def transformForView(self, position):
 		if self.viewpointObject == None:
 			return position
 		else:
-			transformedPosition = position - self.viewpointObject.body.position # offset everything by the position of the viewpointObject, so it is always in the middle of the screen.
+			transformedPosition = position - self.viewpointObject.body.position # offset everything by the position of the viewpointObject, so the viewpoint is at 0,0
 
+			# #rotate everything around the viewPointObject, so that the current largest gravitational influencer is 'down'.
+			# #get angle to influencer
+			# aPos = self.attractors[0].body.position
+			# vPos = self.viewpointObject.body.position
+			# angle = math.atan2(aPos[0] - vPos[0], aPos[1] - vPos[1])
+			# print angle
+			# print aPos
+			# print vPos
+			# transformedPosition = rotate_point(transformedPosition, angle)
 			transformedPosition = transformedPosition * self.zoom  # shrink or expand everything around the 0,0 point
 
 			transformedPosition[0] += 0.5 * self.resolution[0] # add half the width of the screen, to get to the middle. 0,0 is naturally on the corner.
@@ -301,10 +342,6 @@ class World():
 
 			return transformedPosition
 
-	def rotatePolygon(self, points, angle):
-		# def Rotate2D(pts,cnt,ang=pi/4):
-		return Rotate2D(points,(0,0),angle)
-	
 
 	def drawCircle(self,color, position, radius):
 		transformedPosition = self.transformForView(position)
@@ -313,11 +350,19 @@ class World():
 	# def drawEllipse(self, orbit):
 	def drawActor(self, actor):
 	
-		rotatedPoints = rotate_polygon(actor.points,actor.body.angle) 
+		rotatedPoints = rotate_polygon(actor.points,actor.body.angle)  # orient the polygon according to the body's current direction in space.
+		# print actor.body.angle
+
+		aPos = self.attractors[0].body.position
+		vPos = self.actors[0].body.position
+		downAngle = math.atan2(aPos[0] - vPos[0], aPos[1] - vPos[1])
+
+		# print downAngle
 		transformedPoints = []
 
 		for rotatedPoint in rotatedPoints:
 			transformedPoints.append(self.transformForView(rotatedPoint + actor.body.position))
+
 
 		pygame.draw.lines(self.screen, actor.color, True, transformedPoints)
 		# pygame.draw.polygon(self.screen, actor.color, transformedPoints)
