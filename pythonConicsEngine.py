@@ -64,8 +64,8 @@ class Actor():
 		self.radius = 5
 		inertia = pymunk.moment_for_circle(self.mass, 0, self.radius, (0,0))
 		self.body = pymunk.Body(self.mass, inertia)
-		self.body.position = 150, 100
-		self.body.apply_impulse_at_local_point([150,0], [0,0])
+		self.body.position = 1, -10050
+		self.body.apply_impulse_at_local_point([50,0], [0,0])
 		self.shape = pymunk.Circle(self.body, self.radius, (0,0))
 		self.shape.friction = 0.5
 
@@ -93,11 +93,11 @@ class Actor():
 class Attractor():
 	def __init__(self):
 		self.type = 'attractor'
-		self.mass = 100000
-		self.radius = 5
+		self.mass = 20000000
+		self.radius = 10000
 		inertia = pymunk.moment_for_circle(self.mass, 0, self.radius, (0,0))
 		self.body = pymunk.Body(self.mass, inertia)
-		self.body.position = 140, 400
+		self.body.position = 1, 1
 		self.shape = pymunk.Circle(self.body, self.radius, (0,0))
 		self.shape.friction = 0.5
 
@@ -127,6 +127,8 @@ class World():
 		self.pan = [0,0]
 		self.rotate = 0
 
+		pygame.key.set_repeat(50,50) # holding a key down repeats the instruction. https://www.pygame.org/docs/ref/key.html
+
 	def gravitate(self, actor, attractor):
 		distance = attractor.body.position - actor.body.position # scalar distance between two bodies
 		magnitude = mag(distance)
@@ -149,6 +151,20 @@ class World():
 		for event in pygame.event.get():
 			if event.type == KEYDOWN and event.key == K_ESCAPE:
 				self.running = False
+			if event.type == KEYDOWN and event.key == K_RIGHTBRACKET:
+
+				if self.viewpointObject == self.actors[0]:
+					self.viewpointObject = self.attractors[0]
+				else:
+					self.viewpointObject = self.actors[0]
+
+			if event.type == KEYDOWN and event.key == K_EQUALS:
+				self.zoom += 0.1
+				print self.zoom
+
+			if event.type == KEYDOWN and event.key == K_MINUS:
+				self.zoom -= 0.1
+				print self.zoom
 			# elif event.type == KEYDOWN and event.key == K_p:
 			# 	pygame.image.save(screen, "contact_with_friction.png")
         
@@ -188,6 +204,8 @@ class World():
 		else:
 			transformedPosition = position - self.viewpointObject.body.position
 
+			transformedPosition = transformedPosition * self.zoom
+
 			transformedPosition[0] += 0.5 * self.resolution[0] # add half the width of the screen
 			transformedPosition[1] += 0.5 * self.resolution[1] # add half the height.
 
@@ -196,7 +214,7 @@ class World():
 
 	def drawCircle(self,color, position, radius):
 		transformedPosition = self.transformForView(position)
-		pygame.draw.circle(self.screen, color, [int(transformedPosition[0]), int(transformedPosition[1])], radius)
+		pygame.draw.circle(self.screen, color, [int(transformedPosition[0]), int(transformedPosition[1])], int((radius * self.zoom)))
 
 	# def drawEllipse(self, orbit):
 		
