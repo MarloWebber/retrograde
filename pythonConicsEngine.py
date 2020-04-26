@@ -52,6 +52,17 @@ def rotate_polygon(polygon, angle, center_point=(0, 0)):
         rotated_polygon.append(rotated_corner)
     return rotated_polygon
 
+def area_of_annulus(inner, outer):
+	return math.pi * ((inner*inner) - (outer*outer))
+
+def make_circle(radius, points):
+	# returns a list of points defining a circle.
+	circle = []
+	angleStep = 2*math.pi / points
+	for i in xrange(0,points):
+		circle.append([radius * math.cos(i * angleStep),radius * math.sin(i * angleStep) ])
+	return circle
+
 
 class Orbit():
 	# a 		Semi Major Axis
@@ -75,12 +86,21 @@ class Orbit():
 # 		self.l = (math.pow(self.b,2) / self.a) # https://en.wikipedia.org/wiki/Ellipse
 
 class Atmosphere():
-	def __init__(self):
-		self.height = 100
+	def __init__(self,planet):
+		self.height = 1000
+		self.density = 1
 
 		self.color = (0,50,200)
 
-		self.seaLevelDrag = 0.1
+		# self.seaLevelDrag = 0.1
+
+		self.points = make_circle(planet.radius+self.height, 314)
+
+		self.mass = self.density * area_of_annulus(planet.radius+self.height, planet.radius)
+		# print self.mass
+		inertia = pymunk.moment_for_poly(self.mass, self.points, (0,0))
+		self.body = pymunk.Body(self.mass, inertia)
+		self.body.position = planet.body.position
 
 class Module():
 	def __init__(self):
@@ -119,6 +139,8 @@ class Actor():
 
 		self.color = (200,50,50)
 
+		self.image = None #preprocessed image used to 'blit' onto the screen.
+
 	# def enterFreefall(self, attractor):
 	# 	self.orbit = func_initpos_to_orbit()
 	# 	self.freefalling = True
@@ -135,17 +157,33 @@ class Actor():
 class Attractor():
 	def __init__(self):
 		self.type = 'attractor'
-		self.mass = 50000000
-		self.radius = 20000
-		inertia = pymunk.moment_for_circle(self.mass, 0, self.radius, (0,0))
+		
+		self.radius = 160000
+		self.density = 0.5
+
+		self.mass = self.density * (math.pi * (self.radius * self.radius))
+
+		# size = self.radius
+		self.points = make_circle(self.radius, 314)
+		inertia = pymunk.moment_for_poly(self.mass, self.points, (0,0))
 		self.body = pymunk.Body(self.mass, inertia)
+		# self.body.position = position
 		self.body.position = 1, 1
-		self.shape = pymunk.Circle(self.body, self.radius, (0,0))
+		# self.body.apply_impulse_at_local_point(velocity, [0,0])
+		self.shape = pymunk.Poly(self.body, self.points)
+
+
+		#inertia = pymunk.moment_for_circle(self.mass, 0, self.radius, (0,0))
+		#self.body = pymunk.Body(self.mass, inertia)
+		
+		#self.shape = pymunk.Circle(self.body, self.radius, (0,0))
 		self.shape.friction = 0.5
 
-		self.atmosphere = Atmosphere()
-
 		self.color = (190,165,145)
+
+		self.atmosphere = Atmosphere(self)
+
+		
 
 class World():
 	def __init__(self):
@@ -205,12 +243,12 @@ class World():
 					self.viewpointObject = self.actors[0]
 
 			if event.type == KEYDOWN and event.key == K_EQUALS:
-				self.zoom += 0.1
-				print self.zoom
+				self.zoom += self.zoom * 0.5
+				# print self.zoom
 
 			if event.type == KEYDOWN and event.key == K_MINUS:
-				self.zoom -= 0.1
-				print self.zoom
+				self.zoom -= self.zoom * 0.5
+				# print self.zoom
 			# elif event.type == KEYDOWN and event.key == K_p:
 			# 	pygame.image.save(screen, "contact_with_friction.png")
         
@@ -276,7 +314,11 @@ class World():
 			transformedPoints.append(self.transformForView(rotatedPoint + actor.body.position))
 
 		pygame.draw.lines(self.screen, actor.color, True, transformedPoints)
+		# pygame.draw.polygon(self.screen, actor.color, transformedPoints)
 		
+	# def blitPlanet(self, attractor):
+	# 	# circle_surface = pygame.draw.circle(COLOR, RADIUS, WIDTH)
+	# 	screen.blit(attractor.image, attractor.position)
         
 	def graphics(self):
 		### Clear screen
@@ -288,8 +330,10 @@ class World():
 	
 		for attractor in self.attractors:
 			if attractor.atmosphere != None:
-				self.drawCircle(attractor.atmosphere.color, attractor.body.position, attractor.radius + attractor.atmosphere.height)
-			self.drawCircle(attractor.color, attractor.body.position, attractor.radius)
+				# self.drawCircle(attractor.atmosphere.color, attractor.body.position, attractor.radius + attractor.atmosphere.height)
+				self.drawActor(attractor.atmosphere)
+			# self.drawCircle(attractor.color, attractor.body.position, attractor.radius)
+			self.drawActor(attractor)
 		for actor in self.actors:
 			self.drawActor(actor)
 
@@ -307,8 +351,8 @@ class World():
 	def start(self):
 
 		newPlanet = Attractor()
-		newButt = Actor((10, -20060), [100,0])
-		twoButt = Actor((1, -20050), [50,0])
+		newButt = Actor((10, -160060), [100,0])
+		twoButt = Actor((1, -160050), [50,0])
 		self.add(newButt)
 		self.add(twoButt)
 		self.add(newPlanet)
