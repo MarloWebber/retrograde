@@ -102,40 +102,105 @@ class Atmosphere():
 		self.body = pymunk.Body(self.mass, inertia)
 		self.body.position = planet.body.position
 
+class ModuleEffect(): # a ModuleEffect is just a polygon that is visually displayed when a module is active.
+	def __init__(self, offset=[0,0])
+	self.offset = offset
+	self.radius = 3
+	self.points = [[-self.radius, -self.radius], [-self.radius, self.radius], [self.radius,self.radius], [self.radius, -self.radius]]
+
 class Module():
-	def __init__(self, offset=[0,0]):
-		self.type = 'generator'
-		self.mass = 1
+	def __init__(self, moduleType, offset=[0,0], angle=0):
 
-		self.produces = {
-			'electricity': 0.0001
-		}
-
-		self.consumes = {
-			'fuel': 0.0001
-		}
-		self.stores = {
-			'fuel': 100,
-			'electricity': 1
-		}
-		
-		self.currentStores = {
-			'fuel': 100,
-			'electricity': 1
-		}
-
-		self.active = False
-
-		self.mass = 1.5
-		self.radius = 5
-
+		self.enabled = False
 		self.offset = offset # x,y position on the ship
+		self.moduleType = moduleType
 
-		size = self.radius
-		self.points = [[-size, -size], [-size, size], [size,size], [size, -size]]
-		for point in self.points:
-			point[0] += self.offset[0]
-			point[1] += self.offset[1]
+		self.angle = angle
+
+		if self.moduleType is 'generator':
+			self.mass = 1
+
+			self.produces = {
+				'electricity': 0.0001
+			}
+			self.consumes = {
+				'fuel': 0.0001
+			}
+			self.stores = {
+				'fuel': 100,
+				'electricity': 1
+			}
+			self.currentStores = {
+				'fuel': 100,
+				'electricity': 1
+			}
+
+			self.mass = 1.5
+			self.radius = 5
+
+			self.points = [[-self.radius, -self.radius], [-self.radius, self.radius], [self.radius,self.radius], [self.radius, -self.radius]]
+			for point in self.points:
+				point[0] += self.offset[0]
+				point[1] += self.offset[1]
+
+			self.color = [200,20,20]
+
+
+		elif self.moduleType is 'engine':
+			self.mass = 1
+
+			self.produces = {
+				'thrust': 1
+			}
+			self.consumes = {
+				'fuel': 0.01
+			}
+			self.stores = {
+				'thrust': 1
+			}
+			self.currentStores = {
+				'thrust': 1,
+			}
+
+			self.mass = 1.5
+			self.radius = 5
+
+			size = self.radius
+			self.points = [[-size, -size*2], [-size, size*2], [size,size*2], [size, -size*2]]
+			for point in self.points:
+				point[0] += self.offset[0]
+				point[1] += self.offset[1]
+
+			self.color = [120,100,100]
+
+			self.effect = ModuleEffect([0,0])
+
+		elif self.moduleType is 'RCS':
+			self.mass = 0.2
+
+			self.produces = {
+				'torque': 1
+			}
+			self.consumes = {
+				'electricity': 0.01
+			}
+			self.stores = {
+				'torque': 1
+			}
+			self.currentStores = {
+				'torque': 0,
+			}
+
+			self.mass = 1.5
+			self.radius = 5
+
+			size = self.radius
+			self.points = [[-size, -size*2], [-size, size*2], [size,size*2], [size, -size*2]]
+			for point in self.points:
+				point[0] += self.offset[0]
+				point[1] += self.offset[1]
+
+			self.color = [120,100,100]
 
 
 class Actor():
@@ -146,8 +211,8 @@ class Actor():
 		self.points = []
 
 		self.modules = []
-		self.modules.append(Module([6,0]))
-		self.modules.append(Module([-6,0]))
+		self.modules.append(Module('generator',[6,0]))
+		self.modules.append(Module('engine',[-6,0]))
 
 		for module in self.modules:
 			self.mass += module.mass
@@ -170,9 +235,11 @@ class Actor():
 
 		self.color = (200,50,50)
 
-		self.image = None #preprocessed image used to 'blit' onto the screen.
+		# self.image = None #preprocessed image used to 'blit' onto the screen.
 
 		self.availableResources = {}
+
+		self.isPlayer = True
 
 	# def enterFreefall(self, attractor):
 	# 	self.orbit = func_initpos_to_orbit()
@@ -181,9 +248,7 @@ class Actor():
 	# def leaveFreefall(self):
 	# 	self.freefalling = False
 
-	def doResources(self):
-		# self.
-
+	def getAvailableResources(self):
 		for module in self.modules:
 			for availableResource in module.currentStores.keys():
 				self.availableResources[availableResource] = 0
@@ -198,14 +263,17 @@ class Actor():
 				else:
 					self.availableResources[availableResource] += availableQuantity
 
+	def doResources(self):
+		self.getAvailableResources()
+
 		for module in self.modules:		# first, allow all the modules to produce what they need, so you know what is available.
-			if module.active:
+			if module.enabled:
 				for resource, quantity in module.produces.items():
 					self.availableResources[resource] += quantity
 
 
 		for module in self.modules:
-			module.active = False
+			module.enabled = False
 			for needResource, needQuantity in module.consumes.items():
 				for providerModule in self.modules:
 					if providerModule.currentStores[needResource] > 0:
@@ -214,41 +282,28 @@ class Actor():
 							providerModule.currentStores[needResource] = 0
 						else:
 							providerModule.currentStores[needResource] -= needQuantity
-							module.active = True
+							module.enabled = True
 							break
 			for giveResource, giveQuantity in module.produces.items():
 				for accepterModule in self.modules:
-					remainingCapacity = accepterModule.stores[giveResource] - accepterModule.currentStores[giveResource]
-					if remainingCapacity > 0:
-						if remainingCapacity > giveQuantity:
-							accepterModule.currentStores += giveQuantity
-							break
-						else:
-							accepterModule.currentStores = accepterModule.stores[giveResource]
-							giveQuantity -= remainingCapacity
-							
+					if giveResource in accepterModule.stores:
+						remainingCapacity = accepterModule.stores[giveResource] - accepterModule.currentStores[giveResource]
+						if remainingCapacity > 0:
+							if remainingCapacity > giveQuantity:
+								accepterModule.currentStores += giveQuantity
+								break
+							else:
+								accepterModule.currentStores = accepterModule.stores[giveResource]
+								giveQuantity -= remainingCapacity
 								
+									
 
-		# previousAvailableResources = self.availableResources		
-		# for resource, quantity in self.availableResources:
-		# 	quantity = 0
-
-		# for module in self.modules:
-
-		# 	for resource, quantity in module.contains.items():
-		# 		self.availableResources[resource] += 
-
-		# for module in self.modules:
-
-		# 	for resource, quantity in module.requires.items():
-		# 		if self.previousAvailableResources[resource] < module.requires[resource]
-		# 			module.active = False
-
-		# 	if module.active:
-		# 		for resource, quantity in module.provides.items():
-		# 			self.availableResources[resource] += module.provides[resource]
-
-
+	def doModuleEffects(self, keyStates):
+		for module in self.modules:
+			for giveResource, giveQuantity in module.produces.items():
+				if giveResource == 'thrust':
+					pass
+				elif giveResource == 'torque'
 
 class Attractor():
 	def __init__(self):
@@ -313,6 +368,13 @@ class World():
 
 		self.font = pygame.font.SysFont('dejavusans', 15)
 
+		# playerKey states are used to say whether the key is being held down or not. This is because the recommended pygame key event code only provides keyup and keydown events.
+		self.playerKeyStates = {
+			'up': False,
+			'down': False,
+			'left': False,
+			'right': False
+		}
 
 
 	def gravitate(self, actor, attractor):
@@ -337,26 +399,47 @@ class World():
 		for event in pygame.event.get():
 			if event.type == KEYDOWN and event.key == K_ESCAPE:
 				self.running = False
-			if event.type == KEYDOWN and event.key == K_RIGHTBRACKET:
-
+			elif event.type == KEYDOWN and event.key == K_RIGHTBRACKET:
 				if self.viewpointObject == self.actors[0]:
 					self.viewpointObject = self.attractors[0]
 				else:
 					self.viewpointObject = self.actors[0]
 
-			if event.type == KEYDOWN and event.key == K_EQUALS:
+			elif event.type == KEYDOWN and event.key == K_EQUALS:
 				self.zoom += self.zoom * 0.5
 				# print self.zoom
 
-			if event.type == KEYDOWN and event.key == K_MINUS:
+			elif event.type == KEYDOWN and event.key == K_MINUS:
 				self.zoom -= self.zoom * 0.5
 				# print self.zoom
 
-			if event.type == KEYDOWN and event.key == K_COMMA:
+			elif event.type == KEYDOWN and event.key == K_COMMA:
 				self.timestepSize += self.timestepSize * 0.5
 
-			if event.type == KEYDOWN and event.key == K_PERIOD:
+			elif event.type == KEYDOWN and event.key == K_PERIOD:
 				self.timestepSize -= self.timestepSize * 0.5
+
+			elif event.type == KEYDOWN and event.key == K_LEFT:
+				self.playerKeyStates{'left'} = True
+			elif event.type == KEYUP and event.key == K_LEFT:
+				self.playerKeyStates{'left'} = False
+
+			elif event.type == KEYDOWN and event.key == K_RIGHT:
+				self.playerKeyStates{'right'} = True
+			elif event.type == KEYUP and event.key == K_LEFT:
+				self.playerKeyStates{'right'} = False
+
+			elif event.type == KEYDOWN and event.key == K_UP:
+				self.playerKeyStates{'up'} = True
+			elif event.type == KEYUP and event.key == K_UP:
+				self.playerKeyStates{'up'} = False
+
+			elif event.type == KEYDOWN and event.key == K_DOWN:
+				self.playerKeyStates{'down'} = True
+			elif event.type == KEYUP and event.key == K_DOWN:
+				self.playerKeyStates{'down'} = False
+
+
 			# elif event.type == KEYDOWN and event.key == K_p:
 			# 	pygame.image.save(screen, "contact_with_friction.png")
         
@@ -428,9 +511,9 @@ class World():
 		rotatedPoints = rotate_polygon(actor.points,actor.body.angle)  # orient the polygon according to the body's current direction in space.
 		# print actor.body.angle
 
-		aPos = self.attractors[0].body.position
-		vPos = self.actors[0].body.position
-		downAngle = math.atan2(aPos[0] - vPos[0], aPos[1] - vPos[1])
+		# aPos = self.attractors[0].body.position
+		# vPos = self.actors[0].body.position
+		# downAngle = math.atan2(aPos[0] - vPos[0], aPos[1] - vPos[1])
 
 		# print downAngle
 		transformedPoints = []
@@ -440,6 +523,27 @@ class World():
 
 
 		pygame.draw.lines(self.screen, actor.color, True, transformedPoints)
+
+
+	def drawModule(self, actor, module):
+	
+	
+		# print actor.body.angle
+
+		# aPos = self.attractors[0].body.position
+		# vPos = self.actors[0].body.position
+		# downAngle = math.atan2(aPos[0] - vPos[0], aPos[1] - vPos[1])
+
+		# print downAngle
+		transformedPoints = []
+
+		for rotatedPoint in module.points: 
+			transformedPoints.append(self.transformForView(rotatedPoint + actor.body.position + module.offset))
+
+
+			rotatedPoints = rotate_polygon(transformedPoints,actor.body.angle, module.offset)  # orient the polygon according to the body's current direction in space.
+
+		pygame.draw.lines(self.screen, module.color, True, rotatedPoints)
 		# pygame.draw.polygon(self.screen, actor.color, transformedPoints)
 		
 	# def blitPlanet(self, attractor):
@@ -461,7 +565,8 @@ class World():
 			# self.drawCircle(attractor.color, attractor.body.position, attractor.radius)
 			self.drawActor(attractor)
 		for actor in self.actors:
-			self.drawActor(actor)
+			for module in actor.modules:
+				self.drawModule(actor, module)
 
 		# print self.actors[0].availableResources
 
