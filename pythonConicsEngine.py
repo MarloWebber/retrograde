@@ -114,7 +114,7 @@ class ModuleEffect(): # a ModuleEffect is just a polygon that is visually displa
 class Module():
 	def __init__(self, moduleType, offset=[0,0], angle=0):
 
-		self.enabled = False # whether or not the module has enough available resources to function.
+		self.enabled = True # whether or not the module has enough available resources to function.
 		self.active = False # if the module is specifically turned on, for example, an engine firing when the player pushes the up arrow key.
 
 		self.offset = offset # x,y position on the ship
@@ -149,7 +149,7 @@ class Module():
 				point[0] += self.offset[0]
 				point[1] += self.offset[1]
 
-			self.color = [200,20,20]
+			self.color = [150,20,20]
 
 
 		elif self.moduleType is 'engine':
@@ -159,7 +159,7 @@ class Module():
 				'thrust': 100
 			}
 			self.consumes = {
-				'fuel': 0.1
+				'fuel': 1
 			}
 			self.stores = {
 				'thrust': 100
@@ -270,6 +270,13 @@ class Actor():
 				self.availableResources[availableResource] = 0
 
 		for module in self.modules:
+			if module.enabled and module.active:
+				for availableResource, availableQuantity in module.produces.items():
+					if self.availableResources[availableResource] == None:
+						self.availableResources[availableResource] = availableQuantity
+					else:
+						self.availableResources[availableResource] += availableQuantity
+
 			for availableResource, availableQuantity in module.currentStores.items():
 				# print availableResource
 				# print availableQuantity
@@ -279,15 +286,13 @@ class Actor():
 				else:
 					self.availableResources[availableResource] += availableQuantity
 
-		for module in self.modules:		# first, allow all the modules to produce what they need, so you know what is available.
-			if module.enabled and module.active:
-				for resource, quantity in module.produces.items():
-					self.availableResources[resource] += quantity
+		# for module in self.modules:		# first, allow all the modules to produce what they need, so you know what is available.
+			
 
 
 	def doResourceConsumption(self):
 		for module in self.modules:
-			if module.active:
+			if module.active and module.enabled:
 				module.enabled = False
 				for needResource, needQuantity in module.consumes.items():
 					for providerModule in self.modules:
@@ -325,6 +330,7 @@ class Actor():
 	def doResources(self):
 		self.doModuleActivation()
 		self.getAvailableResources()
+		print self.availableResources
 		self.doResourceConsumption()
 		self.doResourceStorage()
 
@@ -610,12 +616,15 @@ class World():
 		pygame.draw.lines(self.screen, module.color, True, rotatedPoints)
 		# pygame.draw.polygon(self.screen, actor.color, transformedPoints)
 		
-		if module.active and module.enabled:
+		if module.enabled:
+		# and module.enabled:
 			# pygame.draw.circle(self.screen, module.color, 2, 1)
 			# def rotate_point(point, angle_rad, center_point=(0, 0)):
 			activeCircle = self.transformForView(module.offset + actor.body.position)
 			activeCircle = rotate_point(activeCircle, actor.body.angle, self.transformForView(actor.body.position))
 			self.drawCircle(module.color, activeCircle, 2)
+			if module.active:
+				self.drawCircle((255,0,0), activeCircle, 1)
 
 		if module.enabled and module.active:
 			for giveResource, giveQuantity in module.stores.items(): #module.produces.items():
