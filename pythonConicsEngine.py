@@ -213,9 +213,9 @@ class Actor():
 		self.points = []
 
 		self.modules = []
-		self.modules.append(Module('generator',[6,0]))
-		self.modules.append(Module('engine',[-6,0]))
-		self.modules.append(Module('RCS',[0,0]))
+		self.modules.append(Module('generator',[0,0]))
+		self.modules.append(Module('engine',[0,8]))
+		self.modules.append(Module('RCS',[0,-5.5]))
 
 		for module in self.modules:
 			self.mass += module.mass
@@ -310,19 +310,20 @@ class Actor():
 
 	def doModuleEffects(self, keyStates):
 		for module in self.modules:
-			for giveResource, giveQuantity in module.produces.items():
-				# print giveResource
-				if giveResource == 'thrust':
-					pass
-				elif giveResource == 'torque':
-					if keyStates['left']:
-						# apply two impulses, pushing in opposite directions, an equal distance from the center to create torque
-						# print giveQuantity
-						# print module.momentArm
-
-						self.body.apply_impulse_at_local_point([giveQuantity,0], [0,-module.momentArm])
-						self.body.apply_impulse_at_local_point([-giveQuantity,0], [0,module.momentArm])
-
+			if module.enabled:
+				for giveResource, giveQuantity in module.produces.items():
+					# print giveResource
+					if giveResource == 'thrust':
+						pass
+					elif giveResource == 'torque':
+						if keyStates['left']:
+							# apply two impulses, pushing in opposite directions, an equal distance from the center to create torque
+							self.body.apply_impulse_at_local_point([giveQuantity,0], [0,-module.momentArm])
+							self.body.apply_impulse_at_local_point([-giveQuantity,0], [0,module.momentArm])
+						elif keyStates['right']:
+							# apply two impulses, pushing in opposite directions, an equal distance from the center to create torque
+							self.body.apply_impulse_at_local_point([-giveQuantity,0], [0,-module.momentArm])
+							self.body.apply_impulse_at_local_point([giveQuantity,0], [0,module.momentArm])
 
 
 
@@ -450,7 +451,7 @@ class World():
 
 			elif event.type == KEYDOWN and event.key == K_RIGHT:
 				self.player.keyStates['right'] = True
-			elif event.type == KEYUP and event.key == K_LEFT:
+			elif event.type == KEYUP and event.key == K_RIGHT:
 				self.player.keyStates['right'] = False
 
 			elif event.type == KEYDOWN and event.key == K_UP:
