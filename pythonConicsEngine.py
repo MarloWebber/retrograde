@@ -185,13 +185,13 @@ class Module():
 			self.mass = 0.2
 
 			self.produces = {
-				'torque': 1
+				'torque': 2
 			}
 			self.consumes = {
 				'electricity': 0.1
 			}
 			self.stores = {
-				'torque': 1
+				'torque': 2
 			}
 			self.currentStores = {
 				'torque': 0,
