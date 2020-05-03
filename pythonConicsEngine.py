@@ -156,13 +156,13 @@ class Module():
 			self.mass = 1
 
 			self.produces = {
-				'thrust': 50
+				'thrust': 100
 			}
 			self.consumes = {
 				'fuel': 0.1
 			}
 			self.stores = {
-				'thrust': 10
+				'thrust': 100
 			}
 			self.currentStores = {
 				'thrust': 1,
@@ -345,17 +345,17 @@ class Actor():
 							# self.body.apply_impulse_at_local_point(force, module.offset)
 
 							# forceAngle = addRadians(actor.body.angle, 0)
-							forceAngle = self.body.angle#addRadians(module.angle, actor.body.angle)
+							# forceAngle = self.body.angle#addRadians(module.angle, actor.body.angle)
 							# print forceAngle
 
-							force = [(giveQuantity * math.cos(addRadians(forceAngle, math.pi * 0.5))), -giveQuantity * math.sin(addRadians(forceAngle, math.pi * 0.5) )]
+							force = [(giveQuantity * math.cos(addRadians(module.angle, math.pi * 0.5))), -giveQuantity * math.sin(addRadians(module.angle, math.pi * 0.5) )]
 							self.body.apply_impulse_at_local_point(force, (0,0))
 
 
 					elif giveResource == 'torque':
 						if keyStates['left']:
 							# apply two impulses, pushing in opposite directions, an equal distance from the center to create torque
-							self.body.apply_impulse_at_local_point([-giveQuantity,0], [0,-module.momentArm])
+							# self.body.apply_impulse_at_local_point([-giveQuantity,0], [0,-module.momentArm])
 							self.body.apply_impulse_at_local_point([giveQuantity,0], [0,module.momentArm])
 						elif keyStates['right']:
 							# apply two impulses, pushing in opposite directions, an equal distance from the center to create torque
@@ -404,7 +404,7 @@ class World():
 		self.clock = pygame.time.Clock()
 		self.space = pymunk.Space()
 		self.space.gravity = (0.0, 0.0)
-		self.gravitationalConstant = 300
+		self.gravitationalConstant = 1000
 
 		self.actors = []
 		self.attractors = []
