@@ -1,26 +1,13 @@
 import math, sys, random
-
 import pygame
 from pygame.locals import *
 from pygame.color import *
-
 import pymunk
 from pymunk import Vec2d
 import pymunk.pygame_util
-
 import numpy
-
 import initpos_to_orbit as orbmech
-
 import time
-
-# def draw_collision(arbiter, space, data):
-#     for c in arbiter.contact_point_set.points:
-#         r = max( 3, abs(c.distance*5) )
-#         r = int(r)
-
-#         p = pymunk.pygame_util.to_pygame(c.point_a, data["surface"])
-#         pygame.draw.circle(data["surface"], THECOLORS["black"], p, r, 1)
     
 global contact
 global shape_to_remove
@@ -36,21 +23,17 @@ def rotate_point(point, angle_rad, center_point=(0, 0)):
     Angle is in degrees.
     Rotation is counter-clockwise
     """
-    # angle_rad = math.radians(angle % 360)
-    # Shift the point so that center_point becomes the origin
-    new_point = (point[0] - center_point[0], point[1] - center_point[1])
+    new_point = (point[0] - center_point[0], point[1] - center_point[1])  # Shift the point so that center_point becomes the origin
     new_point = (new_point[0] * math.cos(angle_rad) - new_point[1] * math.sin(angle_rad),
                  new_point[0] * math.sin(angle_rad) + new_point[1] * math.cos(angle_rad))
-    # Reverse the shifting we have done
-    new_point = [new_point[0] + center_point[0], new_point[1] + center_point[1]]
+    new_point = [new_point[0] + center_point[0], new_point[1] + center_point[1]] # Reverse the shifting we have done
     return new_point
 
 def rotate_polygon(polygon, angle, center_point=(0, 0)):
     """Rotates the given polygon which consists of corners represented as (x,y)
     around center_point (origin by default)
     Rotation is counter-clockwise
-    Angle is in degrees
-    """
+    Angle is in degrees """
     rotated_polygon = []
     for corner in polygon:
         rotated_corner = rotate_point(corner, angle, center_point)
@@ -94,15 +77,9 @@ class Atmosphere():
 	def __init__(self,radius, planetPosition):
 		self.height = 2000
 		self.density = 1
-
 		self.color = (0,50,200)
-
-		# self.seaLevelDrag = 0.1
-
 		self.points = make_circle(radius+self.height, 314)
-
 		self.mass = self.density * area_of_annulus(radius+self.height, radius)
-		# print self.mass
 		inertia = pymunk.moment_for_poly(self.mass, self.points, (0,0))
 		self.body = pymunk.Body(self.mass, inertia)
 		self.body.position = planetPosition
@@ -115,19 +92,15 @@ class ModuleEffect(): # a ModuleEffect is just a polygon that is visually displa
 
 class Module():
 	def __init__(self, moduleType, offset=[0,0], angle=0):
-
 		self.enabled = True # whether or not the module has enough available resources to function.
 		self.active = False # if the module is specifically turned on, for example, an engine firing when the player pushes the up arrow key.
-
 		self.offset = offset # x,y position on the ship
 		self.moduleType = moduleType
-
 		self.angle = angle
 
 		if self.moduleType is 'generator':
 			self.mass = 1
 			self.active = True
-
 			self.resources = {
 				'electricity': 0.01,
 				'fuel': -0.0001
@@ -140,21 +113,13 @@ class Module():
 				'fuel': 5000,
 				'electricity': 50
 			}
-
 			self.mass = 1.5
 			self.radius = 5
-
 			self.points = [[-self.radius, -self.radius], [-self.radius, self.radius], [self.radius,self.radius], [self.radius, -self.radius]]
-			# for point in self.points:
-			# 	point[0] += self.offset[0]
-			# 	point[1] += self.offset[1]
-
 			self.color = [150,20,20]
-
 
 		elif self.moduleType is 'engine':
 			self.mass = 1
-
 			self.resources = {
 				'thrust': 100,
 				'fuel': -0.1,
@@ -162,30 +127,22 @@ class Module():
 			}
 			self.stores = {}
 			self.initialStores = {}
-
 			self.mass = 1.5
 			self.radius = 5
-
 			size = self.radius
 			self.points = [[-size, -size*2], [-size, size*2], [size,size*2], [size, -size*2]]
-			# for point in self.points:
-			# 	point[0] += self.offset[0]
-			# 	point[1] += self.offset[1]
-
 			self.color = [120,100,100]
 
 			self.effect = ModuleEffect([0,0])
 
 		elif self.moduleType is 'RCS':
 			self.mass = 0.2
-
 			self.resources = {
 				'torque': 2,
 				'electricity': -0.1
 			}
 			self.stores = {}
 			self.initialStores = {}
-
 			self.mass = 1.5
 			self.radius = 5
 			size = self.radius
@@ -198,11 +155,9 @@ class Module():
 				point[0] += self.offset[0]
 				point[1] += self.offset[1]
 
-
 class Actor():
 	def __init__(self, shipType, position, velocity):
 		self.type = 'actor'
-
 		self.modules = []
 
 		if shipType == 'dinghy':
@@ -216,11 +171,8 @@ class Actor():
 			self.modules.append(Module('engine',[13,8]))
 			self.modules.append(Module('RCS',[0,-10]))
 
-
-
 		self.mass = 0
 		self.points = []
-
 		self.availableResources = {}
 		self.storagePool = {}
 		self.maximumStores = {}
@@ -237,41 +189,23 @@ class Actor():
 			for resource, quantity in module.stores.items():
 				if resource not in self.maximumStores: self.maximumStores[resource] = quantity
 				else: self.maximumStores[resource] += quantity
-
-		print self.storagePool
-		print self.availableResources
-
-		# while(True):
-		# 	pass
-
-		# print self.mass
-		# print self.points
-
+		
 		inertia = pymunk.moment_for_poly(self.mass, self.points, (0,0))
 		self.body = pymunk.Body(self.mass, inertia)
 		self.body.position = position
 		self.body.apply_impulse_at_local_point(velocity, [0,0])
 		self.shape = pymunk.Poly(self.body, self.points)
 		self.shape.friction = 0.5
-
 		self.orbit = None #initpos_to_orbit(self.)
-
 		self.freefalling = True
 		self.interacting = False
-
 		self.color = (200,50,50)
-
-		# self.image = None #preprocessed image used to 'blit' onto the screen.
-
-
-		# self.isPlayer = False
 		self.keyStates = {
 			'up': False,
 			'down': False,
 			'left': False,
 			'right': False
 		}
-
 
 	# def enterFreefall(self, attractor):
 	# 	self.orbit = func_initpos_to_orbit()
@@ -331,11 +265,7 @@ class Actor():
 							self.availableResources[resource] = 0
 
 		for resource, quantity in self.storagePool.items():
-			if quantity > self.maximumStores[resource]: quantity = self.maximumStores[resource]
-
-
-		
-									
+			if quantity > self.maximumStores[resource]: quantity = self.maximumStores[resource]			
 
 	def doModuleEffects(self, keyStates):
 		for module in self.modules:
@@ -343,30 +273,17 @@ class Actor():
 				for giveResource, giveQuantity in module.resources.items(): #module.produces.items():
 					if giveResource == 'thrust':
 						if keyStates['up']:
-							# force = [(giveQuantity * math.sin(module.angle + self.body.angle)), giveQuantity * math.cos(module.angle + self.body.angle) ]
-							# self.body.apply_impulse_at_local_point(force, module.offset)
-
-							# forceAngle = addRadians(actor.body.angle, 0)
-							# forceAngle = self.body.angle#addRadians(module.angle, actor.body.angle)
-							# print forceAngle
-
 							force = [(giveQuantity * math.cos(addRadians(module.angle, math.pi * 0.5))), -giveQuantity * math.sin(addRadians(module.angle, math.pi * 0.5) )]
 							self.body.apply_impulse_at_local_point(force, (0,0))
-
 
 					elif giveResource == 'torque':
 						if keyStates['left']:
 							# apply two impulses, pushing in opposite directions, an equal distance from the center to create torque
-							# self.body.apply_impulse_at_local_point([-giveQuantity,0], [0,-module.momentArm])
+							self.body.apply_impulse_at_local_point([-giveQuantity,0], [0,-module.momentArm])
 							self.body.apply_impulse_at_local_point([giveQuantity,0], [0,module.momentArm])
 						elif keyStates['right']:
-							# apply two impulses, pushing in opposite directions, an equal distance from the center to create torque
 							self.body.apply_impulse_at_local_point([giveQuantity,0], [0,-module.momentArm])
 							self.body.apply_impulse_at_local_point([-giveQuantity,0], [0,module.momentArm])
-
-
-
-
 
 class Attractor():
 	def __init__(self, planetType, position=[1,1]):
@@ -396,69 +313,41 @@ class Attractor():
 		self.shape = pymunk.Poly(self.body, self.points)
 		self.shape.friction = self.friction
 
-
-		
-
 class World():
 	def __init__(self):
 		pygame.init()
-
 		self.clock = pygame.time.Clock()
 		self.space = pymunk.Space()
 		self.space.gravity = (0.0, 0.0)
 		self.gravitationalConstant = 2000
-
 		self.actors = []
 		self.attractors = []
-
 		self.resolution = (840,680)
 		self.screen = pygame.display.set_mode(self.resolution)
 		self.draw_options = pymunk.pygame_util.DrawOptions(self.screen)
 		self.draw_options.flags = self.draw_options.flags ^ pymunk.pygame_util.DrawOptions.DRAW_COLLISION_POINTS 
-
 		self.ch = self.space.add_collision_handler(0, 0)
 		self.ch.data["surface"] = self.screen
-		# self.ch.post_solve = draw_collision
-
 		self.viewpointObject = None
 		self.player = None
 		self.zoom = 1
 		self.pan = [0,0]
 		self.rotate = 0
-
 		self.timestepSize = 0.2/60.0 #1.0/60.0
-
 		pygame.key.set_repeat(50,50) # holding a key down repeats the instruction. https://www.pygame.org/docs/ref/key.html
-
 		self.font = pygame.font.SysFont('dejavusans', 15)
-
-		# playerKey states are used to say whether the key is being held down or not. This is because the recommended pygame key event code only provides keyup and keydown events.
-		# self.playerKeyStates = {
-		# 	'up': False,
-		# 	'down': False,
-		# 	'left': False,
-		# 	'right': False
-		# }
-
 
 	def gravitate(self, actor, attractor):
 		distance = attractor.body.position - actor.body.position # scalar distance between two bodies
 		magnitude = mag(distance)
 		gravity = self.gravitationalConstant * attractor.body.mass
 		appliedGravity = gravity/(magnitude * magnitude)
-
 		components = numpy.divide(distance, magnitude)
-
 		force = components * appliedGravity * self.timestepSize
-
-		# print force
-
 		rotatedForce = Vec2d(force[0], force[1])
 		rotatedForce = rotatedForce.rotated(-actor.body.angle)
-
 		actor.body.apply_impulse_at_local_point(rotatedForce, [0,0])
 
-	
 	def inputs(self):
 		for event in pygame.event.get():
 			if event.type == KEYDOWN and event.key == K_ESCAPE:
@@ -468,63 +357,42 @@ class World():
 					self.viewpointObject = self.attractors[0]
 				else:
 					self.viewpointObject = self.actors[0]
-
 			elif event.type == KEYDOWN and event.key == K_EQUALS:
 				self.zoom += self.zoom * 0.5
-				# print self.zoom
-
 			elif event.type == KEYDOWN and event.key == K_MINUS:
 				self.zoom -= self.zoom * 0.5
-				# print self.zoom
-
 			elif event.type == KEYDOWN and event.key == K_COMMA:
 				self.timestepSize += self.timestepSize * 0.5
-
 			elif event.type == KEYDOWN and event.key == K_PERIOD:
 				self.timestepSize -= self.timestepSize * 0.5
-
 			elif event.type == KEYDOWN and event.key == K_LEFT:
 				self.player.keyStates['left'] = True
 			elif event.type == KEYUP and event.key == K_LEFT:
 				self.player.keyStates['left'] = False
-
 			elif event.type == KEYDOWN and event.key == K_RIGHT:
 				self.player.keyStates['right'] = True
 			elif event.type == KEYUP and event.key == K_RIGHT:
 				self.player.keyStates['right'] = False
-
 			elif event.type == KEYDOWN and event.key == K_UP:
 				self.player.keyStates['up'] = True
 			elif event.type == KEYUP and event.key == K_UP:
 				self.player.keyStates['up'] = False
-
 			elif event.type == KEYDOWN and event.key == K_DOWN:
 				self.player.keyStates['down'] = True
 			elif event.type == KEYUP and event.key == K_DOWN:
 				self.player.keyStates['down'] = False
-
-
-			# elif event.type == KEYDOWN and event.key == K_p:
-			# 	pygame.image.save(screen, "contact_with_friction.png")
         
 	def add(self, thing):  
-		
 		self.space.add(thing.body, thing.shape)
-		
 		if thing.type == 'actor':
 			self.actors.append(thing)
-			
 		elif thing.type == 'attractor':
 			self.attractors.append(thing)
 
 	def physics(self):
-		### Update physics
-		# print 'physics'
 		for actor in self.actors:
-			# print 'actor'
 			actor.doResources()
 			actor.doModuleEffects(actor.keyStates)
-
 			for attractor in self.attractors:
 				if actor.freefalling:
 					if actor.orbit == None:
@@ -535,131 +403,74 @@ class World():
 						self.gravitate(actor, attractor)
 				else:
 					self.gravitate(actor, attractor)
-
 		self.space.step(self.timestepSize)
 
 	def rotatePolygon(self, points, angle):
-		# def Rotate2D(pts,cnt,ang=pi/4):
 		return Rotate2D(points,(0,0),angle)
-	
 
 	def transformForView(self, position):
 		if self.viewpointObject == None:
 			return position
 		else:
 			transformedPosition = position - self.viewpointObject.body.position # offset everything by the position of the viewpointObject, so the viewpoint is at 0,0
-
-			# #rotate everything around the viewPointObject, so that the current largest gravitational influencer is 'down'.
-			# #get angle to influencer
-			# aPos = self.attractors[0].body.position
-			# vPos = self.viewpointObject.body.position
-			# angle = math.atan2(aPos[0] - vPos[0], aPos[1] - vPos[1])
-			# print angle
-			# print aPos
-			# print vPos
-			# transformedPosition = rotate_point(transformedPosition, angle)
 			transformedPosition = transformedPosition * self.zoom  # shrink or expand everything around the 0,0 point
-
 			transformedPosition[0] += 0.5 * self.resolution[0] # add half the width of the screen, to get to the middle. 0,0 is naturally on the corner.
 			transformedPosition[1] += 0.5 * self.resolution[1] # add half the height.
-
 			return transformedPosition
 
-
 	def drawCircle(self,color, position, radius):
-		# transformedPosition = self.transformForView(position)
 		pygame.draw.circle(self.screen, color, [int(position[0]), int(position[1])], int((radius * self.zoom)))
 
-	# def drawEllipse(self, orbit):
 	def drawActor(self, actor):
-	
 		rotatedPoints = rotate_polygon(actor.points,actor.body.angle)  # orient the polygon according to the body's current direction in space.
-		# print actor.body.angle
-
-		# aPos = self.attractors[0].body.position
-		# vPos = self.actors[0].body.position
-		# downAngle = math.atan2(aPos[0] - vPos[0], aPos[1] - vPos[1])
-
-		# print downAngle
 		transformedPoints = []
-
 		for rotatedPoint in rotatedPoints:
-			transformedPoints.append(self.transformForView(rotatedPoint + actor.body.position))
-
-
+			transformedPoints.append(self.transformForView(rotatedPoint + actor.body.position)) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
 		pygame.draw.lines(self.screen, actor.color, True, transformedPoints)
 
-
 	def drawModule(self, actor, module):
-	
-	
-		# print actor.body.angle
 
-		# aPos = self.attractors[0].body.position
-		# vPos = self.actors[0].body.position
-		# downAngle = math.atan2(aPos[0] - vPos[0], aPos[1] - vPos[1])
-
-		# print downAngle
+		# draw the outline of the module.
 		transformedPoints = []
-
 		for rotatedPoint in module.points: 
-			transformedPoints.append(self.transformForView(rotatedPoint + actor.body.position ))
-
-		# rotatedPoints = rotate_polygon(transformedPoints,actor.body.angle, [self.resolution[0]*0.5,self.resolution[1]*0.5])  # orient the polygon according to the body's current direction in space.
-		rotatedPoints = rotate_polygon(transformedPoints,actor.body.angle, self.transformForView(actor.body.position))  # orient the polygon according to the body's current direction in space.
-
-
+			transformedPoints.append(self.transformForView(rotatedPoint + actor.body.position )) # zoom and pan to fit the screen.
+		rotatedPoints = rotate_polygon(transformedPoints,actor.body.angle, self.transformForView(actor.body.position))  # orient the module according to the actor's current direction in space.
 		pygame.draw.lines(self.screen, module.color, True, rotatedPoints)
-		# pygame.draw.polygon(self.screen, actor.color, transformedPoints)
-		
+
+		# put a circle in the middle if it is enabled, and a smaller red circle in the middle of that, if it is activated.
 		if module.enabled:
-		# and module.enabled:
-			# pygame.draw.circle(self.screen, module.color, 2, 1)
-			# def rotate_point(point, angle_rad, center_point=(0, 0)):
 			activeCircle = self.transformForView(module.offset + actor.body.position)
 			activeCircle = rotate_point(activeCircle, actor.body.angle, self.transformForView(actor.body.position))
 			self.drawCircle(module.color, activeCircle, 2)
 			if module.active:
 				self.drawCircle((255,0,0), activeCircle, 1)
 
+		# rocket engines have a line coming out of them.
 		if module.enabled and module.active:
-			for giveResource, giveQuantity in module.resources.items(): #module.produces.items():
+			for giveResource, giveQuantity in module.resources.items(): 
 				if giveResource == 'thrust':
 					if actor.keyStates['up']:
-						print actor.body.angle
-						print module.angle
-
-						# forceAngle = addRadians(actor.body.angle, 0)
-						forceAngle = actor.body.angle#addRadians(module.angle, actor.body.angle)
-						print forceAngle
-
+						forceAngle = actor.body.angle
 						force = [(giveQuantity * math.cos(addRadians(forceAngle, math.pi * 0.5))), giveQuantity * math.sin(addRadians(forceAngle, math.pi * 0.5) )]
-						# self.body.apply_impulse_at_local_point(force, module.offset)
 						activeCircle = self.transformForView(module.offset + actor.body.position)
 						activeCircle = rotate_point(activeCircle, actor.body.angle, self.transformForView(actor.body.position))
 						ananas = (int(activeCircle[0] + force[0] * self.zoom), int(activeCircle[1]+force[1] * self.zoom ) )
 						# print ananas
 						pygame.draw.lines(self.screen, (255,255,200), True, [activeCircle,ananas])
 
-	# def blitPlanet(self, attractor):
-	# 	# circle_surface = pygame.draw.circle(COLOR, RADIUS, WIDTH)
-	# 	screen.blit(attractor.image, attractor.position)
-        
-
 	def drawHUD(self):
-		
 		# show the player what resources are available
 		i = 0
-		mushu = {}
+		hudList = {}
 		for resource, quantity in self.actors[0].availableResources.items():
-			mushu[resource] = quantity
+			hudList[resource] = quantity
 		for resource, quantity in self.actors[0].storagePool.items():
-			if resource in mushu:
-				mushu[resource] += self.actors[0].storagePool[resource]
+			if resource in hudList:
+				hudList[resource] += self.actors[0].storagePool[resource]
 			else:
-				mushu[resource] = self.actors[0].storagePool[resource]
+				hudList[resource] = self.actors[0].storagePool[resource]
 
-		for availableResource, availableQuantity in mushu.items():
+		for availableResource, availableQuantity in hudList.items():
 			textsurface = self.font.render(str(availableResource) + ': ' + str(availableQuantity), False, (255, 255, 255))
 			self.screen.blit(textsurface,(30,i * 20))
 			i += 1
@@ -668,8 +479,6 @@ class World():
 		self.screen.blit(textsurface,(30,i * 20))
 
 		# print the navcircle
-
-		# navcircleLines = []
 		n_navcircle_lines = 32
 		navcircleLinesLength = 10
 		navcircleInnerRadius = 250
@@ -681,54 +490,40 @@ class World():
 			# navcircleLines.append([start, end])
 			pygame.draw.lines(self.screen, (100,100,100), True, (start,end))
 
-
 		blipLength = (navcircleInnerRadius-navcircleLinesLength)
 		angle = self.actors[0].body.angle - 0.5 * math.pi
 		start = ((blipLength * math.cos(angle)) + (self.resolution[0]*0.5) , (blipLength* math.sin(angle)) +( self.resolution[1] * 0.5) )
 		end = ((navcircleInnerRadius) * math.cos(angle)+ (self.resolution[0]*0.5), (navcircleInnerRadius) * math.sin(angle)+ (self.resolution[1]*0.5))
 		pygame.draw.lines(self.screen, (200,0,10), True, (start,end))
 
-
 	def graphics(self):
 		### Clear screen
 		self.screen.fill(THECOLORS["black"])
 
 		### Draw stuff
-		# self.space.debug_draw(self.draw_options)
-
-	
 		for attractor in self.attractors:
 			if attractor.atmosphere != None:
-				# self.drawCircle(attractor.atmosphere.color, attractor.body.position, attractor.radius + attractor.atmosphere.height)
 				self.drawActor(attractor.atmosphere)
-			# self.drawCircle(attractor.color, attractor.body.position, attractor.radius)
 			self.drawActor(attractor)
 		for actor in self.actors:
 			for module in actor.modules:
 				self.drawModule(actor, module)
 
-		# print self.actors[0].availableResources
-
 		self.drawHUD()
 
-		### Flip screen
 		pygame.display.flip()
 		self.clock.tick(150)
 		pygame.display.set_caption("fps: " + str(self.clock.get_fps()))
-
-		
 
 	def step(self):
 		self.inputs()
 		self.physics()
 		self.graphics()
-		# time.sleep(1)
 
 	def start(self):
 
 		newPlanet = Attractor('earth')
 		twoPlanet = Attractor('moon',[-500000,-500000])
-		# newButt = Actor((10, -322100), [14000,0])
 		newButt = Actor('lothar',(10, -322100), [50,0])
 		twoButt = Actor('dinghy',(1, -320050), [50,0])
 		self.add(newButt)
@@ -741,7 +536,6 @@ class World():
 		self.running = True
 		while self.running:
 			self.step()
-
 
 mundus = World()
 mundus.start()
