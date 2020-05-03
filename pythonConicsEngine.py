@@ -26,6 +26,9 @@ global shape_to_remove
 def mag(x):
 	return numpy.sqrt(x.dot(x))
 
+def addRadians(a, b):
+	return (a + b + math.pi) % (2*math.pi) - math.pi
+
 def rotate_point(point, angle_rad, center_point=(0, 0)):
     """Rotates a point around center_point(origin by default)
     Angle is in degrees.
@@ -111,7 +114,9 @@ class ModuleEffect(): # a ModuleEffect is just a polygon that is visually displa
 class Module():
 	def __init__(self, moduleType, offset=[0,0], angle=0):
 
-		self.enabled = False
+		self.enabled = False # whether or not the module has enough available resources to function.
+		self.active = False # if the module is specifically turned on, for example, an engine firing when the player pushes the up arrow key.
+
 		self.offset = offset # x,y position on the ship
 		self.moduleType = moduleType
 
@@ -119,9 +124,10 @@ class Module():
 
 		if self.moduleType is 'generator':
 			self.mass = 1
+			self.active = True
 
 			self.produces = {
-				'electricity': 0.0001
+				'electricity': 0.01
 			}
 			self.consumes = {
 				'fuel': 0.00001
@@ -150,13 +156,13 @@ class Module():
 			self.mass = 1
 
 			self.produces = {
-				'thrust': 1
+				'thrust': 50
 			}
 			self.consumes = {
-				'fuel': 0.01
+				'fuel': 0.1
 			}
 			self.stores = {
-				'thrust': 1
+				'thrust': 10
 			}
 			self.currentStores = {
 				'thrust': 1,
@@ -182,7 +188,7 @@ class Module():
 				'torque': 1
 			}
 			self.consumes = {
-				'electricity': 0.01
+				'electricity': 0.1
 			}
 			self.stores = {
 				'torque': 1
@@ -273,57 +279,88 @@ class Actor():
 				else:
 					self.availableResources[availableResource] += availableQuantity
 
-	def doResources(self):
-		self.getAvailableResources()
-
 		for module in self.modules:		# first, allow all the modules to produce what they need, so you know what is available.
-			if module.enabled:
+			if module.enabled and module.active:
 				for resource, quantity in module.produces.items():
 					self.availableResources[resource] += quantity
 
 
+	def doResourceConsumption(self):
 		for module in self.modules:
-			module.enabled = False
-			for needResource, needQuantity in module.consumes.items():
-				for providerModule in self.modules:
-					if providerModule.currentStores[needResource] > 0:
-						if providerModule.currentStores[needResource] < needQuantity:
-							needQuantity -= providerModule.currentStores[needResource]
-							providerModule.currentStores[needResource] = 0
-						else:
-							providerModule.currentStores[needResource] -= needQuantity
-							module.enabled = True
-							break
-			for giveResource, giveQuantity in module.produces.items():
-				for accepterModule in self.modules:
-					if giveResource in accepterModule.stores:
-						remainingCapacity = accepterModule.stores[giveResource] - accepterModule.currentStores[giveResource]
-						if remainingCapacity > 0:
-							if remainingCapacity > giveQuantity:
-								accepterModule.currentStores[giveResource] += giveQuantity
-								break
+			if module.active:
+				module.enabled = False
+				for needResource, needQuantity in module.consumes.items():
+					for providerModule in self.modules:
+						if needResource in providerModule.currentStores and providerModule.currentStores[needResource] > 0:
+							if providerModule.currentStores[needResource] < needQuantity:
+								needQuantity -= providerModule.currentStores[needResource]
+								providerModule.currentStores[needResource] = 0
 							else:
-								accepterModule.currentStores[giveResource] = accepterModule.stores[giveResource]
-								giveQuantity -= remainingCapacity
-								
+								providerModule.currentStores[needResource] -= needQuantity
+								module.enabled = True
+								break
+
+	def doResourceStorage(self):
+		for module in self.modules:
+			if module.active and module.enabled:
+				for giveResource, giveQuantity in module.produces.items():
+					for accepterModule in self.modules:
+						if giveResource in accepterModule.stores:
+							remainingCapacity = accepterModule.stores[giveResource] - accepterModule.currentStores[giveResource]
+							if remainingCapacity > 0:
+								if remainingCapacity > giveQuantity:
+									accepterModule.currentStores[giveResource] += giveQuantity
+									break
+								else:
+									accepterModule.currentStores[giveResource] = accepterModule.stores[giveResource]
+									giveQuantity -= remainingCapacity
+
+	def doModuleActivation(self):
+		for module in self.modules:
+			if module.moduleType == 'RCS':
+				module.active = self.keyStates['left'] or self.keyStates['right']
+			if module.moduleType == 'engine':
+				module.active = self.keyStates['up']
+
+	def doResources(self):
+		self.doModuleActivation()
+		self.getAvailableResources()
+		self.doResourceConsumption()
+		self.doResourceStorage()
+
+		
+
+		
+
+		
 									
 
 	def doModuleEffects(self, keyStates):
 		for module in self.modules:
-			if module.enabled:
-				for giveResource, giveQuantity in module.produces.items():
-					# print giveResource
+			if module.enabled and module.active:
+				for giveResource, giveQuantity in module.stores.items(): #module.produces.items():
 					if giveResource == 'thrust':
-						pass
+						if keyStates['up']:
+							# force = [(giveQuantity * math.sin(module.angle + self.body.angle)), giveQuantity * math.cos(module.angle + self.body.angle) ]
+							# self.body.apply_impulse_at_local_point(force, module.offset)
+
+							# forceAngle = addRadians(actor.body.angle, 0)
+							forceAngle = self.body.angle#addRadians(module.angle, actor.body.angle)
+							# print forceAngle
+
+							force = [(giveQuantity * math.cos(addRadians(forceAngle, math.pi * 0.5))), -giveQuantity * math.sin(addRadians(forceAngle, math.pi * 0.5) )]
+							self.body.apply_impulse_at_local_point(force, (0,0))
+
+
 					elif giveResource == 'torque':
 						if keyStates['left']:
 							# apply two impulses, pushing in opposite directions, an equal distance from the center to create torque
-							self.body.apply_impulse_at_local_point([giveQuantity,0], [0,-module.momentArm])
-							self.body.apply_impulse_at_local_point([-giveQuantity,0], [0,module.momentArm])
-						elif keyStates['right']:
-							# apply two impulses, pushing in opposite directions, an equal distance from the center to create torque
 							self.body.apply_impulse_at_local_point([-giveQuantity,0], [0,-module.momentArm])
 							self.body.apply_impulse_at_local_point([giveQuantity,0], [0,module.momentArm])
+						elif keyStates['right']:
+							# apply two impulses, pushing in opposite directions, an equal distance from the center to create torque
+							self.body.apply_impulse_at_local_point([giveQuantity,0], [0,-module.momentArm])
+							self.body.apply_impulse_at_local_point([-giveQuantity,0], [0,module.momentArm])
 
 
 
@@ -528,8 +565,8 @@ class World():
 
 
 	def drawCircle(self,color, position, radius):
-		transformedPosition = self.transformForView(position)
-		pygame.draw.circle(self.screen, color, [int(transformedPosition[0]), int(transformedPosition[1])], int((radius * self.zoom)))
+		# transformedPosition = self.transformForView(position)
+		pygame.draw.circle(self.screen, color, [int(position[0]), int(position[1])], int((radius * self.zoom)))
 
 	# def drawEllipse(self, orbit):
 	def drawActor(self, actor):
@@ -566,11 +603,39 @@ class World():
 		for rotatedPoint in module.points: 
 			transformedPoints.append(self.transformForView(rotatedPoint + actor.body.position + module.offset))
 
-		rotatedPoints = rotate_polygon(transformedPoints,actor.body.angle, [self.resolution[0]*0.5,self.resolution[1]*0.5])  # orient the polygon according to the body's current direction in space.
+		# rotatedPoints = rotate_polygon(transformedPoints,actor.body.angle, [self.resolution[0]*0.5,self.resolution[1]*0.5])  # orient the polygon according to the body's current direction in space.
+		rotatedPoints = rotate_polygon(transformedPoints,actor.body.angle, self.transformForView(actor.body.position))  # orient the polygon according to the body's current direction in space.
+
 
 		pygame.draw.lines(self.screen, module.color, True, rotatedPoints)
 		# pygame.draw.polygon(self.screen, actor.color, transformedPoints)
 		
+		if module.active and module.enabled:
+			# pygame.draw.circle(self.screen, module.color, 2, 1)
+			# def rotate_point(point, angle_rad, center_point=(0, 0)):
+			activeCircle = self.transformForView(module.offset + actor.body.position)
+			activeCircle = rotate_point(activeCircle, actor.body.angle, self.transformForView(actor.body.position))
+			self.drawCircle(module.color, activeCircle, 2)
+
+		if module.enabled and module.active:
+			for giveResource, giveQuantity in module.stores.items(): #module.produces.items():
+				if giveResource == 'thrust':
+					if actor.keyStates['up']:
+						print actor.body.angle
+						print module.angle
+
+						# forceAngle = addRadians(actor.body.angle, 0)
+						forceAngle = actor.body.angle#addRadians(module.angle, actor.body.angle)
+						print forceAngle
+
+						force = [(giveQuantity * math.cos(addRadians(forceAngle, math.pi * 0.5))), giveQuantity * math.sin(addRadians(forceAngle, math.pi * 0.5) )]
+						# self.body.apply_impulse_at_local_point(force, module.offset)
+						activeCircle = self.transformForView(module.offset + actor.body.position)
+						activeCircle = rotate_point(activeCircle, actor.body.angle, self.transformForView(actor.body.position))
+						ananas = (int(activeCircle[0] + force[0] * self.zoom), int(activeCircle[1]+force[1] * self.zoom ) )
+						# print ananas
+						pygame.draw.lines(self.screen, module.color, True, [activeCircle,ananas])
+
 	# def blitPlanet(self, attractor):
 	# 	# circle_surface = pygame.draw.circle(COLOR, RADIUS, WIDTH)
 	# 	screen.blit(attractor.image, attractor.position)
@@ -616,7 +681,8 @@ class World():
 	def start(self):
 
 		newPlanet = Attractor()
-		newButt = Actor((10, -322100), [14000,0])
+		# newButt = Actor((10, -322100), [14000,0])
+		newButt = Actor((10, -322100), [50,0])
 		twoButt = Actor((1, -320050), [50,0])
 		self.add(newButt)
 		self.add(twoButt)
