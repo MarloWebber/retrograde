@@ -91,7 +91,7 @@ class Orbit():
 # 		self.l = (math.pow(self.b,2) / self.a) # https://en.wikipedia.org/wiki/Ellipse
 
 class Atmosphere():
-	def __init__(self,planet):
+	def __init__(self,radius, planetPosition):
 		self.height = 2000
 		self.density = 1
 
@@ -99,13 +99,13 @@ class Atmosphere():
 
 		# self.seaLevelDrag = 0.1
 
-		self.points = make_circle(planet.radius+self.height, 314)
+		self.points = make_circle(radius+self.height, 314)
 
-		self.mass = self.density * area_of_annulus(planet.radius+self.height, planet.radius)
+		self.mass = self.density * area_of_annulus(radius+self.height, radius)
 		# print self.mass
 		inertia = pymunk.moment_for_poly(self.mass, self.points, (0,0))
 		self.body = pymunk.Body(self.mass, inertia)
-		self.body.position = planet.body.position
+		self.body.position = planetPosition
 
 class ModuleEffect(): # a ModuleEffect is just a polygon that is visually displayed when a module is active.
 	def __init__(self, offset=[0,0]):
@@ -133,11 +133,11 @@ class Module():
 				'fuel': -0.0001
 			}
 			self.stores = {
-				'fuel': 500,
+				'fuel': 5000,
 				'electricity': 500
 			}
 			self.initialStores = {
-				'fuel': 100,
+				'fuel': 5000,
 				'electricity': 50
 			}
 
@@ -145,9 +145,9 @@ class Module():
 			self.radius = 5
 
 			self.points = [[-self.radius, -self.radius], [-self.radius, self.radius], [self.radius,self.radius], [self.radius, -self.radius]]
-			for point in self.points:
-				point[0] += self.offset[0]
-				point[1] += self.offset[1]
+			# for point in self.points:
+			# 	point[0] += self.offset[0]
+			# 	point[1] += self.offset[1]
 
 			self.color = [150,20,20]
 
@@ -157,7 +157,8 @@ class Module():
 
 			self.resources = {
 				'thrust': 100,
-				'fuel': -0.1
+				'fuel': -0.1,
+				'electricity':1
 			}
 			self.stores = {}
 			self.initialStores = {}
@@ -167,9 +168,9 @@ class Module():
 
 			size = self.radius
 			self.points = [[-size, -size*2], [-size, size*2], [size,size*2], [size, -size*2]]
-			for point in self.points:
-				point[0] += self.offset[0]
-				point[1] += self.offset[1]
+			# for point in self.points:
+			# 	point[0] += self.offset[0]
+			# 	point[1] += self.offset[1]
 
 			self.color = [120,100,100]
 
@@ -187,33 +188,42 @@ class Module():
 
 			self.mass = 1.5
 			self.radius = 5
-
 			size = self.radius
 			self.points = [[-size, -size], [-size, size], [size,size], [size, -size]]
-			for point in self.points:
-				point[0] += self.offset[0]
-				point[1] += self.offset[1]
-
 			self.color = [120,100,100]
 
 			self.momentArm = self.radius
 
+		for point in self.points:
+				point[0] += self.offset[0]
+				point[1] += self.offset[1]
+
 
 class Actor():
-	def __init__(self, position, velocity):
+	def __init__(self, shipType, position, velocity):
 		self.type = 'actor'
+
+		self.modules = []
+
+		if shipType == 'dinghy':
+			self.modules.append(Module('generator',[0,0]))
+			self.modules.append(Module('engine',[0,8]))
+			self.modules.append(Module('RCS',[0,-10]))
+
+		elif shipType == 'lothar':
+			self.modules.append(Module('generator',[0,0]))
+			self.modules.append(Module('engine',[-13,8]))
+			self.modules.append(Module('engine',[13,8]))
+			self.modules.append(Module('RCS',[0,-10]))
+
+
 
 		self.mass = 0
 		self.points = []
-		self.modules = []
 
 		self.availableResources = {}
 		self.storagePool = {}
 		self.maximumStores = {}
-
-		self.modules.append(Module('generator',[0,0]))
-		self.modules.append(Module('engine',[0,8]))
-		self.modules.append(Module('RCS',[0,-5.5]))
 
 		for module in self.modules:
 			self.mass += module.mass
@@ -359,33 +369,33 @@ class Actor():
 
 
 class Attractor():
-	def __init__(self):
+	def __init__(self, planetType, position=[1,1]):
 		self.type = 'attractor'
 		
-		self.radius = 320000
-		self.density = 0.5
+		if planetType == 'earth':
+			self.radius = 320000
+			self.density = 0.5
+			self.mass = self.density * (math.pi * (self.radius * self.radius))
+			self.friction = 0.75
+			self.color = (190,165,145)
+			self.atmosphere = Atmosphere(self.radius, position)
 
-		self.mass = self.density * (math.pi * (self.radius * self.radius))
+		elif planetType == 'moon':
+			self.radius = 80000
+			self.density = 0.75
+			self.mass = self.density * (math.pi * (self.radius * self.radius))
+			self.friction = 0.5
+			self.color = (145,145,145)
+			self.atmosphere = None #Atmosphere(self)
 
-		# size = self.radius
+		size = self.radius
 		self.points = make_circle(self.radius, 314)
 		inertia = pymunk.moment_for_poly(self.mass, self.points, (0,0))
 		self.body = pymunk.Body(self.mass, inertia)
-		# self.body.position = position
-		self.body.position = 1, 1
-		# self.body.apply_impulse_at_local_point(velocity, [0,0])
+		self.body.position = position
 		self.shape = pymunk.Poly(self.body, self.points)
+		self.shape.friction = self.friction
 
-
-		#inertia = pymunk.moment_for_circle(self.mass, 0, self.radius, (0,0))
-		#self.body = pymunk.Body(self.mass, inertia)
-		
-		#self.shape = pymunk.Circle(self.body, self.radius, (0,0))
-		self.shape.friction = 0.5
-
-		self.color = (190,165,145)
-
-		self.atmosphere = Atmosphere(self)
 
 		
 
@@ -593,7 +603,7 @@ class World():
 		transformedPoints = []
 
 		for rotatedPoint in module.points: 
-			transformedPoints.append(self.transformForView(rotatedPoint + actor.body.position + module.offset))
+			transformedPoints.append(self.transformForView(rotatedPoint + actor.body.position ))
 
 		# rotatedPoints = rotate_polygon(transformedPoints,actor.body.angle, [self.resolution[0]*0.5,self.resolution[1]*0.5])  # orient the polygon according to the body's current direction in space.
 		rotatedPoints = rotate_polygon(transformedPoints,actor.body.angle, self.transformForView(actor.body.position))  # orient the polygon according to the body's current direction in space.
@@ -716,15 +726,17 @@ class World():
 
 	def start(self):
 
-		newPlanet = Attractor()
+		newPlanet = Attractor('earth')
+		twoPlanet = Attractor('moon',[-500000,-500000])
 		# newButt = Actor((10, -322100), [14000,0])
-		newButt = Actor((10, -322100), [50,0])
-		twoButt = Actor((1, -320050), [50,0])
+		newButt = Actor('lothar',(10, -322100), [50,0])
+		twoButt = Actor('dinghy',(1, -320050), [50,0])
 		self.add(newButt)
 		self.add(twoButt)
 		self.player = self.actors[0]
 		self.viewpointObject = self.actors[0]
 		self.add(newPlanet)
+		self.add(twoPlanet)
 
 		self.running = True
 		while self.running:
