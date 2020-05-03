@@ -1,5 +1,20 @@
 import numpy as np
 
+class Orbit():
+	# a 		Semi Major Axis
+	# e 		Eccentricity
+	# i 		Inclination
+	# Omega 	Longitude of Ascending Node
+	# omega 	Argument of Periapsis
+	# nu 		True Anomaly
+	def __init__(self,a,e,i,Omega,omega,nu):
+		self.a = a
+		self.e = e
+		self.i = i
+		self.Omega = Omega
+		self.omega = omega
+		self.nu = nu
+
 def initpos_to_orbit(r_vec,v_vec,mu):
 	#r_vec is a vector giving cartesian coordinates of orbiting object,
 	#v_vec is velocity
@@ -60,7 +75,7 @@ def initpos_to_orbit(r_vec,v_vec,mu):
 		nu = np.sign(np.dot(r_vec,v_vec)) * np.arccos(np.dot(e_vec,r_vec) / (e*r))
 	nu = nu % (2*np.pi)
 
-	return [a,e,i,Omega,omega,nu]
+	return Orbit(a,e,i,Omega,omega,nu)
 
 # r_vec1 = np.array([0.004,0.0005])
 # v_vec1 = np.array([0.005, 0.004])

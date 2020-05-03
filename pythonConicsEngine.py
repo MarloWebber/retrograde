@@ -8,6 +8,7 @@ import pymunk.pygame_util
 import numpy
 import initpos_to_orbit as orbmech
 import time
+import gradients
     
 global contact
 global shape_to_remove
@@ -52,20 +53,7 @@ def make_circle(radius, points):
 	return circle
 
 
-class Orbit():
-	# a 		Semi Major Axis
-	# e 		Eccentricity
-	# i 		Inclination
-	# Omega 	Longitude of Ascending Node
-	# omega 	Argument of Periapsis
-	# nu 		True Anomaly
-	def __init__(a,e,i,Omega,omega,nu):
-		self.a = a
-		self.e = e
-		self.i = i
-		self.Omega = Omega
-		self.omega = omega
-		self.nu = nu
+
 
 def semiMinorAxis(a, e):
 	return a * math.sqrt(1 - (math.pow(e,2))) # https://math.stackexchange.com/questions/1259945/calculating-semi-minor-axis-of-an-ellipse
@@ -403,15 +391,15 @@ class World():
 			actor.doResources()
 			actor.doModuleEffects(actor.keyStates)
 			for attractor in self.attractors:
-				if actor.freefalling:
-					if actor.orbit == None:
-						self.gravitate(actor, attractor)
-						actor.orbit = orbmech.initpos_to_orbit_2d(actor.body.position, actor.body.velocity, self.gravitationalConstant * attractor.body.mass)
-						print(actor.orbit)
-					else:
-						self.gravitate(actor, attractor)
-				else:
-					self.gravitate(actor, attractor)
+				# if actor.freefalling:
+				# 	if actor.orbit == None:
+				# 		self.gravitate(actor, attractor)
+				actor.orbit = orbmech.initpos_to_orbit_2d(actor.body.position, actor.body.velocity, self.gravitationalConstant * attractor.body.mass)
+						# print(actor.orbit)
+					# else:
+				self.gravitate(actor, attractor)
+				# else:
+				# 	self.gravitate(actor, attractor)
 		self.space.step(self.timestepSize)
 
 	def rotatePolygon(self, points, angle):
@@ -467,31 +455,39 @@ class World():
 						# print ananas
 						pygame.draw.lines(self.screen, (255,255,200), True, [activeCircle,ananas])
 
-	def drawEllipse(self):
+	def drawEllipse(self,orbit, attractor):
 		# a 		Semi Major Axis
 		# e 		Eccentricity
 		# omega 	Argument of Periapsis
 		# nu 		True Anomaly
 
-		a = 100	#Semi Major Axis
-		e = 0.7		#Eccentricity
-		omega = 0 	#Argument of Periapsis
-		nu = 1		#True Anomaly
+		a = orbit.a #100	#Semi Major Axis
+		e = orbit.e #0.7		#Eccentricity
+		omega = orbit.omega #0 	#Argument of Periapsis
+		nu = orbit.nu #1		#True Anomaly
 
 		bu = 0 #fake anomaly
 
 		b = semiMinorAxis(a,e)
 
+		c = -math.sqrt((a*a) - (b*b)) #distance from the center to the focus
+
+		# get x and y components of c
+		focusOffset = [c * math.sin(omega), c * math.cos(omega)]
+		print focusOffset
+
 		ellipse_lines = []
 		n_ellipse_segments = 50
 		for n in xrange(n_ellipse_segments):
-			ellipse_lines.append([(a * math.cos(bu) ), (b * math.sin(bu))  ])
+			ellipse_lines.append([(a * math.sin(bu) ) + focusOffset[0], (b * math.cos(bu)) + focusOffset[1]  ])
 			bu += (2 * math.pi / n_ellipse_segments)
+
+		ellipse_lines = rotate_polygon(ellipse_lines, omega)
 
 		for n in xrange(n_ellipse_segments):
 			ellipse_lines[n] = self.transformForView(ellipse_lines[n])
 
-		# print ellipse_lines
+		# move the focus above the attractor
 
 		for n in xrange(1,n_ellipse_segments):
 			start = (int(ellipse_lines[n-1][0]), int(ellipse_lines[n-1][1]))
@@ -502,7 +498,7 @@ class World():
 
 	def drawHUD(self):
 
-		self.drawEllipse()
+		self.drawEllipse(self.actors[0].orbit, self.attractors[0])
 
 		# show the player what resources are available
 		i = 0
@@ -566,6 +562,10 @@ class World():
 		for attractor in self.attractors:
 			if attractor.atmosphere != None:
 				self.drawActor(attractor.atmosphere)
+
+				# atmosphere_pos = self.transformForView([-attractor.radius + attractor.body.position[0], -attractor.radius + attractor.body.position[1]])
+				# self.screen.blit(gradients.radial( (attractor.radius + attractor.atmosphere.height) * self.zoom  , (0,255,0,100), (100,0,50,255)), atmosphere_pos )
+
 			self.drawActor(attractor)
 		for actor in self.actors:
 			for module in actor.modules:
