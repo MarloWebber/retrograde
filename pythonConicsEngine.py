@@ -386,9 +386,14 @@ class Actor():
 			if module.enabled and module.active:
 				for resource, quantity in module.resources.items():
 					if quantity > 0: # producing resource
-						self.storagePool[resource] += quantity
-						if self.storagePool[resource] > self.maximumStores[resource]:
-							self.storagePool[resource] = self.maximumStores[resource]
+						if resource in self.storagePool:
+							remainingCapacity = self.maximumStores[resource] - self.storagePool[resource]
+							if quantity > remainingCapacity:
+								self.storagePool[resource] += remainingCapacity
+								self.availableResources += quantity - remainingCapacity
+							else:
+								self.storagePool[resource] += quantity
+								
 					else: # consuming resource
 						self.availableResources[resource] += quantity # adding a negative number is a subtraction
 						if self.availableResources[resource] < 0:
