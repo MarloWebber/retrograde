@@ -67,8 +67,8 @@ class Orbit():
 		self.omega = omega
 		self.nu = nu
 
-# 	def semiMinorAxis(self):
-# 		self.b = self.a * math.sqrt(1 - (math.pow(self.e,2))) # https://math.stackexchange.com/questions/1259945/calculating-semi-minor-axis-of-an-ellipse
+def semiMinorAxis(a, e):
+	return a * math.sqrt(1 - (math.pow(e,2))) # https://math.stackexchange.com/questions/1259945/calculating-semi-minor-axis-of-an-ellipse
 
 # 	def semiLatusRectum(self):
 # 		self.l = (math.pow(self.b,2) / self.a) # https://en.wikipedia.org/wiki/Ellipse
@@ -337,13 +337,22 @@ class World():
 		pygame.key.set_repeat(50,50) # holding a key down repeats the instruction. https://www.pygame.org/docs/ref/key.html
 		self.font = pygame.font.SysFont('dejavusans', 15)
 
-	def gravitate(self, actor, attractor):
-		distance = attractor.body.position - actor.body.position # scalar distance between two bodies
+	def gravityForce(self, actorPosition, attractorPosition, attractorMass):
+		distance = attractorPosition - actorPosition # scalar distance between two bodies
 		magnitude = mag(distance)
-		gravity = self.gravitationalConstant * attractor.body.mass
+		gravity = self.gravitationalConstant * attractorMass
 		appliedGravity = gravity/(magnitude * magnitude)
 		components = numpy.divide(distance, magnitude)
 		force = components * appliedGravity * self.timestepSize
+		return force
+
+	def gravitate(self, actor, attractor):
+		# distance = attractor.body.position - actor.body.position # scalar distance between two bodies
+		# magnitude = mag(distance)
+		# gravity = self.gravitationalConstant * attractor.body.mass
+		# appliedGravity = gravity/(magnitude * magnitude)
+		# components = numpy.divide(distance, magnitude)
+		force = self.gravityForce(actor.body.position, attractor.body.position, attractor.body.mass)  #components * appliedGravity * self.timestepSize
 		rotatedForce = Vec2d(force[0], force[1])
 		rotatedForce = rotatedForce.rotated(-actor.body.angle)
 		actor.body.apply_impulse_at_local_point(rotatedForce, [0,0])
@@ -458,7 +467,43 @@ class World():
 						# print ananas
 						pygame.draw.lines(self.screen, (255,255,200), True, [activeCircle,ananas])
 
+	def drawEllipse(self):
+		# a 		Semi Major Axis
+		# e 		Eccentricity
+		# omega 	Argument of Periapsis
+		# nu 		True Anomaly
+
+		a = 100	#Semi Major Axis
+		e = 0.7		#Eccentricity
+		omega = 0 	#Argument of Periapsis
+		nu = 1		#True Anomaly
+
+		bu = 0 #fake anomaly
+
+		b = semiMinorAxis(a,e)
+
+		ellipse_lines = []
+		n_ellipse_segments = 50
+		for n in xrange(n_ellipse_segments):
+			ellipse_lines.append([(a * math.cos(bu) ), (b * math.sin(bu))  ])
+			bu += (2 * math.pi / n_ellipse_segments)
+
+		for n in xrange(n_ellipse_segments):
+			ellipse_lines[n] = self.transformForView(ellipse_lines[n])
+
+		# print ellipse_lines
+
+		for n in xrange(1,n_ellipse_segments):
+			start = (int(ellipse_lines[n-1][0]), int(ellipse_lines[n-1][1]))
+			end = (int(ellipse_lines[n][0]), int(ellipse_lines[n][1]))
+			pygame.draw.lines(self.screen, (255,255,200), True, (start,end))
+
+
+
 	def drawHUD(self):
+
+		self.drawEllipse()
+
 		# show the player what resources are available
 		i = 0
 		hudList = {}
@@ -495,6 +540,23 @@ class World():
 		start = ((blipLength * math.cos(angle)) + (self.resolution[0]*0.5) , (blipLength* math.sin(angle)) +( self.resolution[1] * 0.5) )
 		end = ((navcircleInnerRadius) * math.cos(angle)+ (self.resolution[0]*0.5), (navcircleInnerRadius) * math.sin(angle)+ (self.resolution[1]*0.5))
 		pygame.draw.lines(self.screen, (200,0,10), True, (start,end))
+
+		# draw the trajectory
+		# n_trajectory_points = 100
+		# trajectory_point_position = self.actors[0].body.position
+		# trajectory_point_velocity = self.actors[0].body.velocity
+		# prev_trajectory_point = trajectory_point_position
+		# for n in xrange(0,n_trajectory_points):
+		# 	sumGravity = [0,0]
+		# 	for attractor in self.attractors:
+		# 		sumGravity += self.gravityForce(self.actors[0].body.position, attractor.body.position, attractor.body.mass) 
+		# 	prev_trajectory_point = trajectory_point_position
+		# 	trajectory_point_position += trajectory_point_velocity * self.timestepSize
+		# 	sumGravity[0] = sumGravity[0] * self.timestepSize
+		# 	sumGravity[1] = sumGravity[1] * self.timestepSize
+		# 	trajectory_point_velocity += sumGravity 
+		# 	pygame.draw.lines(self.screen, (200,0,10), True, (self.transformForView(prev_trajectory_point),self.transformForView(trajectory_point_position)))
+
 
 	def graphics(self):
 		### Clear screen
