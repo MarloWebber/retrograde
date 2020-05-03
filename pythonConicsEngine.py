@@ -130,11 +130,11 @@ class Module():
 
 			self.resources = {
 				'electricity': 0.01,
-				'fuel': -0.00001
+				'fuel': -0.0001
 			}
 			self.stores = {
-				'fuel': 100,
-				'electricity': 100
+				'fuel': 500,
+				'electricity': 500
 			}
 			self.initialStores = {
 				'fuel': 100,
@@ -157,7 +157,7 @@ class Module():
 
 			self.resources = {
 				'thrust': 100,
-				'fuel': -1
+				'fuel': -0.1
 			}
 			self.stores = {}
 			self.initialStores = {}
@@ -269,77 +269,6 @@ class Actor():
 
 	# def leaveFreefall(self):
 	# 	self.freefalling = False
-
-	# def getAvailableResources(self):
-	# 	for module in self.modules:
-	# 		for availableResource in module.currentStores.keys():
-	# 			self.availableResources[availableResource] = 0
-
-	# 	for module in self.modules:
-	# 		if module.enabled and module.active:
-	# 			for availableResource, availableQuantity in module.produces.items():
-	# 				if self.availableResources[availableResource] == None:
-	# 					self.availableResources[availableResource] = availableQuantity
-	# 				else:
-	# 					self.availableResources[availableResource] += availableQuantity
-
-	# 		for availableResource, availableQuantity in module.currentStores.items():
-	# 			# print availableResource
-	# 			# print availableQuantity
-	# 			# print self.availableResources
-	# 			if self.availableResources[availableResource] == None:
-	# 				self.availableResources[availableResource] = availableQuantity
-	# 			else:
-	# 				self.availableResources[availableResource] += availableQuantity
-
-	# 	# for module in self.modules:		# first, allow all the modules to produce what they need, so you know what is available.
-			
-
-
-	# def doResourceConsumption(self):
-	# 	for module in self.modules:
-	# 		if module.active and module.enabled:
-	# 			module.enabled = False
-	# 			for needResource, needQuantity in module.consumes.items():
-	# 				for providerModule in self.modules:
-	# 					if needResource in providerModule.currentStores and providerModule.currentStores[needResource] > 0:
-	# 						if providerModule.currentStores[needResource] < needQuantity:
-	# 							needQuantity -= providerModule.currentStores[needResource]
-	# 							providerModule.currentStores[needResource] = 0
-	# 						else:
-	# 							providerModule.currentStores[needResource] -= needQuantity
-	# 							module.enabled = True
-	# 							break
-
-	# def doResourceStorage(self):
-	# 	for module in self.modules:
-	# 		if module.active and module.enabled:
-	# 			for giveResource, giveQuantity in module.produces.items():
-	# 				for accepterModule in self.modules:
-	# 					if giveResource in accepterModule.stores:
-	# 						remainingCapacity = accepterModule.stores[giveResource] - accepterModule.currentStores[giveResource]
-	# 						if remainingCapacity > 0:
-	# 							if remainingCapacity > giveQuantity:
-	# 								accepterModule.currentStores[giveResource] += giveQuantity
-	# 								break
-	# 							else:
-	# 								accepterModule.currentStores[giveResource] = accepterModule.stores[giveResource]
-	# 								giveQuantity -= remainingCapacity
-
-	# def doModuleActivation(self):
-	# 	for module in self.modules:
-	# 		if module.moduleType == 'RCS':
-	# 			module.active = self.keyStates['left'] or self.keyStates['right']
-	# 		if module.moduleType == 'engine':
-	# 			module.active = self.keyStates['up']
-
-	# def doResources(self):
-	# 	self.doModuleActivation()
-	# 	self.getAvailableResources()
-	# 	print self.availableResources
-	# 	self.doResourceConsumption()
-	# 	self.doResourceStorage()
-
 		
 	def doResources(self):
 		# - tally the amount of stored resources. first, zero everything out
@@ -355,15 +284,6 @@ class Actor():
 						self.availableResources[resource] = quantity
 					else:
 						self.availableResources[resource] += quantity
-
-		# for module in self.modules:
-		# 	if module.enabled and module.active:
-		# 		for resource, quantity in module.resources.items():
-		# 			if quantity < 0:
-		# 				self.availableResources[resource] -= quantity
-
-		# print self.availableResources
-		# print self.storagePool
 
 		# - turn modules on and off
 		for module in self.modules:
@@ -390,26 +310,18 @@ class Actor():
 							remainingCapacity = self.maximumStores[resource] - self.storagePool[resource]
 							if quantity > remainingCapacity:
 								self.storagePool[resource] += remainingCapacity
-								self.availableResources += quantity - remainingCapacity
+								self.availableResources[resource] += quantity - remainingCapacity
 							else:
 								self.storagePool[resource] += quantity
-								
+
 					else: # consuming resource
 						self.availableResources[resource] += quantity # adding a negative number is a subtraction
 						if self.availableResources[resource] < 0:
 							self.storagePool[resource] += self.availableResources[resource]
 							self.availableResources[resource] = 0
-					# self.availableResources[resource] += quantity
-					# if self.availableResources[resource] < 0:
-					# 	self.storagePool[resource] += self.availableResources[resource]
-					# self.storagePool[resource] += quantity
 
 		for resource, quantity in self.storagePool.items():
 			if quantity > self.maximumStores[resource]: quantity = self.maximumStores[resource]
-
-
-
-
 
 
 		
@@ -418,7 +330,7 @@ class Actor():
 	def doModuleEffects(self, keyStates):
 		for module in self.modules:
 			if module.enabled and module.active:
-				for giveResource, giveQuantity in module.stores.items(): #module.produces.items():
+				for giveResource, giveQuantity in module.resources.items(): #module.produces.items():
 					if giveResource == 'thrust':
 						if keyStates['up']:
 							# force = [(giveQuantity * math.sin(module.angle + self.body.angle)), giveQuantity * math.cos(module.angle + self.body.angle) ]
@@ -701,7 +613,7 @@ class World():
 				self.drawCircle((255,0,0), activeCircle, 1)
 
 		if module.enabled and module.active:
-			for giveResource, giveQuantity in module.stores.items(): #module.produces.items():
+			for giveResource, giveQuantity in module.resources.items(): #module.produces.items():
 				if giveResource == 'thrust':
 					if actor.keyStates['up']:
 						print actor.body.angle
@@ -717,12 +629,56 @@ class World():
 						activeCircle = rotate_point(activeCircle, actor.body.angle, self.transformForView(actor.body.position))
 						ananas = (int(activeCircle[0] + force[0] * self.zoom), int(activeCircle[1]+force[1] * self.zoom ) )
 						# print ananas
-						pygame.draw.lines(self.screen, module.color, True, [activeCircle,ananas])
+						pygame.draw.lines(self.screen, (255,255,200), True, [activeCircle,ananas])
 
 	# def blitPlanet(self, attractor):
 	# 	# circle_surface = pygame.draw.circle(COLOR, RADIUS, WIDTH)
 	# 	screen.blit(attractor.image, attractor.position)
         
+
+	def drawHUD(self):
+		
+		# show the player what resources are available
+		i = 0
+		mushu = {}
+		for resource, quantity in self.actors[0].availableResources.items():
+			mushu[resource] = quantity
+		for resource, quantity in self.actors[0].storagePool.items():
+			if resource in mushu:
+				mushu[resource] += self.actors[0].storagePool[resource]
+			else:
+				mushu[resource] = self.actors[0].storagePool[resource]
+
+		for availableResource, availableQuantity in mushu.items():
+			textsurface = self.font.render(str(availableResource) + ': ' + str(availableQuantity), False, (255, 255, 255))
+			self.screen.blit(textsurface,(30,i * 20))
+			i += 1
+
+		textsurface = self.font.render('warp: ' + str(self.timestepSize * 3 * 100), False, (255, 255, 255))
+		self.screen.blit(textsurface,(30,i * 20))
+
+		# print the navcircle
+
+		# navcircleLines = []
+		n_navcircle_lines = 32
+		navcircleLinesLength = 10
+		navcircleInnerRadius = 250
+
+		for n in xrange(0,n_navcircle_lines):
+			angle = n * (2 * math.pi / n_navcircle_lines)
+			start = ((navcircleInnerRadius * math.cos(angle)) + (self.resolution[0]*0.5) , (navcircleInnerRadius* math.sin(angle)) +( self.resolution[1] * 0.5) )
+			end = ((navcircleInnerRadius + navcircleLinesLength) * math.cos(angle)+ (self.resolution[0]*0.5), (navcircleInnerRadius + navcircleLinesLength) * math.sin(angle)+ (self.resolution[1]*0.5))
+			# navcircleLines.append([start, end])
+			pygame.draw.lines(self.screen, (100,100,100), True, (start,end))
+
+
+		blipLength = (navcircleInnerRadius-navcircleLinesLength)
+		angle = self.actors[0].body.angle - 0.5 * math.pi
+		start = ((blipLength * math.cos(angle)) + (self.resolution[0]*0.5) , (blipLength* math.sin(angle)) +( self.resolution[1] * 0.5) )
+		end = ((navcircleInnerRadius) * math.cos(angle)+ (self.resolution[0]*0.5), (navcircleInnerRadius) * math.sin(angle)+ (self.resolution[1]*0.5))
+		pygame.draw.lines(self.screen, (200,0,10), True, (start,end))
+
+
 	def graphics(self):
 		### Clear screen
 		self.screen.fill(THECOLORS["black"])
@@ -743,20 +699,7 @@ class World():
 
 		# print self.actors[0].availableResources
 
-		i = 0
-		mushu = {}
-		for resource, quantity in self.actors[0].availableResources.items():
-			mushu[resource] = quantity
-		for resource, quantity in self.actors[0].storagePool.items():
-			if resource in mushu:
-				mushu[resource] += self.actors[0].storagePool[resource]
-			else:
-				mushu[resource] = self.actors[0].storagePool[resource]
-
-		for availableResource, availableQuantity in mushu.items():
-			textsurface = self.font.render(str(availableResource) + ': ' + str(availableQuantity), False, (255, 255, 255))
-			self.screen.blit(textsurface,(30,i * 30))
-			i += 1
+		self.drawHUD()
 
 		### Flip screen
 		pygame.display.flip()
