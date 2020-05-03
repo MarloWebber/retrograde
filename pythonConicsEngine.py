@@ -404,7 +404,7 @@ class World():
 		self.clock = pygame.time.Clock()
 		self.space = pymunk.Space()
 		self.space.gravity = (0.0, 0.0)
-		self.gravitationalConstant = 1000
+		self.gravitationalConstant = 2000
 
 		self.actors = []
 		self.attractors = []
