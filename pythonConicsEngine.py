@@ -565,8 +565,7 @@ class World():
 		for rotatedPoint in module.points: 
 			transformedPoints.append(self.transformForView(rotatedPoint + actor.body.position + module.offset))
 
-
-			rotatedPoints = rotate_polygon(transformedPoints,actor.body.angle, module.offset)  # orient the polygon according to the body's current direction in space.
+		rotatedPoints = rotate_polygon(transformedPoints,actor.body.angle, [self.resolution[0]*0.5,self.resolution[1]*0.5])  # orient the polygon according to the body's current direction in space.
 
 		pygame.draw.lines(self.screen, module.color, True, rotatedPoints)
 		# pygame.draw.polygon(self.screen, actor.color, transformedPoints)
