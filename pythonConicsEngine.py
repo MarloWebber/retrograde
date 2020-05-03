@@ -103,10 +103,10 @@ class Atmosphere():
 		self.body.position = planet.body.position
 
 class ModuleEffect(): # a ModuleEffect is just a polygon that is visually displayed when a module is active.
-	def __init__(self, offset=[0,0])
-	self.offset = offset
-	self.radius = 3
-	self.points = [[-self.radius, -self.radius], [-self.radius, self.radius], [self.radius,self.radius], [self.radius, -self.radius]]
+	def __init__(self, offset=[0,0]):
+		self.offset = offset
+		self.radius = 3
+		self.points = [[-self.radius, -self.radius], [-self.radius, self.radius], [self.radius,self.radius], [self.radius, -self.radius]]
 
 class Module():
 	def __init__(self, moduleType, offset=[0,0], angle=0):
@@ -124,15 +124,15 @@ class Module():
 				'electricity': 0.0001
 			}
 			self.consumes = {
-				'fuel': 0.0001
+				'fuel': 0.00001
 			}
 			self.stores = {
 				'fuel': 100,
-				'electricity': 1
+				'electricity': 100
 			}
 			self.currentStores = {
 				'fuel': 100,
-				'electricity': 1
+				'electricity': 50
 			}
 
 			self.mass = 1.5
@@ -195,12 +195,14 @@ class Module():
 			self.radius = 5
 
 			size = self.radius
-			self.points = [[-size, -size*2], [-size, size*2], [size,size*2], [size, -size*2]]
+			self.points = [[-size, -size], [-size, size], [size,size], [size, -size]]
 			for point in self.points:
 				point[0] += self.offset[0]
 				point[1] += self.offset[1]
 
 			self.color = [120,100,100]
+
+			self.momentArm = self.radius
 
 
 class Actor():
@@ -213,6 +215,7 @@ class Actor():
 		self.modules = []
 		self.modules.append(Module('generator',[6,0]))
 		self.modules.append(Module('engine',[-6,0]))
+		self.modules.append(Module('RCS',[0,0]))
 
 		for module in self.modules:
 			self.mass += module.mass
@@ -239,7 +242,14 @@ class Actor():
 
 		self.availableResources = {}
 
-		self.isPlayer = True
+		# self.isPlayer = False
+		self.keyStates = {
+			'up': False,
+			'down': False,
+			'left': False,
+			'right': False
+		}
+
 
 	# def enterFreefall(self, attractor):
 	# 	self.orbit = func_initpos_to_orbit()
@@ -290,10 +300,10 @@ class Actor():
 						remainingCapacity = accepterModule.stores[giveResource] - accepterModule.currentStores[giveResource]
 						if remainingCapacity > 0:
 							if remainingCapacity > giveQuantity:
-								accepterModule.currentStores += giveQuantity
+								accepterModule.currentStores[giveResource] += giveQuantity
 								break
 							else:
-								accepterModule.currentStores = accepterModule.stores[giveResource]
+								accepterModule.currentStores[giveResource] = accepterModule.stores[giveResource]
 								giveQuantity -= remainingCapacity
 								
 									
@@ -301,9 +311,22 @@ class Actor():
 	def doModuleEffects(self, keyStates):
 		for module in self.modules:
 			for giveResource, giveQuantity in module.produces.items():
+				# print giveResource
 				if giveResource == 'thrust':
 					pass
-				elif giveResource == 'torque'
+				elif giveResource == 'torque':
+					if keyStates['left']:
+						# apply two impulses, pushing in opposite directions, an equal distance from the center to create torque
+						# print giveQuantity
+						# print module.momentArm
+
+						self.body.apply_impulse_at_local_point([giveQuantity,0], [0,-module.momentArm])
+						self.body.apply_impulse_at_local_point([-giveQuantity,0], [0,module.momentArm])
+
+
+
+
+
 
 class Attractor():
 	def __init__(self):
@@ -358,6 +381,7 @@ class World():
 		# self.ch.post_solve = draw_collision
 
 		self.viewpointObject = None
+		self.player = None
 		self.zoom = 1
 		self.pan = [0,0]
 		self.rotate = 0
@@ -369,12 +393,12 @@ class World():
 		self.font = pygame.font.SysFont('dejavusans', 15)
 
 		# playerKey states are used to say whether the key is being held down or not. This is because the recommended pygame key event code only provides keyup and keydown events.
-		self.playerKeyStates = {
-			'up': False,
-			'down': False,
-			'left': False,
-			'right': False
-		}
+		# self.playerKeyStates = {
+		# 	'up': False,
+		# 	'down': False,
+		# 	'left': False,
+		# 	'right': False
+		# }
 
 
 	def gravitate(self, actor, attractor):
@@ -420,24 +444,24 @@ class World():
 				self.timestepSize -= self.timestepSize * 0.5
 
 			elif event.type == KEYDOWN and event.key == K_LEFT:
-				self.playerKeyStates{'left'} = True
+				self.player.keyStates['left'] = True
 			elif event.type == KEYUP and event.key == K_LEFT:
-				self.playerKeyStates{'left'} = False
+				self.player.keyStates['left'] = False
 
 			elif event.type == KEYDOWN and event.key == K_RIGHT:
-				self.playerKeyStates{'right'} = True
+				self.player.keyStates['right'] = True
 			elif event.type == KEYUP and event.key == K_LEFT:
-				self.playerKeyStates{'right'} = False
+				self.player.keyStates['right'] = False
 
 			elif event.type == KEYDOWN and event.key == K_UP:
-				self.playerKeyStates{'up'} = True
+				self.player.keyStates['up'] = True
 			elif event.type == KEYUP and event.key == K_UP:
-				self.playerKeyStates{'up'} = False
+				self.player.keyStates['up'] = False
 
 			elif event.type == KEYDOWN and event.key == K_DOWN:
-				self.playerKeyStates{'down'} = True
+				self.player.keyStates['down'] = True
 			elif event.type == KEYUP and event.key == K_DOWN:
-				self.playerKeyStates{'down'} = False
+				self.player.keyStates['down'] = False
 
 
 			# elif event.type == KEYDOWN and event.key == K_p:
@@ -459,6 +483,7 @@ class World():
 		for actor in self.actors:
 			# print 'actor'
 			actor.doResources()
+			actor.doModuleEffects(actor.keyStates)
 
 			for attractor in self.attractors:
 				if actor.freefalling:
@@ -595,8 +620,9 @@ class World():
 		twoButt = Actor((1, -320050), [50,0])
 		self.add(newButt)
 		self.add(twoButt)
-		self.add(newPlanet)
+		self.player = self.actors[0]
 		self.viewpointObject = self.actors[0]
+		self.add(newPlanet)
 
 		self.running = True
 		while self.running:
