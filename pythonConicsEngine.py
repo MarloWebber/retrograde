@@ -12,6 +12,8 @@ import numpy
 
 import initpos_to_orbit as orbmech
 
+import time
+
 # def draw_collision(arbiter, space, data):
 #     for c in arbiter.contact_point_set.points:
 #         r = max( 3, abs(c.distance*5) )
@@ -126,17 +128,15 @@ class Module():
 			self.mass = 1
 			self.active = True
 
-			self.produces = {
-				'electricity': 0.01
-			}
-			self.consumes = {
-				'fuel': 0.00001
+			self.resources = {
+				'electricity': 0.01,
+				'fuel': -0.00001
 			}
 			self.stores = {
 				'fuel': 100,
 				'electricity': 100
 			}
-			self.currentStores = {
+			self.initialStores = {
 				'fuel': 100,
 				'electricity': 50
 			}
@@ -155,18 +155,12 @@ class Module():
 		elif self.moduleType is 'engine':
 			self.mass = 1
 
-			self.produces = {
-				'thrust': 100
+			self.resources = {
+				'thrust': 100,
+				'fuel': -1
 			}
-			self.consumes = {
-				'fuel': 1
-			}
-			self.stores = {
-				'thrust': 100
-			}
-			self.currentStores = {
-				'thrust': 1,
-			}
+			self.stores = {}
+			self.initialStores = {}
 
 			self.mass = 1.5
 			self.radius = 5
@@ -184,18 +178,12 @@ class Module():
 		elif self.moduleType is 'RCS':
 			self.mass = 0.2
 
-			self.produces = {
-				'torque': 2
+			self.resources = {
+				'torque': 2,
+				'electricity': -0.1
 			}
-			self.consumes = {
-				'electricity': 0.1
-			}
-			self.stores = {
-				'torque': 2
-			}
-			self.currentStores = {
-				'torque': 0,
-			}
+			self.stores = {}
+			self.initialStores = {}
 
 			self.mass = 1.5
 			self.radius = 5
@@ -217,8 +205,12 @@ class Actor():
 
 		self.mass = 0
 		self.points = []
-
 		self.modules = []
+
+		self.availableResources = {}
+		self.storagePool = {}
+		self.maximumStores = {}
+
 		self.modules.append(Module('generator',[0,0]))
 		self.modules.append(Module('engine',[0,8]))
 		self.modules.append(Module('RCS',[0,-5.5]))
@@ -226,6 +218,21 @@ class Actor():
 		for module in self.modules:
 			self.mass += module.mass
 			self.points += module.points
+			for resource, quantity in module.initialStores.items():
+				if resource not in self.storagePool: self.storagePool[resource] = quantity
+				else: self.storagePool[resource] += quantity
+			for resource, quantity in module.initialStores.items():
+				if resource not in self.availableResources: self.availableResources[resource] = quantity
+				else: self.availableResources[resource] += quantity
+			for resource, quantity in module.stores.items():
+				if resource not in self.maximumStores: self.maximumStores[resource] = quantity
+				else: self.maximumStores[resource] += quantity
+
+		print self.storagePool
+		print self.availableResources
+
+		# while(True):
+		# 	pass
 
 		# print self.mass
 		# print self.points
@@ -246,7 +253,6 @@ class Actor():
 
 		# self.image = None #preprocessed image used to 'blit' onto the screen.
 
-		self.availableResources = {}
 
 		# self.isPlayer = False
 		self.keyStates = {
@@ -264,79 +270,142 @@ class Actor():
 	# def leaveFreefall(self):
 	# 	self.freefalling = False
 
-	def getAvailableResources(self):
-		for module in self.modules:
-			for availableResource in module.currentStores.keys():
-				self.availableResources[availableResource] = 0
+	# def getAvailableResources(self):
+	# 	for module in self.modules:
+	# 		for availableResource in module.currentStores.keys():
+	# 			self.availableResources[availableResource] = 0
 
-		for module in self.modules:
-			if module.enabled and module.active:
-				for availableResource, availableQuantity in module.produces.items():
-					if self.availableResources[availableResource] == None:
-						self.availableResources[availableResource] = availableQuantity
-					else:
-						self.availableResources[availableResource] += availableQuantity
+	# 	for module in self.modules:
+	# 		if module.enabled and module.active:
+	# 			for availableResource, availableQuantity in module.produces.items():
+	# 				if self.availableResources[availableResource] == None:
+	# 					self.availableResources[availableResource] = availableQuantity
+	# 				else:
+	# 					self.availableResources[availableResource] += availableQuantity
 
-			for availableResource, availableQuantity in module.currentStores.items():
-				# print availableResource
-				# print availableQuantity
-				# print self.availableResources
-				if self.availableResources[availableResource] == None:
-					self.availableResources[availableResource] = availableQuantity
-				else:
-					self.availableResources[availableResource] += availableQuantity
+	# 		for availableResource, availableQuantity in module.currentStores.items():
+	# 			# print availableResource
+	# 			# print availableQuantity
+	# 			# print self.availableResources
+	# 			if self.availableResources[availableResource] == None:
+	# 				self.availableResources[availableResource] = availableQuantity
+	# 			else:
+	# 				self.availableResources[availableResource] += availableQuantity
 
-		# for module in self.modules:		# first, allow all the modules to produce what they need, so you know what is available.
+	# 	# for module in self.modules:		# first, allow all the modules to produce what they need, so you know what is available.
 			
 
 
-	def doResourceConsumption(self):
-		for module in self.modules:
-			if module.active and module.enabled:
-				module.enabled = False
-				for needResource, needQuantity in module.consumes.items():
-					for providerModule in self.modules:
-						if needResource in providerModule.currentStores and providerModule.currentStores[needResource] > 0:
-							if providerModule.currentStores[needResource] < needQuantity:
-								needQuantity -= providerModule.currentStores[needResource]
-								providerModule.currentStores[needResource] = 0
-							else:
-								providerModule.currentStores[needResource] -= needQuantity
-								module.enabled = True
-								break
+	# def doResourceConsumption(self):
+	# 	for module in self.modules:
+	# 		if module.active and module.enabled:
+	# 			module.enabled = False
+	# 			for needResource, needQuantity in module.consumes.items():
+	# 				for providerModule in self.modules:
+	# 					if needResource in providerModule.currentStores and providerModule.currentStores[needResource] > 0:
+	# 						if providerModule.currentStores[needResource] < needQuantity:
+	# 							needQuantity -= providerModule.currentStores[needResource]
+	# 							providerModule.currentStores[needResource] = 0
+	# 						else:
+	# 							providerModule.currentStores[needResource] -= needQuantity
+	# 							module.enabled = True
+	# 							break
 
-	def doResourceStorage(self):
-		for module in self.modules:
-			if module.active and module.enabled:
-				for giveResource, giveQuantity in module.produces.items():
-					for accepterModule in self.modules:
-						if giveResource in accepterModule.stores:
-							remainingCapacity = accepterModule.stores[giveResource] - accepterModule.currentStores[giveResource]
-							if remainingCapacity > 0:
-								if remainingCapacity > giveQuantity:
-									accepterModule.currentStores[giveResource] += giveQuantity
-									break
-								else:
-									accepterModule.currentStores[giveResource] = accepterModule.stores[giveResource]
-									giveQuantity -= remainingCapacity
+	# def doResourceStorage(self):
+	# 	for module in self.modules:
+	# 		if module.active and module.enabled:
+	# 			for giveResource, giveQuantity in module.produces.items():
+	# 				for accepterModule in self.modules:
+	# 					if giveResource in accepterModule.stores:
+	# 						remainingCapacity = accepterModule.stores[giveResource] - accepterModule.currentStores[giveResource]
+	# 						if remainingCapacity > 0:
+	# 							if remainingCapacity > giveQuantity:
+	# 								accepterModule.currentStores[giveResource] += giveQuantity
+	# 								break
+	# 							else:
+	# 								accepterModule.currentStores[giveResource] = accepterModule.stores[giveResource]
+	# 								giveQuantity -= remainingCapacity
 
-	def doModuleActivation(self):
+	# def doModuleActivation(self):
+	# 	for module in self.modules:
+	# 		if module.moduleType == 'RCS':
+	# 			module.active = self.keyStates['left'] or self.keyStates['right']
+	# 		if module.moduleType == 'engine':
+	# 			module.active = self.keyStates['up']
+
+	# def doResources(self):
+	# 	self.doModuleActivation()
+	# 	self.getAvailableResources()
+	# 	print self.availableResources
+	# 	self.doResourceConsumption()
+	# 	self.doResourceStorage()
+
+		
+	def doResources(self):
+		# - tally the amount of stored resources. first, zero everything out
 		for module in self.modules:
+			for resource, quantity in module.resources.items():
+					self.availableResources[resource] = 0
+
+		# add all the unstored resources being produced by active modules
+		for module in self.modules:
+			for resource, quantity in module.resources.items():
+				if quantity > 0 and module.enabled and module.active:
+					if resource not in self.availableResources:
+						self.availableResources[resource] = quantity
+					else:
+						self.availableResources[resource] += quantity
+
+		# for module in self.modules:
+		# 	if module.enabled and module.active:
+		# 		for resource, quantity in module.resources.items():
+		# 			if quantity < 0:
+		# 				self.availableResources[resource] -= quantity
+
+		# print self.availableResources
+		# print self.storagePool
+
+		# - turn modules on and off
+		for module in self.modules:
+			module.enabled = True
+			for resource, quantity in module.resources.items():
+				if quantity < 0:
+					if resource in self.storagePool:
+						availableAmount = self.storagePool[resource] + self.availableResources[resource]
+					else:
+						availableAmount = self.availableResources[resource]
+					if availableAmount < abs(quantity):
+						module.enabled = False
 			if module.moduleType == 'RCS':
 				module.active = self.keyStates['left'] or self.keyStates['right']
 			if module.moduleType == 'engine':
 				module.active = self.keyStates['up']
 
-	def doResources(self):
-		self.doModuleActivation()
-		self.getAvailableResources()
-		print self.availableResources
-		self.doResourceConsumption()
-		self.doResourceStorage()
+		# - consume and produce resources
+		for module in self.modules:
+			if module.enabled and module.active:
+				for resource, quantity in module.resources.items():
+					if quantity > 0: # producing resource
+						self.storagePool[resource] += quantity
+						if self.storagePool[resource] > self.maximumStores[resource]:
+							self.storagePool[resource] = self.maximumStores[resource]
+					else: # consuming resource
+						self.availableResources[resource] += quantity # adding a negative number is a subtraction
+						if self.availableResources[resource] < 0:
+							self.storagePool[resource] += self.availableResources[resource]
+							self.availableResources[resource] = 0
+					# self.availableResources[resource] += quantity
+					# if self.availableResources[resource] < 0:
+					# 	self.storagePool[resource] += self.availableResources[resource]
+					# self.storagePool[resource] += quantity
 
-		
+		for resource, quantity in self.storagePool.items():
+			if quantity > self.maximumStores[resource]: quantity = self.maximumStores[resource]
 
-		
+
+
+
+
 
 		
 									
@@ -670,7 +739,16 @@ class World():
 		# print self.actors[0].availableResources
 
 		i = 0
-		for availableResource, availableQuantity in actor.availableResources.items():
+		mushu = {}
+		for resource, quantity in self.actors[0].availableResources.items():
+			mushu[resource] = quantity
+		for resource, quantity in self.actors[0].storagePool.items():
+			if resource in mushu:
+				mushu[resource] += self.actors[0].storagePool[resource]
+			else:
+				mushu[resource] = self.actors[0].storagePool[resource]
+
+		for availableResource, availableQuantity in mushu.items():
 			textsurface = self.font.render(str(availableResource) + ': ' + str(availableQuantity), False, (255, 255, 255))
 			self.screen.blit(textsurface,(30,i * 30))
 			i += 1
@@ -686,6 +764,7 @@ class World():
 		self.inputs()
 		self.physics()
 		self.graphics()
+		# time.sleep(1)
 
 	def start(self):
 
