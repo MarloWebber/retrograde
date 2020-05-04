@@ -6,7 +6,7 @@ import pymunk
 from pymunk import Vec2d
 import pymunk.pygame_util
 import numpy
-import initpos_to_orbit as orbmech
+import initpos_to_orbit as orb
 import time
 import gradients
     
@@ -308,7 +308,7 @@ class World():
 		self.clock = pygame.time.Clock()
 		self.space = pymunk.Space()
 		self.space.gravity = (0.0, 0.0)
-		self.gravitationalConstant = 2000
+		self.gravitationalConstant = 0.03
 		self.actors = []
 		self.attractors = []
 		self.resolution = (840,680)
@@ -395,7 +395,7 @@ class World():
 				# if actor.freefalling:
 				# 	if actor.orbit == None:
 				# 		self.gravitate(actor, attractor)
-				actor.orbit = orbmech.initpos_to_orbit_2d(actor.body.position, actor.body.velocity, self.gravitationalConstant * self.attractors[0].body.mass)
+				actor.orbit = orb.initpos_to_orbit_2d(actor.body.position, actor.body.velocity, self.gravitationalConstant * self.attractors[0].body.mass)
 						# print(actor.orbit)
 					# else:
 				self.gravitate(actor, attractor)
@@ -470,7 +470,7 @@ class World():
 	# Omega 	Longitude of Ascending Node
 	# omega 	Argument of Periapsis
 	# nu 		True Anomaly
-		newOrbit = Orbit(
+		newOrbit = orb.Orbit(
 			400000,
 			0.8,
 			0,
@@ -483,38 +483,58 @@ class World():
 
 
 		# orbit_to_position(a,e,i,Omega,omega,M_0,t_0,t,mu):
-		orbmech.orbit_to_position(newOrbit.a, newOrbit.e, newOrbit.i, newOrbit.Omega, newOrbit.omega, 0, 0, 0, (attractor.body.mass * self.gravitationalConstant))
+		# orb.orbit_to_position(newOrbit.a, newOrbit.e, newOrbit.i, newOrbit.Omega, newOrbit.omega, 0, 0, 0, (attractor.body.mass * self.gravitationalConstant))
+
+
+		prev_position = [0,0]
+		new_position = [0,0]
+		for n in xrange(1,100):
+			# orbit_to_position(a,e,i,Omega,omega,M_0,t_0,t,mu):
+			prev_position = new_position
+			orb_output = orb.orbit_to_position(newOrbit.a, newOrbit.e, newOrbit.i, newOrbit.Omega, newOrbit.omega, 0, 0, n, (attractor.body.mass * self.gravitationalConstant))
+
+			new_position = [orb_output[0], orb_output[1]]
+
+
+			if (n > 1):
+				pygame.draw.lines(self.screen, (255,255,100), True, ( self.transformForView( prev_position) , self.transformForView( new_position)))
 
 
 
-		for 
 
-
-		a = orbit.a #100	#Semi Major Axis
-		e = orbit.e #0.7		#Eccentricity
-		omega = orbit.omega #0 	#Argument of Periapsis
-		nu = orbit.nu #1		#True Anomaly
+		a = newOrbit.a #100	#Semi Major Axis
+		e = newOrbit.e #0.7		#Eccentricity
+		omega = newOrbit.omega #0 	#Argument of Periapsis
+		nu = newOrbit.nu #1		#True Anomaly
 
 		bu = 0 #fake anomaly
 
 		b = semiMinorAxis(a,e)
 
-		c = -math.sqrt((a**2) - (b**2)) #distance from the center to the focus
+		c = math.sqrt((a**2) - (b**2)) #distance from the center to the focus
 
 		# get x and y components of c
-		focusOffset = [c * math.sin(omega), c * math.cos(omega)]
-		print focusOffset
+		# focusOffset = [c * math.cos(omega), c * math.sin(omega)]
+		# print focusOffset
 
 		ellipse_lines = []
 		n_ellipse_segments = 50
 		for n in xrange(n_ellipse_segments):
-			ellipse_lines.append([(a * math.sin(bu) ) + focusOffset[0], (b * math.cos(bu)) + focusOffset[1]  ])
+			ellipse_lines.append([(a * math.cos(bu) - c), (b * math.sin(bu))  ])
 			bu += (2 * math.pi / n_ellipse_segments)
 
-		ellipse_lines = rotate_polygon(ellipse_lines, omega)
+		ellipse_lines = rotate_polygon(ellipse_lines, -omega, )
+
 
 		for n in xrange(n_ellipse_segments):
+			# ellipse_lines[n] += focusOffset
+			# ellipse_lines[n] = rotate_point(ellipse_lines[n], -omega)
 			ellipse_lines[n] = self.transformForView(ellipse_lines[n])
+
+			# find x y components of the ellipse center line... the angle is omega
+
+			
+			# print focus
 
 		# move the focus above the attractor
 
