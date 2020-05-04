@@ -394,7 +394,7 @@ class World():
 				# if actor.freefalling:
 				# 	if actor.orbit == None:
 				# 		self.gravitate(actor, attractor)
-				actor.orbit = orbmech.initpos_to_orbit_2d(actor.body.position, actor.body.velocity, self.gravitationalConstant * attractor.body.mass)
+				actor.orbit = orbmech.initpos_to_orbit_2d(actor.body.position, actor.body.velocity, self.gravitationalConstant * self.attractors[0].body.mass)
 						# print(actor.orbit)
 					# else:
 				self.gravitate(actor, attractor)
