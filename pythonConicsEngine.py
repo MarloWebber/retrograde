@@ -42,7 +42,7 @@ def rotate_polygon(polygon, angle, center_point=(0, 0)):
     return rotated_polygon
 
 def area_of_annulus(inner, outer):
-	return math.pi * ((inner*inner) - (outer*outer))
+	return math.pi * ((inner**2) - (outer**2))
 
 def make_circle(radius, points):
 	# returns a list of points defining a circle.
@@ -52,7 +52,8 @@ def make_circle(radius, points):
 		circle.append([radius * math.cos(i * angleStep),radius * math.sin(i * angleStep) ])
 	return circle
 
-
+def mass_of_a_sphere(density, radius):
+	return 4/3 * math.pi * radius**3
 
 
 def semiMinorAxis(a, e):
@@ -280,7 +281,7 @@ class Attractor():
 		if planetType == 'earth':
 			self.radius = 320000
 			self.density = 0.5
-			self.mass = self.density * (math.pi * (self.radius * self.radius))
+			self.mass = mass_of_a_sphere(self.density, self.radius)
 			self.friction = 0.75
 			self.color = (190,165,145)
 			self.atmosphere = Atmosphere(self.radius, position)
@@ -288,7 +289,7 @@ class Attractor():
 		elif planetType == 'moon':
 			self.radius = 80000
 			self.density = 0.75
-			self.mass = self.density * (math.pi * (self.radius * self.radius))
+			self.mass =  mass_of_a_sphere(self.density, self.radius)
 			self.friction = 0.5
 			self.color = (145,145,145)
 			self.atmosphere = None #Atmosphere(self)
@@ -329,7 +330,7 @@ class World():
 		distance = attractorPosition - actorPosition # scalar distance between two bodies
 		magnitude = mag(distance)
 		gravity = self.gravitationalConstant * attractorMass
-		appliedGravity = gravity/(magnitude * magnitude)
+		appliedGravity = gravity/(magnitude**2)
 		components = numpy.divide(distance, magnitude)
 		force = components * appliedGravity * self.timestepSize
 		return force
@@ -461,6 +462,34 @@ class World():
 		# omega 	Argument of Periapsis
 		# nu 		True Anomaly
 
+
+
+	# a 		Semi Major Axis
+	# e 		Eccentricity
+	# i 		Inclination
+	# Omega 	Longitude of Ascending Node
+	# omega 	Argument of Periapsis
+	# nu 		True Anomaly
+		newOrbit = Orbit(
+			400000,
+			0.8,
+			0,
+			0,
+			math.pi/6,
+			math.pi/2)
+
+		# force = self.gravityForce(self.actors[0].body.position, attractor.body.position, attractor.body.mass)
+		# scalarForce = mag(force) 
+
+
+		# orbit_to_position(a,e,i,Omega,omega,M_0,t_0,t,mu):
+		orbmech.orbit_to_position(newOrbit.a, newOrbit.e, newOrbit.i, newOrbit.Omega, newOrbit.omega, 0, 0, 0, (attractor.body.mass * self.gravitationalConstant))
+
+
+
+		for 
+
+
 		a = orbit.a #100	#Semi Major Axis
 		e = orbit.e #0.7		#Eccentricity
 		omega = orbit.omega #0 	#Argument of Periapsis
@@ -470,7 +499,7 @@ class World():
 
 		b = semiMinorAxis(a,e)
 
-		c = -math.sqrt((a*a) - (b*b)) #distance from the center to the focus
+		c = -math.sqrt((a**2) - (b**2)) #distance from the center to the focus
 
 		# get x and y components of c
 		focusOffset = [c * math.sin(omega), c * math.cos(omega)]
