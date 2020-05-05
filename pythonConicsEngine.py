@@ -325,6 +325,7 @@ class World():
 		self.timestepSize = 0.2/60.0 #1.0/60.0
 		pygame.key.set_repeat(50,50) # holding a key down repeats the instruction. https://www.pygame.org/docs/ref/key.html
 		self.font = pygame.font.SysFont('dejavusans', 15)
+		self.showHUD = False
 
 	def gravityForce(self, actorPosition, attractorPosition, attractorMass):
 		distance = attractorPosition - actorPosition # scalar distance between two bodies
@@ -379,6 +380,8 @@ class World():
 				self.player.keyStates['down'] = True
 			elif event.type == KEYUP and event.key == K_DOWN:
 				self.player.keyStates['down'] = False
+			elif event.type == KEYDOWN and event.key == K_h:
+				self.showHUD = not self.showHUD
         
 	def add(self, thing):  
 		self.space.add(thing.body, thing.shape)
@@ -462,6 +465,7 @@ class World():
 		# omega 	Argument of Periapsis
 		# nu 		True Anomaly
 
+		if not self.showHUD: return
 
 
 	# a 		Semi Major Axis
@@ -470,13 +474,15 @@ class World():
 	# Omega 	Longitude of Ascending Node
 	# omega 	Argument of Periapsis
 	# nu 		True Anomaly
-		newOrbit = orb.Orbit(
-			400000,
-			0.8,
-			0,
-			0,
-			math.pi/6,
-			math.pi/2)
+		# newOrbit = orb.Orbit(
+		# 	400000,
+		# 	0.8,
+		# 	0,
+		# 	0,
+		# 	math.pi/6,
+		# 	math.pi/2)
+
+		newOrbit = self.actors[0].orbit
 
 		# force = self.gravityForce(self.actors[0].body.position, attractor.body.position, attractor.body.mass)
 		# scalarForce = mag(force) 
@@ -523,7 +529,7 @@ class World():
 			ellipse_lines.append([(a * math.cos(bu) - c), (b * math.sin(bu))  ])
 			bu += (2 * math.pi / n_ellipse_segments)
 
-		ellipse_lines = rotate_polygon(ellipse_lines, -omega, )
+		ellipse_lines = rotate_polygon(ellipse_lines, -omega, attractor.body.position)
 
 
 		for n in xrange(n_ellipse_segments):
@@ -635,7 +641,7 @@ class World():
 
 		newPlanet = Attractor('earth')
 		twoPlanet = Attractor('moon',[-500000,-500000])
-		newButt = Actor('lothar',(10, -322100), [50,0])
+		newButt = Actor('lothar',(10, -322100), [500000,0])
 		twoButt = Actor('dinghy',(1, -320050), [50,0])
 		self.add(newButt)
 		self.add(twoButt)

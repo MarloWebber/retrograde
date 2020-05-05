@@ -156,7 +156,8 @@ def initpos_to_orbit(r_vec,v_vec,mu):
 	#mean anomaly
 	M = E - e * np.sin(E)
 
-	return np.array([a,e,i,Omega,omega,M])
+	# return np.array([a,e,i,Omega,omega,M])
+	return Orbit(a,e,i,Omega,omega,M)
 
 def orbit_to_position(a,e,i,Omega,omega,M_0,t_0,t,mu):
 	#mean anomaly
