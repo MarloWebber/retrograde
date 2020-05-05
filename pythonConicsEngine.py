@@ -6,9 +6,9 @@ import pymunk
 from pymunk import Vec2d
 import pymunk.pygame_util
 import numpy
-import initpos_to_orbit as orb
+# import initpos_to_orbit as orb
 import time
-import gradients
+# import gradients
     
 global contact
 global shape_to_remove
@@ -48,7 +48,7 @@ def make_circle(radius, points):
 	# returns a list of points defining a circle.
 	circle = []
 	angleStep = 2*math.pi / points
-	for i in xrange(0,points):
+	for i in range(0,points):
 		circle.append([radius * math.cos(i * angleStep),radius * math.sin(i * angleStep) ])
 	return circle
 
@@ -169,13 +169,13 @@ class Actor():
 		for module in self.modules:
 			self.mass += module.mass
 			self.points += module.points
-			for resource, quantity in module.initialStores.items():
+			for resource, quantity in list(module.initialStores.items()):
 				if resource not in self.storagePool: self.storagePool[resource] = quantity
 				else: self.storagePool[resource] += quantity
-			for resource, quantity in module.initialStores.items():
+			for resource, quantity in list(module.initialStores.items()):
 				if resource not in self.availableResources: self.availableResources[resource] = quantity
 				else: self.availableResources[resource] += quantity
-			for resource, quantity in module.stores.items():
+			for resource, quantity in list(module.stores.items()):
 				if resource not in self.maximumStores: self.maximumStores[resource] = quantity
 				else: self.maximumStores[resource] += quantity
 		
@@ -206,12 +206,12 @@ class Actor():
 	def doResources(self):
 		# - tally the amount of stored resources. first, zero everything out
 		for module in self.modules:
-			for resource, quantity in module.resources.items():
+			for resource, quantity in list(module.resources.items()):
 					self.availableResources[resource] = 0
 
 		# add all the unstored resources being produced by active modules
 		for module in self.modules:
-			for resource, quantity in module.resources.items():
+			for resource, quantity in list(module.resources.items()):
 				if quantity > 0 and module.enabled and module.active:
 					if resource not in self.availableResources:
 						self.availableResources[resource] = quantity
@@ -221,7 +221,7 @@ class Actor():
 		# - turn modules on and off
 		for module in self.modules:
 			module.enabled = True
-			for resource, quantity in module.resources.items():
+			for resource, quantity in list(module.resources.items()):
 				if quantity < 0:
 					if resource in self.storagePool:
 						availableAmount = self.storagePool[resource] + self.availableResources[resource]
@@ -237,7 +237,7 @@ class Actor():
 		# - consume and produce resources
 		for module in self.modules:
 			if module.enabled and module.active:
-				for resource, quantity in module.resources.items():
+				for resource, quantity in list(module.resources.items()):
 					if quantity > 0: # producing resource
 						if resource in self.storagePool:
 							remainingCapacity = self.maximumStores[resource] - self.storagePool[resource]
@@ -253,16 +253,16 @@ class Actor():
 							self.storagePool[resource] += self.availableResources[resource]
 							self.availableResources[resource] = 0
 
-		for resource, quantity in self.storagePool.items():
+		for resource, quantity in list(self.storagePool.items()):
 			if quantity > self.maximumStores[resource]: quantity = self.maximumStores[resource]			
 
-	def doModuleEffects(self, keyStates):
+	def doModuleEffects(self, keyStates, timestepSize):
 		for module in self.modules:
 			if module.enabled and module.active:
-				for giveResource, giveQuantity in module.resources.items(): #module.produces.items():
+				for giveResource, giveQuantity in list(module.resources.items()): #module.produces.items():
 					if giveResource == 'thrust':
 						if keyStates['up']:
-							force = [(giveQuantity * math.cos(addRadians(module.angle, math.pi * 0.5))), -giveQuantity * math.sin(addRadians(module.angle, math.pi * 0.5) )]
+							force = [(giveQuantity * timestepSize * 500 * math.cos(addRadians(module.angle, math.pi * 0.5))), -giveQuantity * timestepSize * 500 * math.sin(addRadians(module.angle, math.pi * 0.5) )]
 							self.body.apply_impulse_at_local_point(force, (0,0))
 
 					elif giveResource == 'torque':
@@ -393,12 +393,12 @@ class World():
 	def physics(self):
 		for actor in self.actors:
 			actor.doResources()
-			actor.doModuleEffects(actor.keyStates)
+			actor.doModuleEffects(actor.keyStates, self.timestepSize)
 			for attractor in self.attractors:
 				# if actor.freefalling:
 				# 	if actor.orbit == None:
 				# 		self.gravitate(actor, attractor)
-				actor.orbit = orb.initpos_to_orbit_2d(actor.body.position, actor.body.velocity, self.gravitationalConstant * self.attractors[0].body.mass)
+				# actor.orbit = orb.initpos_to_orbit_2d(actor.body.position, actor.body.velocity, self.gravitationalConstant * self.attractors[0].body.mass)
 						# print(actor.orbit)
 					# else:
 				self.gravitate(actor, attractor)
@@ -448,7 +448,7 @@ class World():
 
 		# rocket engines have a line coming out of them.
 		if module.enabled and module.active:
-			for giveResource, giveQuantity in module.resources.items(): 
+			for giveResource, giveQuantity in list(module.resources.items()): 
 				if giveResource == 'thrust':
 					if actor.keyStates['up']:
 						forceAngle = actor.body.angle
@@ -459,114 +459,114 @@ class World():
 						# print ananas
 						pygame.draw.lines(self.screen, (255,255,200), True, [activeCircle,ananas])
 
-	def drawEllipse(self,orbit, attractor):
-		# a 		Semi Major Axis
-		# e 		Eccentricity
-		# omega 	Argument of Periapsis
-		# nu 		True Anomaly
+	# def drawEllipse(self,orbit, attractor):
+	# 	# a 		Semi Major Axis
+	# 	# e 		Eccentricity
+	# 	# omega 	Argument of Periapsis
+	# 	# nu 		True Anomaly
 
-		if not self.showHUD: return
-
-
-	# a 		Semi Major Axis
-	# e 		Eccentricity
-	# i 		Inclination
-	# Omega 	Longitude of Ascending Node
-	# omega 	Argument of Periapsis
-	# nu 		True Anomaly
-		# newOrbit = orb.Orbit(
-		# 	400000,
-		# 	0.8,
-		# 	0,
-		# 	0,
-		# 	math.pi/6,
-		# 	math.pi/2)
-
-		newOrbit = self.actors[0].orbit
-
-		# force = self.gravityForce(self.actors[0].body.position, attractor.body.position, attractor.body.mass)
-		# scalarForce = mag(force) 
+	# 	if not self.showHUD: return
 
 
-		# orbit_to_position(a,e,i,Omega,omega,M_0,t_0,t,mu):
-		# orb.orbit_to_position(newOrbit.a, newOrbit.e, newOrbit.i, newOrbit.Omega, newOrbit.omega, 0, 0, 0, (attractor.body.mass * self.gravitationalConstant))
+	# # a 		Semi Major Axis
+	# # e 		Eccentricity
+	# # i 		Inclination
+	# # Omega 	Longitude of Ascending Node
+	# # omega 	Argument of Periapsis
+	# # nu 		True Anomaly
+	# 	# newOrbit = orb.Orbit(
+	# 	# 	400000,
+	# 	# 	0.8,
+	# 	# 	0,
+	# 	# 	0,
+	# 	# 	math.pi/6,
+	# 	# 	math.pi/2)
+
+	# 	newOrbit = self.actors[0].orbit
+
+	# 	# force = self.gravityForce(self.actors[0].body.position, attractor.body.position, attractor.body.mass)
+	# 	# scalarForce = mag(force) 
 
 
-		prev_position = [0,0]
-		new_position = [0,0]
-		for n in xrange(1,100):
-			# orbit_to_position(a,e,i,Omega,omega,M_0,t_0,t,mu):
-			prev_position = new_position
-			orb_output = orb.orbit_to_position(newOrbit.a, newOrbit.e, newOrbit.i, newOrbit.Omega, newOrbit.omega, 0, 0, n, (attractor.body.mass * self.gravitationalConstant))
-
-			new_position = [orb_output[0], orb_output[1]]
+	# 	# orbit_to_position(a,e,i,Omega,omega,M_0,t_0,t,mu):
+	# 	# orb.orbit_to_position(newOrbit.a, newOrbit.e, newOrbit.i, newOrbit.Omega, newOrbit.omega, 0, 0, 0, (attractor.body.mass * self.gravitationalConstant))
 
 
-			if (n > 1):
-				pygame.draw.lines(self.screen, (255,255,100), True, ( self.transformForView( prev_position) , self.transformForView( new_position)))
+	# 	prev_position = [0,0]
+	# 	new_position = [0,0]
+	# 	for n in xrange(1,100):
+	# 		# orbit_to_position(a,e,i,Omega,omega,M_0,t_0,t,mu):
+	# 		prev_position = new_position
+	# 		orb_output = orb.orbit_to_position(newOrbit.a, newOrbit.e, newOrbit.i, newOrbit.Omega, newOrbit.omega, 0, 0, n, (attractor.body.mass * self.gravitationalConstant))
+
+	# 		new_position = [orb_output[0], orb_output[1]]
+
+
+	# 		if (n > 1):
+	# 			pygame.draw.lines(self.screen, (255,255,100), True, ( self.transformForView( prev_position) , self.transformForView( new_position)))
 
 
 
 
-		a = newOrbit.a #100	#Semi Major Axis
-		e = newOrbit.e #0.7		#Eccentricity
-		omega = newOrbit.omega #0 	#Argument of Periapsis
-		nu = newOrbit.nu #1		#True Anomaly
+	# 	a = newOrbit.a #100	#Semi Major Axis
+	# 	e = newOrbit.e #0.7		#Eccentricity
+	# 	omega = newOrbit.omega #0 	#Argument of Periapsis
+	# 	nu = newOrbit.nu #1		#True Anomaly
 
-		bu = 0 #fake anomaly
+	# 	bu = 0 #fake anomaly
 
-		b = semiMinorAxis(a,e)
+	# 	b = semiMinorAxis(a,e)
 
-		c = math.sqrt((a**2) - (b**2)) #distance from the center to the focus
+	# 	c = math.sqrt((a**2) - (b**2)) #distance from the center to the focus
 
-		# get x and y components of c
-		# focusOffset = [c * math.cos(omega), c * math.sin(omega)]
-		# print focusOffset
+	# 	# get x and y components of c
+	# 	# focusOffset = [c * math.cos(omega), c * math.sin(omega)]
+	# 	# print focusOffset
 
-		ellipse_lines = []
-		n_ellipse_segments = 50
-		for n in xrange(n_ellipse_segments):
-			ellipse_lines.append([(a * math.cos(bu) - c), (b * math.sin(bu))  ])
-			bu += (2 * math.pi / n_ellipse_segments)
+	# 	ellipse_lines = []
+	# 	n_ellipse_segments = 50
+	# 	for n in xrange(n_ellipse_segments):
+	# 		ellipse_lines.append([(a * math.cos(bu) - c), (b * math.sin(bu))  ])
+	# 		bu += (2 * math.pi / n_ellipse_segments)
 
-		ellipse_lines = rotate_polygon(ellipse_lines, -omega, attractor.body.position)
+	# 	ellipse_lines = rotate_polygon(ellipse_lines, -omega, attractor.body.position)
 
 
-		for n in xrange(n_ellipse_segments):
-			# ellipse_lines[n] += focusOffset
-			# ellipse_lines[n] = rotate_point(ellipse_lines[n], -omega)
-			ellipse_lines[n] = self.transformForView(ellipse_lines[n])
+	# 	for n in xrange(n_ellipse_segments):
+	# 		# ellipse_lines[n] += focusOffset
+	# 		# ellipse_lines[n] = rotate_point(ellipse_lines[n], -omega)
+	# 		ellipse_lines[n] = self.transformForView(ellipse_lines[n])
 
-			# find x y components of the ellipse center line... the angle is omega
+	# 		# find x y components of the ellipse center line... the angle is omega
 
 			
-			# print focus
+	# 		# print focus
 
-		# move the focus above the attractor
+	# 	# move the focus above the attractor
 
-		for n in xrange(1,n_ellipse_segments):
-			start = (int(ellipse_lines[n-1][0]), int(ellipse_lines[n-1][1]))
-			end = (int(ellipse_lines[n][0]), int(ellipse_lines[n][1]))
-			pygame.draw.lines(self.screen, (255,255,200), True, (start,end))
+	# 	for n in xrange(1,n_ellipse_segments):
+	# 		start = (int(ellipse_lines[n-1][0]), int(ellipse_lines[n-1][1]))
+	# 		end = (int(ellipse_lines[n][0]), int(ellipse_lines[n][1]))
+	# 		pygame.draw.lines(self.screen, (255,255,200), True, (start,end))
 
 
 
 	def drawHUD(self):
 
-		self.drawEllipse(self.actors[0].orbit, self.attractors[0])
+		# self.drawEllipse(self.actors[0].orbit, self.attractors[0])
 
 		# show the player what resources are available
 		i = 0
 		hudList = {}
-		for resource, quantity in self.actors[0].availableResources.items():
+		for resource, quantity in list(self.actors[0].availableResources.items()):
 			hudList[resource] = quantity
-		for resource, quantity in self.actors[0].storagePool.items():
+		for resource, quantity in list(self.actors[0].storagePool.items()):
 			if resource in hudList:
 				hudList[resource] += self.actors[0].storagePool[resource]
 			else:
 				hudList[resource] = self.actors[0].storagePool[resource]
 
-		for availableResource, availableQuantity in hudList.items():
+		for availableResource, availableQuantity in list(hudList.items()):
 			textsurface = self.font.render(str(availableResource) + ': ' + str(availableQuantity), False, (255, 255, 255))
 			self.screen.blit(textsurface,(30,i * 20))
 			i += 1
@@ -579,7 +579,7 @@ class World():
 		navcircleLinesLength = 10
 		navcircleInnerRadius = 250
 
-		for n in xrange(0,n_navcircle_lines):
+		for n in range(0,n_navcircle_lines):
 			angle = n * (2 * math.pi / n_navcircle_lines)
 			start = ((navcircleInnerRadius * math.cos(angle)) + (self.resolution[0]*0.5) , (navcircleInnerRadius* math.sin(angle)) +( self.resolution[1] * 0.5) )
 			end = ((navcircleInnerRadius + navcircleLinesLength) * math.cos(angle)+ (self.resolution[0]*0.5), (navcircleInnerRadius + navcircleLinesLength) * math.sin(angle)+ (self.resolution[1]*0.5))
@@ -641,7 +641,7 @@ class World():
 
 		newPlanet = Attractor('earth')
 		twoPlanet = Attractor('moon',[-500000,-500000])
-		newButt = Actor('lothar',(10, -322100), [500000,0])
+		newButt = Actor('lothar',(10, -322100), [500,0])
 		twoButt = Actor('dinghy',(1, -320050), [50,0])
 		self.add(newButt)
 		self.add(twoButt)
