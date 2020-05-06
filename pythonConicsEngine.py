@@ -193,7 +193,6 @@ class Actor():
 		self.shape.friction = 0.5
 		self.orbit = None #initpos_to_orbit(self.)
 		self.freefalling = True
-		self.interacting = False
 		self.color = (200,50,50)
 		self.keyStates = {
 			'up': False,
@@ -202,6 +201,7 @@ class Actor():
 			'right': False
 		}
 		self.orbiting = None
+		self.stepsToFreefall = 5
 
 	# def enterFreefall(self, attractor):
 	# 	self.orbit = func_initpos_to_orbit()
@@ -411,11 +411,8 @@ class World():
 	def physics(self):
 		for actor in self.actors:
 			actor.doResources()
-			if actor.doModuleEffects(actor.keyStates, self.timestepSize):
-				try:
-					actor.orbit = Orbit.fromStateVector(numpy.array([actor.body.position[0],actor.body.position[1],1]), numpy.array([actor.body.velocity[0],actor.body.velocity[1],1]), actor.orbiting.APBody, Time('2000-01-01 00:00:00'), actor.name + " orbit around " + actor.orbiting.planetName)
-				except:
-					pass
+
+			# figure out which attractor you are orbiting
 			strongestForce = None
 			strongestAttractor = None
 			for attractor in self.attractors:
@@ -426,12 +423,33 @@ class World():
 
 			if strongestAttractor is not actor.orbiting or actor.orbiting is None:
 				actor.orbiting = strongestAttractor
-				try:
-					actor.orbit = Orbit.fromStateVector(numpy.array([actor.body.position[0],actor.body.position[1],1]), numpy.array([actor.body.velocity[0],actor.body.velocity[1],1]), actor.orbiting.APBody, Time('2000-01-01 00:00:00'), actor.name + " orbit around " + actor.orbiting.planetName)
-				except:
-					pass
+				
+			# figure out if the actor is freefalling by seeing if any engines or collisions have moved it.
+			if actor.doModuleEffects(actor.keyStates, self.timestepSize):
+				actor.stepsToFreefall = 10
+				actor.freefalling = False
+				actor.orbit = None
 
-			self.gravitate(actor, strongestForce)
+			# if it is freefalling, move it along the orbital track.
+			if actor.freefalling and actor.orbit is not None:
+				actor.orbit.updTime(self.timestepSize * 1)
+				cartesian = actor.orbit.cartesianCoordinates(actor.orbit.tAn)
+				actor.body.position =  [cartesian[0] ,cartesian[1] ]
+			else:
+				# if it is not freefalling, add some gravity to it so that it moves naturally, and try to recalculate the orbit.
+				self.gravitate(actor, strongestForce)
+				if actor.stepsToFreefall > 0:
+					actor.stepsToFreefall -= 1
+				else:
+					actor.freefalling = True
+					try:
+						actor.orbit = Orbit.fromStateVector(numpy.array([actor.body.position[0],actor.body.position[1],1]), numpy.array([actor.body.velocity[0],actor.body.velocity[1],1]), actor.orbiting.APBody, Time('2000-01-01 00:00:00'), actor.name + " orbit around " + actor.orbiting.planetName)
+					except:
+						pass
+
+			
+
+			
 				
 		self.space.step(self.timestepSize)
 		self.time += self.timestepSize
@@ -603,14 +621,10 @@ class World():
 				pygame.draw.lines(self.screen, color, True, (points[i-1], points[i]))
 
 
-		# put a circle at the true anomaly
-		orbit.updTime(self.timestepSize * 1)
-		cartesian = orbit.cartesianCoordinates(orbit.tAn)
-		chickybabe =  [cartesian[0] ,cartesian[1] ]
+	
 
 
-
-		self.drawCircle((255,0,0),self.transformForView(chickybabe), 5000)
+		# self.drawCircle((255,0,0),self.transformForView(chickybabe), 5000)
 
 
 	def drawHUD(self):
@@ -641,6 +655,10 @@ class World():
 		i += 1
 		textsurface = self.font.render('time: ' + str(self.time), False, (255, 255, 255))
 		self.screen.blit(textsurface,(30,i * 20))
+		i += 1
+		textsurface = self.font.render('freefalling: ' + str(self.actors[0].freefalling), False, (255, 255, 255))
+		self.screen.blit(textsurface,(30,i * 20))
+
 
 
 
@@ -693,7 +711,8 @@ class World():
 
 			self.drawActor(attractor)
 		for actor in self.actors:
-			self.drawAPOrbit(actor.orbit, (100,100,100))
+			if actor.orbit is not None:
+				self.drawAPOrbit(actor.orbit, (100,100,100))
 			for module in actor.modules:
 				self.drawModule(actor, module)
 
