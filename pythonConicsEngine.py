@@ -432,9 +432,22 @@ class World():
 
 			# if it is freefalling, move it along the orbital track.
 			if actor.freefalling and actor.orbit is not None:
-				actor.orbit.updTime(self.timestepSize * 1)
+				actor.orbit.updTime(self.timestepSize)
 				cartesian = actor.orbit.cartesianCoordinates(actor.orbit.tAn)
 				actor.body.position =  [cartesian[0] ,cartesian[1] ]
+
+				# you also must update the actor's velocity, or else when it leaves the track it will have the same velocity it entered with, leading to weird jumps.
+				trackSpeed = actor.orbit.getSpeed(actor.orbit.tAn)
+				#the first step is to figure out the velocity components.
+				futureSteptAn = actor.orbit.tAnAtTime(self.timestepSize)
+				futureStepCoordinates = actor.orbit.cartesianCoordinates(futureSteptAn)
+
+				# angle = math.atan2( [futureStepCoordinates[0], futureStepCoordinates[1]] , [actor.body.position[0], actor.body.position[1]])
+				# math.atan2(targetY-gunY, targetX-gunX)
+				angle = math.atan2( futureStepCoordinates[1] - actor.body.position[1], futureStepCoordinates[0] - actor.body.position[0] )
+
+				actor.body.velocity = [trackSpeed * math.cos(angle), trackSpeed * math.sin(angle)]
+
 			else:
 				# if it is not freefalling, add some gravity to it so that it moves naturally, and try to recalculate the orbit.
 				self.gravitate(actor, strongestForce)
