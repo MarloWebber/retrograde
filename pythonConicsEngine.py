@@ -604,9 +604,13 @@ class World():
 
 
 		# put a circle at the true anomaly
-		orbit.updTime(self.time)
+		orbit.updTime(self.timestepSize * 1)
 		cartesian = orbit.cartesianCoordinates(orbit.tAn)
-		self.drawCircle((100,0,0), [cartesian[0],cartesian[1]], 20)
+		chickybabe =  [cartesian[0] ,cartesian[1] ]
+
+
+
+		self.drawCircle((255,0,0),self.transformForView(chickybabe), 5000)
 
 
 	def drawHUD(self):
@@ -634,6 +638,10 @@ class World():
 		i += 1
 		textsurface = self.font.render('zoom: ' + str(self.zoom), False, (255, 255, 255))
 		self.screen.blit(textsurface,(30,i * 20))
+		i += 1
+		textsurface = self.font.render('time: ' + str(self.time), False, (255, 255, 255))
+		self.screen.blit(textsurface,(30,i * 20))
+
 
 
 		# print the navcircle
