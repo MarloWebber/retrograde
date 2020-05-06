@@ -264,6 +264,7 @@ class Actor():
 			if quantity > self.maximumStores[resource]: quantity = self.maximumStores[resource]			
 
 	def doModuleEffects(self, keyStates, timestepSize):
+		ifThrustHasBeenApplied = False
 		for module in self.modules:
 			if module.enabled and module.active:
 				for giveResource, giveQuantity in list(module.resources.items()): #module.produces.items():
@@ -271,6 +272,7 @@ class Actor():
 						if keyStates['up']:
 							force = [(giveQuantity * timestepSize * 500 * math.cos(addRadians(module.angle, math.pi * 0.5))), -giveQuantity * timestepSize * 500 * math.sin(addRadians(module.angle, math.pi * 0.5) )]
 							self.body.apply_impulse_at_local_point(force, (0,0))
+							ifThrustHasBeenApplied = True
 
 					elif giveResource == 'torque':
 						if keyStates['left']:
@@ -280,6 +282,8 @@ class Actor():
 						elif keyStates['right']:
 							self.body.apply_impulse_at_local_point([giveQuantity,0], [0,-module.momentArm])
 							self.body.apply_impulse_at_local_point([-giveQuantity,0], [0,module.momentArm])
+
+		return ifThrustHasBeenApplied
 
 class Attractor():
 	def __init__(self, planetType, position, gravitationalConstant):
@@ -319,7 +323,8 @@ class Attractor():
 class World():
 	def __init__(self):
 		pygame.init()
-		self.clock = pygame.time.Clock()
+		self.clock = pygame.time.Clock() # the pygame clock is NOT the same as the simulation clock.
+		self.time = 0 # the number of timesteps that have passed in-universe. used for physics and orbital calculations.
 		self.space = pymunk.Space()
 		self.space.gravity = (0.0, 0.0)
 		self.gravitationalConstant = 0.03
@@ -333,7 +338,7 @@ class World():
 		self.ch.data["surface"] = self.screen
 		self.viewpointObject = None
 		self.player = None
-		self.zoom = 1
+		self.zoom = 1 # the actual applied zoom number.
 		self.pan = [0,0]
 		self.rotate = 0
 		self.timestepSize = 0.2/60.0 #1.0/60.0
@@ -406,18 +411,30 @@ class World():
 	def physics(self):
 		for actor in self.actors:
 			actor.doResources()
-			actor.doModuleEffects(actor.keyStates, self.timestepSize)
+			if actor.doModuleEffects(actor.keyStates, self.timestepSize):
+				try:
+					actor.orbit = Orbit.fromStateVector(numpy.array([actor.body.position[0],actor.body.position[1],1]), numpy.array([actor.body.velocity[0],actor.body.velocity[1],1]), actor.orbiting.APBody, Time('2000-01-01 00:00:00'), actor.name + " orbit around " + actor.orbiting.planetName)
+				except:
+					pass
+			strongestForce = None
 			strongestAttractor = None
 			for attractor in self.attractors:
 				force = self.gravityForce(actor.body.position, attractor.body.position, attractor.body.mass)
-				if strongestAttractor is None or mag(force) > mag(strongestAttractor):
-					strongestAttractor = force
+				if strongestAttractor is None or mag(force) > mag(strongestForce):
+					strongestForce = force
+					strongestAttractor = attractor
 
-			self.gravitate(actor, strongestAttractor)
+			if strongestAttractor is not actor.orbiting or actor.orbiting is None:
+				actor.orbiting = strongestAttractor
+				try:
+					actor.orbit = Orbit.fromStateVector(numpy.array([actor.body.position[0],actor.body.position[1],1]), numpy.array([actor.body.velocity[0],actor.body.velocity[1],1]), actor.orbiting.APBody, Time('2000-01-01 00:00:00'), actor.name + " orbit around " + actor.orbiting.planetName)
+				except:
+					pass
 
-			actor.orbit = Orbit.fromStateVector(numpy.array([actor.body.position[0],actor.body.position[1],1]), numpy.array([actor.body.velocity[0],actor.body.velocity[1],1]), self.attractors[0].APBody, Time('2000-01-01 00:00:00'), actor.name + " orbit")
-		
+			self.gravitate(actor, strongestForce)
+				
 		self.space.step(self.timestepSize)
+		self.time += self.timestepSize
 
 	def rotatePolygon(self, points, angle):
 		return Rotate2D(points,(0,0),angle)
@@ -586,6 +603,12 @@ class World():
 				pygame.draw.lines(self.screen, color, True, (points[i-1], points[i]))
 
 
+		# put a circle at the true anomaly
+		orbit.updTime(self.time)
+		cartesian = orbit.cartesianCoordinates(orbit.tAn)
+		self.drawCircle((100,0,0), [cartesian[0],cartesian[1]], 20)
+
+
 	def drawHUD(self):
 
 		# self.drawEllipse(self.actors[0].orbit, self.attractors[0])
@@ -608,6 +631,10 @@ class World():
 
 		textsurface = self.font.render('warp: ' + str(self.timestepSize * 3 * 100), False, (255, 255, 255))
 		self.screen.blit(textsurface,(30,i * 20))
+		i += 1
+		textsurface = self.font.render('zoom: ' + str(self.zoom), False, (255, 255, 255))
+		self.screen.blit(textsurface,(30,i * 20))
+
 
 		# print the navcircle
 		n_navcircle_lines = 32
