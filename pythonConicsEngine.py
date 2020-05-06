@@ -310,7 +310,7 @@ class Attractor():
 		self.shape.friction = self.friction
 
 		# create astropynamics orbit-able body
-		self.APBody = APBody(self.planetName, self.mass * gravitationalConstant, self.radius)
+		self.APBody = APBody(self.planetName, self.mass * gravitationalConstant * 0.162, self.radius)
 
 
 
@@ -417,6 +417,9 @@ class World():
 				self.gravitate(actor, attractor)
 				# else:
 				# 	self.gravitate(actor, attractor)
+
+			actor.orbit = Orbit.fromStateVector(numpy.array([actor.body.position[0],actor.body.position[1],1]), numpy.array([actor.body.velocity[0],actor.body.velocity[1],1]), self.attractors[0].APBody, Time('2000-01-01 00:00:00'), actor.name + " orbit")
+		
 		self.space.step(self.timestepSize)
 
 	def rotatePolygon(self, points, angle):
@@ -564,6 +567,28 @@ class World():
 
 
 
+	def drawAPOrbit(self, orbit, color):
+
+		points = []
+
+
+		# print("period " + str(orbit.getPeriod()))
+		# print("apoapsis " + str(orbit.getApoapsis()))
+		# print("periapsis " + str(orbit.getPeriapsis()))
+		# print("crashing " + str(orbit.isCrashing()))
+
+		for i in range(0,100):
+			temp_vec3d = orbit.cartesianCoordinates(i * (2 * math.pi / 100))
+			# print(temp_vec3d)
+			point = (temp_vec3d[0], temp_vec3d[1])
+			point = self.transformForView(point)
+			points.append(point)
+
+		for i in range(0,100):
+			if i > 0:
+				pygame.draw.lines(self.screen, color, True, (points[i-1], points[i]))
+
+
 	def drawHUD(self):
 
 		# self.drawEllipse(self.actors[0].orbit, self.attractors[0])
@@ -636,10 +661,14 @@ class World():
 
 			self.drawActor(attractor)
 		for actor in self.actors:
+			self.drawAPOrbit(actor.orbit, (100,100,100))
 			for module in actor.modules:
 				self.drawModule(actor, module)
 
+		# self.drawAPOrbit(self.calibrationOrbit, (100,100,100))
+
 		self.drawHUD()
+
 
 		pygame.display.flip()
 		self.clock.tick(150)
@@ -654,8 +683,8 @@ class World():
 
 		newPlanet = Attractor('earth', [1,1], self.gravitationalConstant)
 		twoPlanet = Attractor('moon',[-500000,-500000], self.gravitationalConstant)
-		newButt = Actor('lothar',(10, -322100), [500,0])
-		twoButt = Actor('dinghy',(1, -320050), [50,0])
+		newButt = Actor('lothar',(10, -322100), [300000,0])
+		twoButt = Actor('lothar',(1, -322130), [300000,0])
 		self.add(newButt)
 		self.add(twoButt)
 		self.player = self.actors[0]
@@ -663,9 +692,8 @@ class World():
 		self.add(newPlanet)
 		self.add(twoPlanet)
 
-		for actor in self.actors:
-			actor.orbit = Orbit.fromStateVector(numpy.array([actor.body.position[0],actor.body.position[1],0]), numpy.array([actor.body.velocity[0],actor.body.velocity[1],0]), self.attractors[0].APBody, Time('2000-01-01 00:00:00'), actor.name + " orbit")
-			print(actor.orbit)
+		# self.calibrationOrbit = Orbit.fromStateVector(numpy.array([self.actors[0].body.position[0],self.actors[0].body.position[1],1]), numpy.array([self.actors[0].body.velocity[0],self.actors[0].body.velocity[1],1]), self.attractors[0].APBody, Time('2000-01-01 00:00:00'), "calibration orbit")
+				
 
 		self.running = True
 		while self.running:
