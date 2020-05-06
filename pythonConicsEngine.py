@@ -201,6 +201,7 @@ class Actor():
 			'left': False,
 			'right': False
 		}
+		self.orbiting = None
 
 	# def enterFreefall(self, attractor):
 	# 	self.orbit = func_initpos_to_orbit()
@@ -302,7 +303,7 @@ class Attractor():
 		# create pymunk physical body and shape
 		self.mass = mass_of_a_sphere(self.density, self.radius)
 		size = self.radius
-		self.points = make_circle(self.radius, 314)
+		self.points = make_circle(self.radius, 120)
 		inertia = pymunk.moment_for_poly(self.mass, self.points, (0,0))
 		self.body = pymunk.Body(self.mass, inertia)
 		self.body.position = position
@@ -310,7 +311,7 @@ class Attractor():
 		self.shape.friction = self.friction
 
 		# create astropynamics orbit-able body
-		self.APBody = APBody(self.planetName, self.mass * gravitationalConstant * 0.162, self.radius)
+		self.APBody = APBody(self.planetName, self.mass * gravitationalConstant * 0.1655, self.radius)
 
 
 
@@ -349,13 +350,12 @@ class World():
 		force = components * appliedGravity * self.timestepSize
 		return force
 
-	def gravitate(self, actor, attractor):
+	def gravitate(self, actor, force):
 		# distance = attractor.body.position - actor.body.position # scalar distance between two bodies
 		# magnitude = mag(distance)
 		# gravity = self.gravitationalConstant * attractor.body.mass
 		# appliedGravity = gravity/(magnitude * magnitude)
 		# components = numpy.divide(distance, magnitude)
-		force = self.gravityForce(actor.body.position, attractor.body.position, attractor.body.mass)  #components * appliedGravity * self.timestepSize
 		rotatedForce = Vec2d(force[0], force[1])
 		rotatedForce = rotatedForce.rotated(-actor.body.angle)
 		actor.body.apply_impulse_at_local_point(rotatedForce, [0,0])
@@ -407,16 +407,13 @@ class World():
 		for actor in self.actors:
 			actor.doResources()
 			actor.doModuleEffects(actor.keyStates, self.timestepSize)
+			strongestAttractor = None
 			for attractor in self.attractors:
-				# if actor.freefalling:
-				# 	if actor.orbit == None:
-				# 		self.gravitate(actor, attractor)
-				# actor.orbit = orb.initpos_to_orbit_2d(actor.body.position, actor.body.velocity, self.gravitationalConstant * self.attractors[0].body.mass)
-						# print(actor.orbit)
-					# else:
-				self.gravitate(actor, attractor)
-				# else:
-				# 	self.gravitate(actor, attractor)
+				force = self.gravityForce(actor.body.position, attractor.body.position, attractor.body.mass)
+				if strongestAttractor is None or mag(force) > mag(strongestAttractor):
+					strongestAttractor = force
+
+			self.gravitate(actor, strongestAttractor)
 
 			actor.orbit = Orbit.fromStateVector(numpy.array([actor.body.position[0],actor.body.position[1],1]), numpy.array([actor.body.velocity[0],actor.body.velocity[1],1]), self.attractors[0].APBody, Time('2000-01-01 00:00:00'), actor.name + " orbit")
 		
