@@ -9,6 +9,11 @@ import numpy
 # import initpos_to_orbit as orb
 import time
 # import gradients
+
+from AstroPynamics.tools.body import Body as APBody
+from AstroPynamics.orbits.orbit import Orbit
+# import numpy as np
+from astropy.time import Time, TimeDelta
     
 global contact
 global shape_to_remove
@@ -147,6 +152,7 @@ class Module():
 class Actor():
 	def __init__(self, shipType, position, velocity):
 		self.type = 'actor'
+		self.name = shipType # the individual name of the craft. Set to shipType for now.
 		self.modules = []
 
 		if shipType == 'dinghy':
@@ -275,13 +281,13 @@ class Actor():
 							self.body.apply_impulse_at_local_point([-giveQuantity,0], [0,module.momentArm])
 
 class Attractor():
-	def __init__(self, planetType, position=[1,1]):
-		self.type = 'attractor'
+	def __init__(self, planetType, position, gravitationalConstant):
+		self.type = 'attractor' # actor or attractor type. this is very stupid and should be designed out
+		self.planetName = planetType # just set the planetName to something easy for now. # the name of the individual instance of this planet type.
 		
 		if planetType == 'earth':
 			self.radius = 320000
 			self.density = 0.5
-			self.mass = mass_of_a_sphere(self.density, self.radius)
 			self.friction = 0.75
 			self.color = (190,165,145)
 			self.atmosphere = Atmosphere(self.radius, position)
@@ -289,11 +295,12 @@ class Attractor():
 		elif planetType == 'moon':
 			self.radius = 80000
 			self.density = 0.75
-			self.mass =  mass_of_a_sphere(self.density, self.radius)
 			self.friction = 0.5
 			self.color = (145,145,145)
 			self.atmosphere = None #Atmosphere(self)
 
+		# create pymunk physical body and shape
+		self.mass = mass_of_a_sphere(self.density, self.radius)
 		size = self.radius
 		self.points = make_circle(self.radius, 314)
 		inertia = pymunk.moment_for_poly(self.mass, self.points, (0,0))
@@ -301,6 +308,12 @@ class Attractor():
 		self.body.position = position
 		self.shape = pymunk.Poly(self.body, self.points)
 		self.shape.friction = self.friction
+
+		# create astropynamics orbit-able body
+		self.APBody = APBody(self.planetName, self.mass * gravitationalConstant, self.radius)
+
+
+
 
 class World():
 	def __init__(self):
@@ -639,8 +652,8 @@ class World():
 
 	def start(self):
 
-		newPlanet = Attractor('earth')
-		twoPlanet = Attractor('moon',[-500000,-500000])
+		newPlanet = Attractor('earth', [1,1], self.gravitationalConstant)
+		twoPlanet = Attractor('moon',[-500000,-500000], self.gravitationalConstant)
 		newButt = Actor('lothar',(10, -322100), [500,0])
 		twoButt = Actor('dinghy',(1, -320050), [50,0])
 		self.add(newButt)
@@ -649,6 +662,10 @@ class World():
 		self.viewpointObject = self.actors[0]
 		self.add(newPlanet)
 		self.add(twoPlanet)
+
+		for actor in self.actors:
+			actor.orbit = Orbit.fromStateVector(numpy.array([actor.body.position[0],actor.body.position[1],0]), numpy.array([actor.body.velocity[0],actor.body.velocity[1],0]), self.attractors[0].APBody, Time('2000-01-01 00:00:00'), actor.name + " orbit")
+			print(actor.orbit)
 
 		self.running = True
 		while self.running:

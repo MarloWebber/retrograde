@@ -1,6 +1,6 @@
 import numpy as np
 from astropy.time import Time, TimeDelta
-from tools import utils
+from ..tools import utils
 
 class OrbitalElements:
     def __init__(self, a=None, e=0, i=0, lAn=0, tAn=0, primBody=None, aPe = 0, epoch=Time('2000-01-01'),
