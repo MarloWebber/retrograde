@@ -6,13 +6,10 @@ import pymunk
 from pymunk import Vec2d
 import pymunk.pygame_util
 import numpy
-# import initpos_to_orbit as orb
 import time
-# import gradients
 
 from AstroPynamics.tools.body import Body as APBody
 from AstroPynamics.orbits.orbit import Orbit
-# import numpy as np
 from astropy.time import Time, TimeDelta
     
 global contact
@@ -60,12 +57,8 @@ def make_circle(radius, points):
 def mass_of_a_sphere(density, radius):
 	return 4/3 * math.pi * radius**3
 
-
 def semiMinorAxis(a, e):
 	return a * math.sqrt(1 - (math.pow(e,2))) # https://math.stackexchange.com/questions/1259945/calculating-semi-minor-axis-of-an-ellipse
-
-# 	def semiLatusRectum(self):
-# 		self.l = (math.pow(self.b,2) / self.a) # https://en.wikipedia.org/wiki/Ellipse
 
 class Atmosphere():
 	def __init__(self,radius, planetPosition):
@@ -151,8 +144,7 @@ class Module():
 
 
 dinghy = [Module('generator',[0,0]), Module('engine',[0,8]), Module('RCS',[0,-10]) ]
-lothar = [Module('generator',[0,0]), Module('engine',[-13,8]), Module('engine',[13,8]), Module('RCS',[0,-10]) ]
-
+lothar = [Module('generator',[0,0]), Module('engine',[-13,8]), Module('engine',[13,8]), Module('RCS',[-13,-10]), Module('RCS',[13,-10]) ]
 
 class Actor():
 	def __init__(self, name, modulesList, position, velocity, isPlayer=False):
@@ -189,7 +181,7 @@ class Actor():
 		self.body.position = position
 		self.body.apply_impulse_at_local_point(velocity, [0,0])
 		self.shape = pymunk.Poly(self.body, self.points)
-		self.shape.friction = 0.5
+		self.shape.friction = 0.9
 		self.orbit = None #initpos_to_orbit(self.)
 		self.freefalling = True
 		self.color = (200,50,50)
@@ -201,10 +193,6 @@ class Actor():
 		}
 		self.orbiting = None
 		self.stepsToFreefall = 5
-
-	# def enterFreefall(self, attractor):
-	# 	self.orbit = func_initpos_to_orbit()
-	# 	self.freefalling = True
 
 	def leaveFreefall(self):
 		self.stepsToFreefall = 10
@@ -294,14 +282,14 @@ class Attractor():
 		if planetType == 'earth':
 			self.radius = 320000
 			self.density = 0.5
-			self.friction = 0.75
+			self.friction = 0.9
 			self.color = (190,165,145)
 			self.atmosphere = Atmosphere(self.radius, position)
 
 		elif planetType == 'moon':
 			self.radius = 80000
 			self.density = 0.75
-			self.friction = 0.5
+			self.friction = 0.9
 			self.color = (145,145,145)
 			self.atmosphere = None #Atmosphere(self)
 
@@ -318,9 +306,6 @@ class Attractor():
 		# create astropynamics orbit-able body
 		self.APBody = APBody(self.planetName, self.mass * gravitationalConstant * 0.1655, self.radius)
 
-
-
-
 class World():
 	def __init__(self):
 		pygame.init()
@@ -334,7 +319,6 @@ class World():
 		self.resolution = (840,680)
 		self.screen = pygame.display.set_mode(self.resolution)
 		self.draw_options = pymunk.pygame_util.DrawOptions(self.screen)
-		# self.draw_options.flags = self.draw_options.flags ^ pymunk.pygame_util.DrawOptions.DRAW_COLLISION_POINTS 
 		self.ch = self.space.add_collision_handler(0, 0)
 		self.ch.data["surface"] = self.screen
 		self.ch.post_solve = self.handle_collision
@@ -358,11 +342,6 @@ class World():
 		return force
 
 	def gravitate(self, actor, force):
-		# distance = attractor.body.position - actor.body.position # scalar distance between two bodies
-		# magnitude = mag(distance)
-		# gravity = self.gravitationalConstant * attractor.body.mass
-		# appliedGravity = gravity/(magnitude * magnitude)
-		# components = numpy.divide(distance, magnitude)
 		rotatedForce = Vec2d(force[0], force[1])
 		rotatedForce = rotatedForce.rotated(-actor.body.angle)
 		actor.body.apply_impulse_at_local_point(rotatedForce, [0,0])
@@ -372,10 +351,10 @@ class World():
 			if event.type == KEYDOWN and event.key == K_ESCAPE:
 				self.running = False
 			elif event.type == KEYDOWN and event.key == K_RIGHTBRACKET:
-				if self.viewpointObject == self.actors[0]:
-					self.viewpointObject = self.attractors[0]
+				if self.viewpointObject == self.player:
+					self.viewpointObject = self.attrplayer
 				else:
-					self.viewpointObject = self.actors[0]
+					self.viewpointObject = self.player
 			elif event.type == KEYDOWN and event.key == K_EQUALS:
 				self.zoom += self.zoom * 0.5
 			elif event.type == KEYDOWN and event.key == K_MINUS:
@@ -436,7 +415,6 @@ class World():
 			else:
 				self.add( Actor(actor.name, actor.modules, actor.body.position, actor.body.velocity, actor.isPlayer ) ) # add the remaining parts of the original actor back into the space
 
-
 	def physics(self):
 		for actor in self.actors:
 			actor.doResources()
@@ -484,10 +462,6 @@ class World():
 						actor.orbit = Orbit.fromStateVector(numpy.array([actor.body.position[0],actor.body.position[1],1]), numpy.array([actor.body.velocity[0],actor.body.velocity[1],1]), actor.orbiting.APBody, Time('2000-01-01 00:00:00'), actor.name + " orbit around " + actor.orbiting.planetName)
 					except:
 						pass
-
-			
-
-			
 				
 		self.space.step(self.timestepSize)
 		self.time += self.timestepSize
@@ -516,7 +490,6 @@ class World():
 		pygame.draw.lines(self.screen, actor.color, True, transformedPoints)
 
 	def drawModule(self, actor, module):
-
 		# draw the outline of the module.
 		transformedPoints = []
 		for rotatedPoint in module.points: 
@@ -545,95 +518,6 @@ class World():
 						# print ananas
 						pygame.draw.lines(self.screen, (255,255,200), True, [activeCircle,ananas])
 
-	# def drawEllipse(self,orbit, attractor):
-	# 	# a 		Semi Major Axis
-	# 	# e 		Eccentricity
-	# 	# omega 	Argument of Periapsis
-	# 	# nu 		True Anomaly
-
-	# 	if not self.showHUD: return
-
-
-	# # a 		Semi Major Axis
-	# # e 		Eccentricity
-	# # i 		Inclination
-	# # Omega 	Longitude of Ascending Node
-	# # omega 	Argument of Periapsis
-	# # nu 		True Anomaly
-	# 	# newOrbit = orb.Orbit(
-	# 	# 	400000,
-	# 	# 	0.8,
-	# 	# 	0,
-	# 	# 	0,
-	# 	# 	math.pi/6,
-	# 	# 	math.pi/2)
-
-	# 	newOrbit = self.actors[0].orbit
-
-	# 	# force = self.gravityForce(self.actors[0].body.position, attractor.body.position, attractor.body.mass)
-	# 	# scalarForce = mag(force) 
-
-
-	# 	# orbit_to_position(a,e,i,Omega,omega,M_0,t_0,t,mu):
-	# 	# orb.orbit_to_position(newOrbit.a, newOrbit.e, newOrbit.i, newOrbit.Omega, newOrbit.omega, 0, 0, 0, (attractor.body.mass * self.gravitationalConstant))
-
-
-	# 	prev_position = [0,0]
-	# 	new_position = [0,0]
-	# 	for n in xrange(1,100):
-	# 		# orbit_to_position(a,e,i,Omega,omega,M_0,t_0,t,mu):
-	# 		prev_position = new_position
-	# 		orb_output = orb.orbit_to_position(newOrbit.a, newOrbit.e, newOrbit.i, newOrbit.Omega, newOrbit.omega, 0, 0, n, (attractor.body.mass * self.gravitationalConstant))
-
-	# 		new_position = [orb_output[0], orb_output[1]]
-
-
-	# 		if (n > 1):
-	# 			pygame.draw.lines(self.screen, (255,255,100), True, ( self.transformForView( prev_position) , self.transformForView( new_position)))
-
-
-
-
-	# 	a = newOrbit.a #100	#Semi Major Axis
-	# 	e = newOrbit.e #0.7		#Eccentricity
-	# 	omega = newOrbit.omega #0 	#Argument of Periapsis
-	# 	nu = newOrbit.nu #1		#True Anomaly
-
-	# 	bu = 0 #fake anomaly
-
-	# 	b = semiMinorAxis(a,e)
-
-	# 	c = math.sqrt((a**2) - (b**2)) #distance from the center to the focus
-
-	# 	# get x and y components of c
-	# 	# focusOffset = [c * math.cos(omega), c * math.sin(omega)]
-	# 	# print focusOffset
-
-	# 	ellipse_lines = []
-	# 	n_ellipse_segments = 50
-	# 	for n in xrange(n_ellipse_segments):
-	# 		ellipse_lines.append([(a * math.cos(bu) - c), (b * math.sin(bu))  ])
-	# 		bu += (2 * math.pi / n_ellipse_segments)
-
-	# 	ellipse_lines = rotate_polygon(ellipse_lines, -omega, attractor.body.position)
-
-
-	# 	for n in xrange(n_ellipse_segments):
-	# 		# ellipse_lines[n] += focusOffset
-	# 		# ellipse_lines[n] = rotate_point(ellipse_lines[n], -omega)
-	# 		ellipse_lines[n] = self.transformForView(ellipse_lines[n])
-
-	# 		# find x y components of the ellipse center line... the angle is omega
-
-			
-	# 		# print focus
-
-	# 	# move the focus above the attractor
-
-	# 	for n in xrange(1,n_ellipse_segments):
-	# 		start = (int(ellipse_lines[n-1][0]), int(ellipse_lines[n-1][1]))
-	# 		end = (int(ellipse_lines[n][0]), int(ellipse_lines[n][1]))
-	# 		pygame.draw.lines(self.screen, (255,255,200), True, (start,end))
 
 	def getActorFromBody(self, body):
 		for actor in self.actors:
@@ -697,18 +581,18 @@ class World():
 
 	def drawHUD(self):
 
-		# self.drawEllipse(self.actors[0].orbit, self.attractors[0])
+		# self.drawEllipse(self.player.orbit, self.attrplayer)
 
 		# show the player what resources are available
 		i = 0
 		hudList = {}
-		for resource, quantity in list(self.actors[0].availableResources.items()):
+		for resource, quantity in list(self.player.availableResources.items()):
 			hudList[resource] = quantity
-		for resource, quantity in list(self.actors[0].storagePool.items()):
+		for resource, quantity in list(self.player.storagePool.items()):
 			if resource in hudList:
-				hudList[resource] += self.actors[0].storagePool[resource]
+				hudList[resource] += self.player.storagePool[resource]
 			else:
-				hudList[resource] = self.actors[0].storagePool[resource]
+				hudList[resource] = self.player.storagePool[resource]
 
 		for availableResource, availableQuantity in list(hudList.items()):
 			textsurface = self.font.render(str(availableResource) + ': ' + str(availableQuantity), False, (255, 255, 255))
@@ -724,7 +608,7 @@ class World():
 		textsurface = self.font.render('time: ' + str(self.time), False, (255, 255, 255))
 		self.screen.blit(textsurface,(30,i * 20))
 		i += 1
-		textsurface = self.font.render('freefalling: ' + str(self.actors[0].freefalling), False, (255, 255, 255))
+		textsurface = self.font.render('freefalling: ' + str(self.player.freefalling), False, (255, 255, 255))
 		self.screen.blit(textsurface,(30,i * 20))
 
 
@@ -743,20 +627,20 @@ class World():
 			pygame.draw.lines(self.screen, (100,100,100), True, (start,end))
 
 		blipLength = (navcircleInnerRadius-navcircleLinesLength)
-		angle = self.actors[0].body.angle - 0.5 * math.pi
+		angle = self.player.body.angle - 0.5 * math.pi
 		start = ((blipLength * math.cos(angle)) + (self.resolution[0]*0.5) , (blipLength* math.sin(angle)) +( self.resolution[1] * 0.5) )
 		end = ((navcircleInnerRadius) * math.cos(angle)+ (self.resolution[0]*0.5), (navcircleInnerRadius) * math.sin(angle)+ (self.resolution[1]*0.5))
 		pygame.draw.lines(self.screen, (200,0,10), True, (start,end))
 
 		# draw the trajectory
 		# n_trajectory_points = 100
-		# trajectory_point_position = self.actors[0].body.position
-		# trajectory_point_velocity = self.actors[0].body.velocity
+		# trajectory_point_position = self.player.body.position
+		# trajectory_point_velocity = self.player.body.velocity
 		# prev_trajectory_point = trajectory_point_position
 		# for n in xrange(0,n_trajectory_points):
 		# 	sumGravity = [0,0]
 		# 	for attractor in self.attractors:
-		# 		sumGravity += self.gravityForce(self.actors[0].body.position, attractor.body.position, attractor.body.mass) 
+		# 		sumGravity += self.gravityForce(self.player.body.position, attractor.body.position, attractor.body.mass) 
 		# 	prev_trajectory_point = trajectory_point_position
 		# 	trajectory_point_position += trajectory_point_velocity * self.timestepSize
 		# 	sumGravity[0] = sumGravity[0] * self.timestepSize
@@ -802,7 +686,7 @@ class World():
 	def start(self):
 
 		planet_erf = Attractor('earth', [1,1], self.gravitationalConstant)
-		planet_moon = Attractor('moon',[-500000,-500000], self.gravitationalConstant)
+		planet_moon = Attractor('moon',[-1000000,-1000000], self.gravitationalConstant)
 		self.add(planet_erf)
 		self.add(planet_moon)
 
@@ -811,7 +695,7 @@ class World():
 		self.add(dinghy_instance)
 		self.add(lothar_instance)
 		
-		# self.calibrationOrbit = Orbit.fromStateVector(numpy.array([self.actors[0].body.position[0],self.actors[0].body.position[1],1]), numpy.array([self.actors[0].body.velocity[0],self.actors[0].body.velocity[1],1]), self.attractors[0].APBody, Time('2000-01-01 00:00:00'), "calibration orbit")
+		# self.calibrationOrbit = Orbit.fromStateVector(numpy.array([self.player.body.position[0],self.player.body.position[1],1]), numpy.array([self.player.body.velocity[0],self.player.body.velocity[1],1]), self.attrplayer.APBody, Time('2000-01-01 00:00:00'), "calibration orbit")
 				
 
 		self.running = True
