@@ -227,7 +227,7 @@ class Actor():
 						module.enabled = False
 			if module.moduleType == 'RCS':
 				module.active = self.keyStates['left'] or self.keyStates['right']
-			if module.moduleType == 'engine':
+			elif module.moduleType == 'engine':
 				module.active = self.keyStates['up']
 
 		# - consume and produce resources
@@ -323,6 +323,7 @@ class World():
 		self.ch.data["surface"] = self.screen
 		self.ch.post_solve = self.handle_collision
 		self.viewpointObject = None
+		self.viewpointObjectIndex = 0
 		self.player = None
 		self.zoom = 1 # the actual applied zoom number.
 		self.pan = [0,0]
@@ -351,10 +352,15 @@ class World():
 			if event.type == KEYDOWN and event.key == K_ESCAPE:
 				self.running = False
 			elif event.type == KEYDOWN and event.key == K_RIGHTBRACKET:
-				if self.viewpointObject == self.player:
-					self.viewpointObject = self.attrplayer
-				else:
-					self.viewpointObject = self.player
+				self.viewpointObjectIndex += 1
+				if self.viewpointObjectIndex >= len(self.actors):
+					self.viewpointObjectIndex = 0
+				self.viewpointObject = self.actors[self.viewpointObjectIndex]
+			elif event.type == KEYDOWN and event.key == K_LEFTBRACKET:
+				self.viewpointObjectIndex -= 1
+				if self.viewpointObjectIndex < 0:
+					self.viewpointObjectIndex = len(self.actors) - 1
+				self.viewpointObject = self.actors[self.viewpointObjectIndex]
 			elif event.type == KEYDOWN and event.key == K_EQUALS:
 				self.zoom += self.zoom * 0.5
 			elif event.type == KEYDOWN and event.key == K_MINUS:
