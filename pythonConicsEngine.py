@@ -286,7 +286,7 @@ class Attractor():
 		
 		if planetType == 'earth':
 			self.radius = 320000
-			self.density = 0.5
+			self.density = 1
 			self.friction = 0.9
 			self.color = (190,165,145)
 			self.atmosphere = Atmosphere(self.radius, position)
@@ -448,6 +448,7 @@ class World():
 					strongestAttractor = attractor
 
 			if strongestAttractor is not actor.orbiting or actor.orbiting is None:
+				actor.leaveFreefall()
 				actor.orbiting = strongestAttractor
 				
 			# figure out if the actor is freefalling by seeing if any engines or collisions have moved it.
@@ -743,9 +744,9 @@ class World():
 
 	def start(self):
 
-		# planet_erf = Attractor('earth', [1,1], self.gravitationalConstant)
+		planet_erf = Attractor('earth', [1,1], self.gravitationalConstant)
 		planet_moon = Attractor('moon',[1000000,-1000000], self.gravitationalConstant)
-		# self.add(planet_erf)
+		self.add(planet_erf)
 		self.add(planet_moon)
 
 		dinghy_instance = Actor('player Lothar', lothar,(1000000, -1080300), [0,0], True)
