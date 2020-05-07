@@ -55,7 +55,10 @@ def make_circle(radius, points):
 	return circle
 
 def mass_of_a_sphere(density, radius):
-	return 4/3 * math.pi * radius**3
+	return density * 4/3 * math.pi * radius**3
+
+def mass_of_a_circle(density, radius):
+	return density * 2 * math.pi * radius**2
 
 def semiMinorAxis(a, e):
 	return a * math.sqrt(1 - (math.pow(e,2))) # https://math.stackexchange.com/questions/1259945/calculating-semi-minor-axis-of-an-ellipse
@@ -290,7 +293,7 @@ class Attractor():
 
 		elif planetType == 'moon':
 			self.radius = 80000
-			self.density = 0.75
+			self.density = 1
 			self.friction = 0.9
 			self.color = (145,145,145)
 			self.atmosphere = None #Atmosphere(self)
@@ -306,7 +309,7 @@ class Attractor():
 		self.shape.friction = self.friction
 
 		# create astropynamics orbit-able body
-		self.APBody = APBody(self.planetName, self.mass * gravitationalConstant * 0.1655, self.radius)
+		self.APBody = APBody(self.planetName, self.mass * gravitationalConstant * 0.163, self.radius)
 
 class World():
 	def __init__(self):
@@ -334,6 +337,7 @@ class World():
 		pygame.key.set_repeat(50,50) # holding a key down repeats the instruction. https://www.pygame.org/docs/ref/key.html
 		self.font = pygame.font.SysFont('dejavusans', 15)
 		self.showHUD = False
+		self.paused = True
 
 	def gravityForce(self, actorPosition, attractorPosition, attractorMass):
 		distance = attractorPosition - actorPosition # scalar distance between two bodies
@@ -389,6 +393,8 @@ class World():
 				self.player.keyStates['down'] = False
 			elif event.type == KEYDOWN and event.key == K_h:
 				self.showHUD = not self.showHUD
+			elif event.type == KEYDOWN and event.key == K_p:
+				self.paused = not self.paused
         
 	def add(self, thing):  
 		self.space.add(thing.body, thing.shape)
@@ -448,11 +454,13 @@ class World():
 			if actor.doModuleEffects(actor.keyStates, self.timestepSize):
 				actor.leaveFreefall()
 
+			# actor.leaveFreefall()
+
 			# if it is freefalling, move it along the orbital track.
 			if actor.freefalling and actor.orbit is not None:
 				actor.orbit.updTime(self.timestepSize)
 				cartesian = actor.orbit.cartesianCoordinates(actor.orbit.tAn)
-				actor.body.position =  [cartesian[0] ,cartesian[1] ]
+				actor.body.position =  [cartesian[0] + actor.orbiting.body.position[0] ,cartesian[1] + actor.orbiting.body.position[1]]
 
 				# you also must update the actor's velocity, or else when it leaves the track it will have the same velocity it entered with, leading to weird jumps.
 				trackSpeed = actor.orbit.getSpeed(actor.orbit.tAn)
@@ -460,7 +468,8 @@ class World():
 				# there is almost definitely a way to figure this out from the ellipse's properties. You would need to find tangent to the ellipse. But I figured it out by computing the position one step into the future, and then finding the angle between positions.
 				futureSteptAn = actor.orbit.tAnAtTime(self.timestepSize)
 				futureStepCoordinates = actor.orbit.cartesianCoordinates(futureSteptAn)
-				angle = math.atan2( futureStepCoordinates[1] - actor.body.position[1], futureStepCoordinates[0] - actor.body.position[0] )
+				adjustedFutureStep = [futureStepCoordinates[0] + actor.orbiting.body.position[0] , futureStepCoordinates[1] + actor.orbiting.body.position[1]]
+				angle = math.atan2( adjustedFutureStep[1] - actor.body.position[1], adjustedFutureStep[0] - actor.body.position[0] )
 
 				actor.body.velocity = [trackSpeed * math.cos(angle), trackSpeed * math.sin(angle)]
 
@@ -472,9 +481,9 @@ class World():
 				else:
 					actor.freefalling = True
 					try:
-						actor.orbit = Orbit.fromStateVector(numpy.array([actor.body.position[0],actor.body.position[1],1]), numpy.array([actor.body.velocity[0],actor.body.velocity[1],1]), actor.orbiting.APBody, Time('2000-01-01 00:00:00'), actor.name + " orbit around " + actor.orbiting.planetName)
+						actor.orbit = Orbit.fromStateVector(numpy.array([actor.body.position[0] - actor.orbiting.body.position[0] ,actor.body.position[1] - actor.orbiting.body.position[1],1]), numpy.array([actor.body.velocity[0] ,actor.body.velocity[1] ,1]), actor.orbiting.APBody, Time('2000-01-01 00:00:00'), actor.name + " orbit around " + actor.orbiting.planetName)
 					except:
-						pass
+						actor.orbit = None
 				
 		self.space.step(self.timestepSize)
 		self.time += self.timestepSize
@@ -583,7 +592,7 @@ class World():
 				return actor
 
 
-	def drawAPOrbit(self, orbit, color):
+	def drawAPOrbit(self, orbit, attractor, color):
 
 		points = []
 
@@ -596,7 +605,7 @@ class World():
 		for i in range(0,100):
 			temp_vec3d = orbit.cartesianCoordinates(i * (2 * math.pi / 100))
 			# print(temp_vec3d)
-			point = (temp_vec3d[0], temp_vec3d[1])
+			point = (temp_vec3d[0] + attractor.body.position[0], temp_vec3d[1] + attractor.body.position[1])
 			point = self.transformForView(point)
 			points.append(point)
 
@@ -642,6 +651,22 @@ class World():
 		i += 1
 		textsurface = self.font.render('freefalling: ' + str(self.player.freefalling), False, (255, 255, 255))
 		self.screen.blit(textsurface,(30,i * 20))
+		
+		if self.player.orbiting is not None:
+			i += 1
+			textsurface = self.font.render('orbiting: ' + str(self.player.orbiting.planetName), False, (255, 255, 255))
+			self.screen.blit(textsurface,(30,i * 20))
+
+			if self.player.orbit is not None:
+				i += 1
+				textsurface = self.font.render('orbit valid', False, (255, 255, 255))
+				self.screen.blit(textsurface,(30,i * 20))
+			else:
+				i += 1
+				textsurface = self.font.render('no orbit', False, (255, 255, 255))
+				self.screen.blit(textsurface,(30,i * 20))
+
+
 
 
 
@@ -696,7 +721,7 @@ class World():
 			self.drawActor(attractor)
 		for actor in self.actors:
 			if actor.orbit is not None:
-				self.drawAPOrbit(actor.orbit, (100,100,100))
+				self.drawAPOrbit(actor.orbit, actor.orbiting, (100,100,100))
 			for module in actor.modules:
 				self.drawModule(actor, module)
 
@@ -712,18 +737,19 @@ class World():
 	def step(self):
 		self.player = self._getPlayer()
 		self.inputs()
-		self.physics()
+		if not self.paused:
+			self.physics()
 		self.graphics()
 
 	def start(self):
 
-		planet_erf = Attractor('earth', [1,1], self.gravitationalConstant)
-		planet_moon = Attractor('moon',[-1000000,-1000000], self.gravitationalConstant)
-		self.add(planet_erf)
+		# planet_erf = Attractor('earth', [1,1], self.gravitationalConstant)
+		planet_moon = Attractor('moon',[1000000,-1000000], self.gravitationalConstant)
+		# self.add(planet_erf)
 		self.add(planet_moon)
 
-		dinghy_instance = Actor('player Lothar', lothar,(10, -322100), [300000,0], True)
-		lothar_instance = Actor('NPC lothar', lothar,(1, -322160), [300000,0])
+		dinghy_instance = Actor('player Lothar', lothar,(1000000, -1080300), [0,0], True)
+		lothar_instance = Actor('NPC lothar', lothar,(-1000000, -1121600), [0,0])
 		self.add(dinghy_instance)
 		self.add(lothar_instance)
 		
