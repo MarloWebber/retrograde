@@ -333,9 +333,10 @@ class World():
 		self.resolution = (840,680)
 		self.screen = pygame.display.set_mode(self.resolution)
 		self.draw_options = pymunk.pygame_util.DrawOptions(self.screen)
-		self.draw_options.flags = self.draw_options.flags ^ pymunk.pygame_util.DrawOptions.DRAW_COLLISION_POINTS 
+		# self.draw_options.flags = self.draw_options.flags ^ pymunk.pygame_util.DrawOptions.DRAW_COLLISION_POINTS 
 		self.ch = self.space.add_collision_handler(0, 0)
 		self.ch.data["surface"] = self.screen
+		self.ch.post_solve = self.handle_collision
 		self.viewpointObject = None
 		self.player = None
 		self.zoom = 1 # the actual applied zoom number.
@@ -608,7 +609,21 @@ class World():
 	# 		end = (int(ellipse_lines[n][0]), int(ellipse_lines[n][1]))
 	# 		pygame.draw.lines(self.screen, (255,255,200), True, (start,end))
 
+	def handle_collision(self, arbiter, space, data):
+		for c in arbiter.contact_point_set.points:
+			r = max( 3, abs(c.distance*5) )
+			r = int(r)
+			p = tuple(map(int, c.point_a))
+			# pygame.draw.circle(data["surface"], THECOLORS["red"], p, r, 0)
+			self.drawCircle((255,255,255), self.transformForView(p), 100)
+			print( self.transformForView(p))
 
+		shapes = arbiter._get_shapes()
+		for shape in shapes:
+			# print(shape)
+			body = shape._get_body()
+			print (body)
+    
 
 	def drawAPOrbit(self, orbit, color):
 
