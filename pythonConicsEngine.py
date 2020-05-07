@@ -193,6 +193,8 @@ class Actor():
 		}
 		self.orbiting = None
 		self.stepsToFreefall = 5
+		self.decompVelocity = 500000
+		# self.prevVelocity = [velocity[0], velocity[1]]
 
 	def leaveFreefall(self):
 		self.stepsToFreefall = 10
@@ -316,7 +318,7 @@ class World():
 		self.gravitationalConstant = 0.03
 		self.actors = []
 		self.attractors = []
-		self.resolution = (840,680)
+		self.resolution = (1280,780)
 		self.screen = pygame.display.set_mode(self.resolution)
 		self.draw_options = pymunk.pygame_util.DrawOptions(self.screen)
 		self.ch = self.space.add_collision_handler(0, 0)
@@ -406,7 +408,9 @@ class World():
 			# remove the actor from the space.
 			self.space.remove(actor.body)
 			self.space.remove(actor.shape)
-			self.actors.remove(actor)
+
+			if actor in self.actors:
+				self.actors.remove(actor)
 
 			# create a new actor, minus the module
 			for module in modules:
@@ -423,6 +427,9 @@ class World():
 
 	def physics(self):
 		for actor in self.actors:
+
+			# actor.prevVelocity = actor.body.velocity
+
 			actor.doResources()
 
 			# figure out which attractor you are orbiting
@@ -541,16 +548,35 @@ class World():
 			# print( self.transformForView(p))
 
 		shapes = arbiter._get_shapes()
-		for shape in shapes:
-			body = shape._get_body()
-			actor = self.getActorFromBody(body)
+		# for shape in shapes:
+		bodyA = shapes[0]._get_body()
+		actorA = self.getActorFromBody(bodyA)
 
-			# get difference in velocity
+		bodyB = shapes[0]._get_body()
+		actorB = self.getActorFromBody(bodyB)
 
-			if actor is not None:
-				actor.leaveFreefall()
-				self.decomposeActor(actor, actor.modules)
-    
+		# get difference in velocity
+		# deltaV = actorA.prevVelocity - actorB.prevVelocity
+		# print deltaV
+		ke = arbiter._get_total_ke()
+		ke_A = ke / actorA.mass
+		ke_B = ke / actorB.mass
+
+		# print(ke_A)
+
+		actorA.leaveFreefall()
+		actorB.leaveFreefall()
+
+		if ke_A > actorA.decompVelocity:
+			self.decomposeActor(actorA, actorA.modules)
+		if ke_B > actorB.decompVelocity:
+			self.decomposeActor(actorB, actorB.modules)
+
+
+			# print(deltaV)
+			# if deltaV > actor.decompVelocity:
+			# 	self.decomposeActor(actor, actor.modules)
+
 	def _getPlayer(self):
 		for actor in self.actors:
 			if actor.isPlayer:
