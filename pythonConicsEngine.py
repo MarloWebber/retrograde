@@ -149,28 +149,27 @@ class Module():
 				point[0] += self.offset[0]
 				point[1] += self.offset[1]
 
+
+dinghy = [Module('generator',[0,0]), Module('engine',[0,8]), Module('RCS',[0,-10]) ]
+lothar = [Module('generator',[0,0]), Module('engine',[-13,8]), Module('engine',[13,8]), Module('RCS',[0,-10]) ]
+
+
 class Actor():
-	def __init__(self, shipType, position, velocity):
+	def __init__(self, name, modulesList, position, velocity, isPlayer=False):
 		self.type = 'actor'
-		self.name = shipType # the individual name of the craft. Set to shipType for now.
+		self.name = name #str(random.randint(0,1000)) # the individual name of the craft. Set to shipType for now.
 		self.modules = []
 
-		if shipType == 'dinghy':
-			self.modules.append(Module('generator',[0,0]))
-			self.modules.append(Module('engine',[0,8]))
-			self.modules.append(Module('RCS',[0,-10]))
-
-		elif shipType == 'lothar':
-			self.modules.append(Module('generator',[0,0]))
-			self.modules.append(Module('engine',[-13,8]))
-			self.modules.append(Module('engine',[13,8]))
-			self.modules.append(Module('RCS',[0,-10]))
+		for module in modulesList:
+			self.modules.append(module)
 
 		self.mass = 0
 		self.points = []
 		self.availableResources = {}
 		self.storagePool = {}
 		self.maximumStores = {}
+
+		self.isPlayer = isPlayer
 
 		for module in self.modules:
 			self.mass += module.mass
@@ -207,8 +206,10 @@ class Actor():
 	# 	self.orbit = func_initpos_to_orbit()
 	# 	self.freefalling = True
 
-	# def leaveFreefall(self):
-	# 	self.freefalling = False
+	def leaveFreefall(self):
+		self.stepsToFreefall = 10
+		self.freefalling = False
+		self.orbit = None
 		
 	def doResources(self):
 		# - tally the amount of stored resources. first, zero everything out
@@ -409,6 +410,33 @@ class World():
 		elif thing.type == 'attractor':
 			self.attractors.append(thing)
 
+		self.player = self._getPlayer()
+		self.viewpointObject = self.player
+
+	def decomposeActor(self, actor, modules):
+
+		if len(actor.modules) == 1:
+			return # the actor is already fully decomposed, destroy it if you want
+		else:
+			# remove the actor from the space.
+			self.space.remove(actor.body)
+			self.space.remove(actor.shape)
+			self.actors.remove(actor)
+
+			# create a new actor, minus the module
+			for module in modules:
+				actor.modules.remove(module)
+
+				# create the module on it's own as a new actor
+				fragmentPosition = [actor.body.position[0] + (module.offset[0] * math.cos(actor.body.angle)), actor.body.position[1] +  (module.offset[1] * math.sin(actor.body.angle))]
+				self.add(Actor(actor.name + ' fragment', [module], fragmentPosition, actor.body.velocity, False))
+
+			if not actor.modules:
+				pass
+			else:
+				self.add( Actor(actor.name, actor.modules, actor.body.position, actor.body.velocity, actor.isPlayer ) ) # add the remaining parts of the original actor back into the space
+
+
 	def physics(self):
 		for actor in self.actors:
 			actor.doResources()
@@ -427,9 +455,7 @@ class World():
 				
 			# figure out if the actor is freefalling by seeing if any engines or collisions have moved it.
 			if actor.doModuleEffects(actor.keyStates, self.timestepSize):
-				actor.stepsToFreefall = 10
-				actor.freefalling = False
-				actor.orbit = None
+				actor.leaveFreefall()
 
 			# if it is freefalling, move it along the orbital track.
 			if actor.freefalling and actor.orbit is not None:
@@ -609,21 +635,37 @@ class World():
 	# 		end = (int(ellipse_lines[n][0]), int(ellipse_lines[n][1]))
 	# 		pygame.draw.lines(self.screen, (255,255,200), True, (start,end))
 
+	def getActorFromBody(self, body):
+		for actor in self.actors:
+			if body is actor.body:
+				return actor
+		return None
+
 	def handle_collision(self, arbiter, space, data):
-		for c in arbiter.contact_point_set.points:
-			r = max( 3, abs(c.distance*5) )
-			r = int(r)
-			p = tuple(map(int, c.point_a))
+		# for c in arbiter.contact_point_set.points:
+		# 	r = max( 3, abs(c.distance*5) )
+		# 	r = int(r)
+		# 	p = tuple(map(int, c.point_a))
 			# pygame.draw.circle(data["surface"], THECOLORS["red"], p, r, 0)
-			self.drawCircle((255,255,255), self.transformForView(p), 100)
-			print( self.transformForView(p))
+			# self.drawCircle((255,255,255), self.transformForView(p), 100) # this doesn't even work, i don't know why
+			# print( self.transformForView(p))
 
 		shapes = arbiter._get_shapes()
 		for shape in shapes:
-			# print(shape)
 			body = shape._get_body()
-			print (body)
+			actor = self.getActorFromBody(body)
+
+			# get difference in velocity
+
+			if actor is not None:
+				actor.leaveFreefall()
+				self.decomposeActor(actor, actor.modules)
     
+	def _getPlayer(self):
+		for actor in self.actors:
+			if actor.isPlayer:
+				return actor
+
 
 	def drawAPOrbit(self, orbit, color):
 
@@ -752,23 +794,23 @@ class World():
 		pygame.display.set_caption("fps: " + str(self.clock.get_fps()))
 
 	def step(self):
+		self.player = self._getPlayer()
 		self.inputs()
 		self.physics()
 		self.graphics()
 
 	def start(self):
 
-		newPlanet = Attractor('earth', [1,1], self.gravitationalConstant)
-		twoPlanet = Attractor('moon',[-500000,-500000], self.gravitationalConstant)
-		newButt = Actor('lothar',(10, -322100), [300000,0])
-		twoButt = Actor('lothar',(1, -322130), [300000,0])
-		self.add(newButt)
-		self.add(twoButt)
-		self.player = self.actors[0]
-		self.viewpointObject = self.actors[0]
-		self.add(newPlanet)
-		self.add(twoPlanet)
+		planet_erf = Attractor('earth', [1,1], self.gravitationalConstant)
+		planet_moon = Attractor('moon',[-500000,-500000], self.gravitationalConstant)
+		self.add(planet_erf)
+		self.add(planet_moon)
 
+		dinghy_instance = Actor('player Lothar', lothar,(10, -322100), [300000,0], True)
+		lothar_instance = Actor('NPC lothar', lothar,(1, -322160), [300000,0])
+		self.add(dinghy_instance)
+		self.add(lothar_instance)
+		
 		# self.calibrationOrbit = Orbit.fromStateVector(numpy.array([self.actors[0].body.position[0],self.actors[0].body.position[1],1]), numpy.array([self.actors[0].body.velocity[0],self.actors[0].body.velocity[1],1]), self.attractors[0].APBody, Time('2000-01-01 00:00:00'), "calibration orbit")
 				
 
