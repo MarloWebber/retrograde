@@ -749,7 +749,7 @@ class World():
 		self.add(planet_erf)
 		self.add(planet_moon)
 
-		dinghy_instance = Actor('player Lothar', lothar,(1000000, -1080300), [0,0], True)
+		dinghy_instance = Actor('player Lothar', lothar,(1000000, -1080100), [0,0], True)
 		lothar_instance = Actor('NPC lothar', lothar,(-1000000, -1121600), [0,0])
 		self.add(dinghy_instance)
 		self.add(lothar_instance)
