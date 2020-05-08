@@ -341,6 +341,14 @@ class Attractor():
 		# create astropynamics orbit-able body
 		self.APBody = APBody(self.planetName, self.mass * gravitationalConstant * 0.163, self.radius)
 
+class buildMenuItem():
+	# a buildMenuItem is literally the tiles in the build menu you can click and drag to add modules to your ship.
+	def __init__(self, module, boundingRectangle=((0,0),(1,1))):
+		self.module = module
+		self.quantity = 1
+		self.boundingRectangle = boundingRectangle
+
+
 class World():
 	def __init__(self):
 		pygame.init()
@@ -387,6 +395,12 @@ class World():
 		rotatedForce = Vec2d(force[0], force[1])
 		rotatedForce = rotatedForce.rotated(-actor.body.angle)
 		actor.body.apply_impulse_at_local_point(rotatedForce, [0,0])
+
+	def getModuleFromCursorPosition(self, cursorPosition):
+		for listItem in self.availableModuleListItems:
+			if listItem.boundingRectangle.collidepoint(cursorPosition):
+				self.availableModuleListItems.remove(listItem)
+				return listItem.module
 
 	def inputs(self):
 		for event in pygame.event.get():
@@ -447,7 +461,7 @@ class World():
 				# 5 - scroll down
 				if self.buildMenu:
 					if event.button == 1:
-						self.buildDraggingModule = self.player.modules[0] #self.getModuleFromCursorPosition(pygame.mouse.get_pos())
+						self.buildDraggingModule = self.getModuleFromCursorPosition(pygame.mouse.get_pos())
 			elif event.type == pygame.MOUSEBUTTONUP:
 				if self.buildMenu:
 					if event.button == 1:
@@ -554,11 +568,21 @@ class World():
 		return Rotate2D(points,(0,0),angle)
 
 	def transformForBuild(self, position):
+		# map a position in the game world, where 0,0 is in a corner and numbers are very large, onto pixels on the screen with 0,0 in the middle. Handles zooming and offsetting. This one is for what you see in the build menu.
 		transformedPosition = [0,0] #* self.zoom  # shrink or expand everything around the 0,0 point
 		transformedPosition[0] = position[0] * self.zoom
 		transformedPosition[1] = position[1] * self.zoom
 		transformedPosition[0] += 0.5 * self.resolution[0] # add half the width of the screen, to get to the middle. 0,0 is naturally on the corner.
 		transformedPosition[1] += 0.5 * self.resolution[1] # add half the height.
+		return transformedPosition
+
+	def antiTransformForBuild(self, position):
+		# performs the inverse operation to transformForBuild, used to map the mouse cursor to coordinates in the game world.
+		transformedPosition = [0,0] #* self.zoom  # shrink or expand everything around the 0,0 point
+		transformedPosition[0] = position[0] / self.zoom
+		transformedPosition[1] = position[1] / self.zoom
+		transformedPosition[0] -= 0.5 * self.resolution[0] # add half the width of the screen, to get to the middle. 0,0 is naturally on the corner.
+		transformedPosition[1] -= 0.5 * self.resolution[1] # add half the height.
 		return transformedPosition
 
 	def transformForView(self, position):
@@ -574,25 +598,23 @@ class World():
 	def drawCircle(self,color, position, radius):
 		pygame.draw.circle(self.screen, color, [int(position[0]), int(position[1])], int((radius * self.zoom)))
 
-	def drawModuleForList(self, module, position, iconSize):
+	def drawModuleForList(self, module, index):
 		# rotatedPoints = rotate_polygon(module.points, module.angle)  # orient the polygon according to the body's current direction in space.
 		# rotatedPoints = rotate_polygon(rotatedPoints,module.angle, -module.offset)  # orient the polygon according to the body's current direction in space.
 
-		individualZoom = 1 #iconSize / module.radius
-
-		print(position)
+		iconSize = 50
 
 		transformedPoints = []
 		for point in module.points:
 			transformedPoint = [0,0]
-			transformedPoint[0] = (point[0] * individualZoom ) + position[0]
-			transformedPoint[1] = (point[1] * individualZoom ) + position[1]
+			transformedPoint[0] = (point[0] ) 
+			transformedPoint[1] = (point[1] ) 
 			transformedPoints.append(transformedPoint) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
+
 		try:
-			pygame.draw.lines(self.screen, module.color, True, transformedPoints)
+			return pygame.draw.lines(self.screen, module.color, True, transformedPoints) # return the bounding rectangle
 		except:
-			print('drawModuleForBuild error')
-			print(transformedPoints)
+			print('drawModuleForList error')
 
 	def drawModuleForDrag(self, module, position):
 		rotatedPoints = rotate_polygon(module.points, module.angle)  # orient the polygon according to the body's current direction in space.
@@ -749,14 +771,14 @@ class World():
 			if i > 0:
 				pygame.draw.lines(self.screen, color, True, (points[i-1], points[i]))
 
-	def drawModuleListItem(self, module, index):
-		moduleListSpacing = 50
-		position = [moduleListSpacing,(index * moduleListSpacing) + 2 * module.radius]
-
-		self.drawModuleForList( module, position, moduleListSpacing)
-
-		textsurface = self.font.render(module.moduleType, False, (0,0,0))
-		self.screen.blit(textsurface,(module.radius + moduleListSpacing,index * moduleListSpacing))
+	def drawModuleListItem(self, listItem, index):
+		# draw one of the modules in the list in the build menu.
+		
+		
+		listItem.boundingRectangle = self.drawModuleForList( listItem.module, index) # returns a rectangle enclosing the icon. This is used as a clickable area for the mouse.
+		
+		textsurface = self.font.render(listItem.module.moduleType, False, (0,0,0))
+		self.screen.blit(textsurface,(listItem.module.radius ,index))
 
 	def drawHUDListItem(self,string, quantity, index):
 		listItemSpacing = 15
@@ -833,8 +855,14 @@ class World():
 
 	def loadShipIntoBuildMenu(self, actor):
 		self.modulesInUse = []
+		self.availableModuleListItems = []
 		for module in actor.modules:
 			self.modulesInUse.append(module)
+
+		for module in self.availableModules:
+			self.availableModuleListItems.append(buildMenuItem(module))
+
+
 
 	def buildMenuGraphics(self):
 		self.screen.fill((200,200,200))
@@ -845,8 +873,8 @@ class World():
 
 		# draw the inventory list up the left hand side
 		i = 0
-		for module in self.availableModules:
-			self.drawModuleListItem(module, i)
+		for listItem in self.availableModuleListItems:
+			self.drawModuleListItem(listItem, i)
 			i += 1
 
 		# draw the module item the player is dragging, if applicable
