@@ -427,6 +427,8 @@ class World():
 				else:
 					self.buildMenu = True
 					self.paused = True
+
+					self.loadShipIntoBuildMenu(self.player)
         
 	def add(self, thing):  
 		self.space.add(thing.body, thing.shape)
@@ -530,6 +532,12 @@ class World():
 	def rotatePolygon(self, points, angle):
 		return Rotate2D(points,(0,0),angle)
 
+	def transformForBuild(self, position):
+		transformedPosition = position * self.zoom  # shrink or expand everything around the 0,0 point
+		transformedPosition[0] += 0.5 * self.resolution[0] # add half the width of the screen, to get to the middle. 0,0 is naturally on the corner.
+		transformedPosition[1] += 0.5 * self.resolution[1] # add half the height.
+		return transformedPosition
+
 	def transformForView(self, position):
 		if self.viewpointObject == None:
 			return position
@@ -543,8 +551,16 @@ class World():
 	def drawCircle(self,color, position, radius):
 		pygame.draw.circle(self.screen, color, [int(position[0]), int(position[1])], int((radius * self.zoom)))
 
-	def drawModuleForBuild():
-		pass
+	def drawModuleForBuild(self, module):
+		rotatedPoints = rotate_polygon(module.points, module.angle, (-module.offset[0], -module.offset[1]))  # orient the polygon according to the body's current direction in space.
+		# rotatedPoints = rotate_polygon(rotatedPoints,module.angle, -module.offset)  # orient the polygon according to the body's current direction in space.
+		transformedPoints = []
+		for rotatedPoint in rotatedPoints:
+			transformedPoints.append(self.transformForBuild(rotatedPoint + module.offset)) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
+		try:
+			pygame.draw.lines(self.screen, module.color, True, transformedPoints)
+		except:
+			pass
 
 	def drawModuleEffects(self, module, actor):
 		# put a circle in the middle if it is enabled, and a smaller red circle in the middle of that, if it is activated.
@@ -730,7 +746,7 @@ class World():
 		i = self.drawHUDListItem('freefalling: ', self.viewpointObject.freefalling, i)
 		i = self.drawHUDListItem('landed: ', self.viewpointObject.exemptFromGravity, i)
 		if self.player.orbiting is not None:
-			i = self.drawHUDListItem('orbiting: ', self.viewpointObject.orbiting.planetName, i)
+			i = self.drawHUDListItem('attractor: ', self.viewpointObject.orbiting.planetName, i)
 			if self.player.orbit is not None:
 				i = self.drawHUDListItem('orbit valid', None, i)
 			else:
@@ -740,6 +756,7 @@ class World():
 		i = self.drawHUDListItem('player: ', self.viewpointObject.isPlayer, i)
 		i = self.drawHUDListItem('warp: ', self.timestepSize * 3 * 100, i)
 		i = self.drawHUDListItem('zoom: ', self.zoom, i)
+		i = self.drawHUDListItem('paused: ', self.paused, i)
 		
 
 		# print the navcircle
@@ -767,10 +784,15 @@ class World():
 		end = ((navcircleInnerRadius) * math.cos(angle)+ (self.resolution[0]*0.5), (navcircleInnerRadius) * math.sin(angle)+ (self.resolution[1]*0.5))
 		pygame.draw.lines(self.screen, (200,0,10), True, (start,end))
 
+		# draw the actor's orbits
+		for actor in self.actors:
+			if actor.orbit is not None:
+				self.drawAPOrbit(actor.orbit, actor.orbiting, (100,100,100))
 
-	def loadShipIntoBuildMenu():
+
+	def loadShipIntoBuildMenu(self, actor):
 		self.modulesInUse = []
-		for module in self.player.modules:
+		for module in actor.modules:
 			self.modulesInUse.append(module)
 
 
@@ -779,8 +801,8 @@ class World():
 		self.screen.fill(THECOLORS["white"])
 
 		# draw the modules the player has dragged onto the screen
-		for module in modulesInUse:
-			drawModule()
+		for module in self.modulesInUse:
+			self.drawModuleForBuild(module)
 
 		# draw the inventory list up the left hand side
 
@@ -801,11 +823,12 @@ class World():
 				self.drawActor(attractor.atmosphere)
 			self.drawActor(attractor)
 		for actor in self.actors:
-			if actor.orbit is not None:
-				self.drawAPOrbit(actor.orbit, actor.orbiting, (100,100,100))
+			# if actor.orbit is not None:
+			# 	self.drawAPOrbit(actor.orbit, actor.orbiting, (100,100,100))
 			self.drawActor(actor)
 
-		self.drawHUD()
+		if self.showHUD:
+			self.drawHUD()
 
 		pygame.display.flip()
 		self.clock.tick(150)
