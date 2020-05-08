@@ -465,7 +465,9 @@ class World():
 			elif event.type == pygame.MOUSEBUTTONUP:
 				if self.buildMenu:
 					if event.button == 1:
+						self.dropModuleIntoBuildArea(self.buildDraggingModule, pygame.mouse.get_pos())
 						self.buildDraggingModule = None
+						
         
 	def add(self, thing):  
 		self.space.add(thing.body, thing.shape)
@@ -862,6 +864,10 @@ class World():
 		for module in self.availableModules:
 			self.availableModuleListItems.append(buildMenuItem(module))
 
+
+	def dropModuleIntoBuildArea(self, module, position):
+		module.offset = self.antiTransformForBuild(position)
+		self.modulesInUse.append(module)
 
 
 	def buildMenuGraphics(self):
