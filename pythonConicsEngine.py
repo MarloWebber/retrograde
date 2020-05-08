@@ -169,7 +169,6 @@ boldang = [Module('spar 10',[0,-100], (0.5* math.pi)), Module('box 10',[0,0])]
 
 class Actor():
 	def __init__(self, name, modulesList, position, velocity, isPlayer=False):
-		self.type = 'actor'
 		self.name = name #str(random.randint(0,1000)) # the individual name of the craft. Set to shipType for now.
 		self.modules = []
 
@@ -305,7 +304,6 @@ class Actor():
 
 class Attractor():
 	def __init__(self, planetType, position, gravitationalConstant):
-		self.type = 'attractor' # actor or attractor type. this is very stupid and should be designed out
 		self.planetName = planetType # just set the planetName to something easy for now. # the name of the individual instance of this planet type.
 		
 		if planetType == 'earth':
@@ -363,6 +361,10 @@ class World():
 		self.showHUD = False
 		self.paused = True
 
+		self.buildMenu = False				# used to toggle between the game and the build screen
+		self.buildableModules = []			# a list of potentially useable modules that the player has in 'inventory'
+		self.currentlyBuildingModules = []  # a list of modules that the player has dragged onto the screen to make a ship
+
 	def gravityForce(self, actorPosition, attractorPosition, attractorMass):
 		distance = attractorPosition - actorPosition # scalar distance between two bodies
 		magnitude = mag(distance)
@@ -419,12 +421,19 @@ class World():
 				self.showHUD = not self.showHUD
 			elif event.type == KEYDOWN and event.key == K_p:
 				self.paused = not self.paused
+			elif event.type == KEYDOWN and event.key == K_b:
+				if self.buildMenu:
+					self.buildMenu = False
+					self.paused = False
+				else:
+					self.buildMenu = True
+					self.paused = True
         
 	def add(self, thing):  
 		self.space.add(thing.body, thing.shape)
-		if thing.type == 'actor':
+		if thing.__class__ == Actor:
 			self.actors.append(thing)
-		elif thing.type == 'attractor':
+		elif thing.__class__ == Attractor:
 			self.attractors.append(thing)
 
 		self.player = self._getPlayer()
@@ -535,15 +544,7 @@ class World():
 	def drawCircle(self,color, position, radius):
 		pygame.draw.circle(self.screen, color, [int(position[0]), int(position[1])], int((radius * self.zoom)))
 
-	def drawActor(self, actor):
-		rotatedPoints = rotate_polygon(actor.points,actor.body.angle)  # orient the polygon according to the body's current direction in space.
-		transformedPoints = []
-		for rotatedPoint in rotatedPoints:
-			transformedPoints.append(self.transformForView(rotatedPoint + actor.body.position)) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
-		try:
-			pygame.draw.lines(self.screen, actor.color, True, transformedPoints)
-		except:
-			pass
+
 
 	def drawModule(self, actor, module):
 		# draw the outline of the module.
@@ -579,6 +580,21 @@ class World():
 						ananas = (int(activeCircle[0] + force[0] * self.zoom), int(activeCircle[1]+force[1] * self.zoom ) )
 						# print ananas
 						pygame.draw.lines(self.screen, (255,255,200), True, [activeCircle,ananas])
+
+	def drawActor(self, actor):
+
+		if actor.__class__ is Actor:
+			for module in actor.modules:
+					self.drawModule(actor, module)
+		
+		rotatedPoints = rotate_polygon(actor.points,actor.body.angle)  # orient the polygon according to the body's current direction in space.
+		transformedPoints = []
+		for rotatedPoint in rotatedPoints:
+			transformedPoints.append(self.transformForView(rotatedPoint + actor.body.position)) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
+		try:
+			pygame.draw.lines(self.screen, actor.color, True, transformedPoints)
+		except:
+			pass
 
 
 	def getActorFromBody(self, body):
@@ -771,6 +787,20 @@ class World():
 		# 	pygame.draw.lines(self.screen, (200,0,10), True, (self.transformForView(prev_trajectory_point),self.transformForView(trajectory_point_position)))
 
 
+	def buildMenuGraphics(self):
+		self.screen.fill(THECOLORS["white"])
+
+		# draw the modules the player has dragged onto the screen
+
+
+		# draw the inventory list up the left hand side
+
+
+		pygame.display.flip()
+		self.clock.tick(150)
+		pygame.display.set_caption("fps: " + str(self.clock.get_fps()))
+
+
 	def graphics(self):
 		### Clear screen
 		self.screen.fill(THECOLORS["black"])
@@ -787,8 +817,6 @@ class World():
 		for actor in self.actors:
 			if actor.orbit is not None:
 				self.drawAPOrbit(actor.orbit, actor.orbiting, (100,100,100))
-			for module in actor.modules:
-				self.drawModule(actor, module)
 			self.drawActor(actor)
 
 		# self.drawAPOrbit(self.calibrationOrbit, (100,100,100))
@@ -801,11 +829,14 @@ class World():
 		pygame.display.set_caption("fps: " + str(self.clock.get_fps()))
 
 	def step(self):
-		self.player = self._getPlayer()
-		self.inputs()
-		if not self.paused:
-			self.physics()
-		self.graphics()
+		if not self.buildMenu:
+			self.player = self._getPlayer()
+			self.inputs()
+			if not self.paused:
+				self.physics()
+			self.graphics()
+		else:
+			self.buildMenuGraphics()
 
 	def start(self):
 
