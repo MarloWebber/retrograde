@@ -364,7 +364,7 @@ class World():
 		self.pan = [0,0]
 		self.rotate = 0
 		self.timestepSize = 0.2/60.0 #1.0/60.0
-		pygame.key.set_repeat(50,50) # holding a key down repeats the instruction. https://www.pygame.org/docs/ref/key.html
+		# pygame.key.set_repeat(50,50) # holding a key down repeats the instruction. https://www.pygame.org/docs/ref/key.html
 		self.font = pygame.font.SysFont('dejavusans', 12)
 		self.showHUD = False
 		self.paused = True
@@ -372,6 +372,7 @@ class World():
 		self.buildMenu = False				# used to toggle between the game and the build screen
 		self.availableModules = []			# a list of potentially useable modules that the player has in 'inventory'
 		self.modulesInUse = []  # a list of modules that the player has dragged onto the screen to make a ship
+		self.buildDraggingModule = None
 
 	def gravityForce(self, actorPosition, attractorPosition, attractorMass):
 		distance = attractorPosition - actorPosition # scalar distance between two bodies
@@ -437,6 +438,20 @@ class World():
 					self.paused = True
 
 					self.loadShipIntoBuildMenu(self.player)
+			elif event.type == pygame.MOUSEBUTTONDOWN:
+				# event.button can equal several integer values:
+				# 1 - left click
+				# 2 - middle click
+				# 3 - right click
+				# 4 - scroll up
+				# 5 - scroll down
+				if self.buildMenu:
+					if event.button == 1:
+						self.buildDraggingModule = self.player.modules[0] #self.getModuleFromCursorPosition(pygame.mouse.get_pos())
+			elif event.type == pygame.MOUSEBUTTONUP:
+				if self.buildMenu:
+					if event.button == 1:
+						self.buildDraggingModule = None
         
 	def add(self, thing):  
 		self.space.add(thing.body, thing.shape)
@@ -573,6 +588,20 @@ class World():
 			transformedPoint[0] = (point[0] * individualZoom ) + position[0]
 			transformedPoint[1] = (point[1] * individualZoom ) + position[1]
 			transformedPoints.append(transformedPoint) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
+		try:
+			pygame.draw.lines(self.screen, module.color, True, transformedPoints)
+		except:
+			print('drawModuleForBuild error')
+			print(transformedPoints)
+
+	def drawModuleForDrag(self, module, position):
+		rotatedPoints = rotate_polygon(module.points, module.angle)  # orient the polygon according to the body's current direction in space.
+		# rotatedPoints = rotate_polygon(rotatedPoints,module.angle, -module.offset)  # orient the polygon according to the body's current direction in space.
+		transformedPoints = []
+		for rotatedPoint in rotatedPoints:
+			rotatedPoint[0] = (rotatedPoint[0] * self.zoom ) + position[0]
+			rotatedPoint[1] = (rotatedPoint[1] * self.zoom ) + position[1]
+			transformedPoints.append(rotatedPoint) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
 		try:
 			pygame.draw.lines(self.screen, module.color, True, transformedPoints)
 		except:
@@ -810,7 +839,7 @@ class World():
 	def buildMenuGraphics(self):
 		self.screen.fill((200,200,200))
 
-		# draw the modules the player has dragged onto the screen
+		# draw the modules the player has assembled 
 		for module in self.modulesInUse:
 			self.drawModuleForBuild(module)
 
@@ -819,6 +848,12 @@ class World():
 		for module in self.availableModules:
 			self.drawModuleListItem(module, i)
 			i += 1
+
+		# draw the module item the player is dragging, if applicable
+		# #self.getModuleFromCursorPosition(pygame.mouse.get_pos())
+		if self.buildDraggingModule is not None:
+			self.drawModuleForDrag(self.buildDraggingModule, pygame.mouse.get_pos())
+
 		pygame.display.flip()
 		self.clock.tick(150)
 		pygame.display.set_caption("fps: " + str(self.clock.get_fps()))
