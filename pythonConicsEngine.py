@@ -217,13 +217,13 @@ class Actor():
 			'right': False
 		}
 		self.orbiting = None
-		self.stepsToFreefall = 3
+		self.stepsToFreefall = 1
 		self.decompEnergy = 500000
 		self.desiredAngle = 0
 		self.exemptFromGravity = False
 
-	def leaveFreefall(self):
-		self.stepsToFreefall = 3
+	def leaveFreefall(self, stepsToFreefall=1):
+		self.stepsToFreefall = stepsToFreefall
 		self.freefalling = False
 		self.orbit = None
 		
@@ -357,13 +357,13 @@ class World():
 		self.rotate = 0
 		self.timestepSize = 0.2/60.0 #1.0/60.0
 		pygame.key.set_repeat(50,50) # holding a key down repeats the instruction. https://www.pygame.org/docs/ref/key.html
-		self.font = pygame.font.SysFont('dejavusans', 15)
+		self.font = pygame.font.SysFont('dejavusans', 12)
 		self.showHUD = False
 		self.paused = True
 
 		self.buildMenu = False				# used to toggle between the game and the build screen
-		self.buildableModules = []			# a list of potentially useable modules that the player has in 'inventory'
-		self.currentlyBuildingModules = []  # a list of modules that the player has dragged onto the screen to make a ship
+		self.availableModules = []			# a list of potentially useable modules that the player has in 'inventory'
+		self.modulesInUse = []  # a list of modules that the player has dragged onto the screen to make a ship
 
 	def gravityForce(self, actorPosition, attractorPosition, attractorMass):
 		distance = attractorPosition - actorPosition # scalar distance between two bodies
@@ -424,7 +424,6 @@ class World():
 			elif event.type == KEYDOWN and event.key == K_b:
 				if self.buildMenu:
 					self.buildMenu = False
-					self.paused = False
 				else:
 					self.buildMenu = True
 					self.paused = True
@@ -488,12 +487,12 @@ class World():
 
 			# when you enter a new sphere of ifluence, regenerate the orbit information
 			if strongestAttractor is not actor.orbiting or actor.orbiting is None:
-				actor.leaveFreefall()
+				actor.leaveFreefall(0)
 				actor.orbiting = strongestAttractor
 				
 			# figure out if the actor is freefalling by seeing if any engines or collisions have moved it.
 			if actor.doModuleEffects(actor.keyStates, self.timestepSize):
-				actor.leaveFreefall()
+				actor.leaveFreefall(0)
 
 			# if it is freefalling, move it along the orbital track.
 			if actor.freefalling and actor.orbit is not None:
@@ -544,22 +543,10 @@ class World():
 	def drawCircle(self,color, position, radius):
 		pygame.draw.circle(self.screen, color, [int(position[0]), int(position[1])], int((radius * self.zoom)))
 
+	def drawModuleForBuild():
+		pass
 
-
-	def drawModule(self, actor, module):
-		# draw the outline of the module.
-		
-		
-		rotatedPoints = rotate_polygon(module.points,actor.body.angle, (-module.offset[0], -module.offset[1]))  # orient the polygon according to the body's current direction in space.
-		rotatedPoints = rotate_polygon(rotatedPoints,module.angle, actor.body.position+ module.offset)  # orient the polygon according to the body's current direction in space.
-		transformedPoints = []
-		for rotatedPoint in rotatedPoints:
-			transformedPoints.append(self.transformForView(rotatedPoint + actor.body.position + module.offset)) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
-		try:
-			pygame.draw.lines(self.screen, module.color, True, transformedPoints)
-		except:
-			pass
-
+	def drawModuleEffects(self, module, actor):
 		# put a circle in the middle if it is enabled, and a smaller red circle in the middle of that, if it is activated.
 		if module.enabled:
 			activeCircle = self.transformForView(module.offset + actor.body.position)
@@ -581,20 +568,40 @@ class World():
 						# print ananas
 						pygame.draw.lines(self.screen, (255,255,200), True, [activeCircle,ananas])
 
+
+
+	def drawModule(self, actor, module):
+		# draw the outline of the module.
+		
+		
+		rotatedPoints = rotate_polygon(module.points,actor.body.angle + module.angle, (-module.offset[0], -module.offset[1]))  # orient the polygon according to the body's current direction in space.
+		# rotatedPoints = rotate_polygon(rotatedPoints,module.angle, -module.offset)  # orient the polygon according to the body's current direction in space.
+		transformedPoints = []
+		for rotatedPoint in rotatedPoints:
+			transformedPoints.append(self.transformForView(rotatedPoint + actor.body.position + module.offset)) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
+		try:
+			pygame.draw.lines(self.screen, module.color, True, transformedPoints)
+		except:
+			pass
+
+		self.drawModuleEffects(module, actor)
+
+		
 	def drawActor(self, actor):
 
 		if actor.__class__ is Actor:
 			for module in actor.modules:
 					self.drawModule(actor, module)
 		
-		rotatedPoints = rotate_polygon(actor.points,actor.body.angle)  # orient the polygon according to the body's current direction in space.
-		transformedPoints = []
-		for rotatedPoint in rotatedPoints:
-			transformedPoints.append(self.transformForView(rotatedPoint + actor.body.position)) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
-		try:
-			pygame.draw.lines(self.screen, actor.color, True, transformedPoints)
-		except:
-			pass
+		if actor.__class__ is Attractor or actor.__class__ is Atmosphere: 
+			rotatedPoints = rotate_polygon(actor.points,actor.body.angle)  # orient the polygon according to the body's current direction in space.
+			transformedPoints = []
+			for rotatedPoint in rotatedPoints:
+				transformedPoints.append(self.transformForView(rotatedPoint + actor.body.position)) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
+			try:
+				pygame.draw.lines(self.screen, actor.color, True, transformedPoints)
+			except:
+				pass
 
 
 	def getActorFromBody(self, body):
@@ -627,7 +634,7 @@ class World():
 		else:
 			# figure out the energy applied to each vessel, so you can tell how destructive it is.
 			ke_A = ke / actorA.mass
-			actorA.leaveFreefall()
+			actorA.leaveFreefall(1)
 
 			# if the energy is more than the actor can take, explode the actor.
 			if ke_A > actorA.decompEnergy:
@@ -637,7 +644,7 @@ class World():
 			attractorCollision = True
 		else:
 			ke_B = ke / actorB.mass
-			actorB.leaveFreefall()
+			actorB.leaveFreefall(1)
 			if ke_B > actorB.decompEnergy:
 				self.decomposeActor(actorB, actorB.modules)
 
@@ -690,60 +697,50 @@ class World():
 		# self.drawCircle((255,0,0),self.transformForView(chickybabe), 5000)
 
 
+	def drawHUDListItem(self,string, quantity, index):
+
+		listItemSpacing = 15
+		listXPosition = 30
+
+		if quantity is None:
+			textsurface = self.font.render(string, False, (255, 255, 255))
+		else:
+			textsurface = self.font.render(string + str(quantity), False, (255, 255, 255))
+
+		self.screen.blit(textsurface,(listXPosition,index * listItemSpacing))
+		return index + 1
+
 	def drawHUD(self):
 
-		# self.drawEllipse(self.player.orbit, self.attrplayer)
-
 		# show the player what resources are available
-		i = 0
+		i = 1
 		hudList = {}
-		for resource, quantity in list(self.player.availableResources.items()):
+		for resource, quantity in list(self.viewpointObject.availableResources.items()):
 			hudList[resource] = quantity
-		for resource, quantity in list(self.player.storagePool.items()):
+		for resource, quantity in list(self.viewpointObject.storagePool.items()):
 			if resource in hudList:
-				hudList[resource] += self.player.storagePool[resource]
+				hudList[resource] += self.viewpointObject.storagePool[resource]
 			else:
-				hudList[resource] = self.player.storagePool[resource]
+				hudList[resource] = self.viewpointObject.storagePool[resource]
 
 		for availableResource, availableQuantity in list(hudList.items()):
-			textsurface = self.font.render(str(availableResource) + ': ' + str(availableQuantity), False, (255, 255, 255))
-			self.screen.blit(textsurface,(30,i * 20))
-			i += 1
+			i = self.drawHUDListItem(str(availableResource) + ': ', availableQuantity, i)
+		i = self.drawHUDListItem('', None, i) # blank line as a separator
 
-		textsurface = self.font.render('warp: ' + str(self.timestepSize * 3 * 100), False, (255, 255, 255))
-		self.screen.blit(textsurface,(30,i * 20))
-		i += 1
-		textsurface = self.font.render('zoom: ' + str(self.zoom), False, (255, 255, 255))
-		self.screen.blit(textsurface,(30,i * 20))
-		i += 1
-		textsurface = self.font.render('time: ' + str(self.time), False, (255, 255, 255))
-		self.screen.blit(textsurface,(30,i * 20))
-		i += 1
-		textsurface = self.font.render('freefalling: ' + str(self.player.freefalling), False, (255, 255, 255))
-		self.screen.blit(textsurface,(30,i * 20))
-		i += 1
-		textsurface = self.font.render('gravity exempt: ' + str(self.player.exemptFromGravity), False, (255, 255, 255))
-		self.screen.blit(textsurface,(30,i * 20))
-		
-		
+		i = self.drawHUDListItem('freefalling: ', self.viewpointObject.freefalling, i)
+		i = self.drawHUDListItem('landed: ', self.viewpointObject.exemptFromGravity, i)
 		if self.player.orbiting is not None:
-			i += 1
-			textsurface = self.font.render('orbiting: ' + str(self.player.orbiting.planetName), False, (255, 255, 255))
-			self.screen.blit(textsurface,(30,i * 20))
-
+			i = self.drawHUDListItem('orbiting: ', self.viewpointObject.orbiting.planetName, i)
 			if self.player.orbit is not None:
-				i += 1
-				textsurface = self.font.render('orbit valid', False, (255, 255, 255))
-				self.screen.blit(textsurface,(30,i * 20))
+				i = self.drawHUDListItem('orbit valid', None, i)
 			else:
-				i += 1
-				textsurface = self.font.render('no orbit', False, (255, 255, 255))
-				self.screen.blit(textsurface,(30,i * 20))
+				i = self.drawHUDListItem('no orbit', None, i)
+		i = self.drawHUDListItem('', None, i) # blank line as a separator
 
-
-
-
-
+		i = self.drawHUDListItem('player: ', self.viewpointObject.isPlayer, i)
+		i = self.drawHUDListItem('warp: ', self.timestepSize * 3 * 100, i)
+		i = self.drawHUDListItem('zoom: ', self.zoom, i)
+		
 
 		# print the navcircle
 		n_navcircle_lines = 32
@@ -758,42 +755,35 @@ class World():
 			pygame.draw.lines(self.screen, (100,100,100), True, (start,end))
 
 		blipLength = (navcircleInnerRadius-navcircleLinesLength)
-		angle = self.player.body.angle - 0.5 * math.pi
+		angle = self.viewpointObject.body.angle - 0.5 * math.pi
 		start = ((blipLength * math.cos(angle)) + (self.resolution[0]*0.5) , (blipLength* math.sin(angle)) +( self.resolution[1] * 0.5) )
 		end = ((navcircleInnerRadius) * math.cos(angle)+ (self.resolution[0]*0.5), (navcircleInnerRadius) * math.sin(angle)+ (self.resolution[1]*0.5))
 		pygame.draw.lines(self.screen, (200,0,10), True, (start,end))
 
 
 		blipLength = (navcircleInnerRadius-navcircleLinesLength)
-		angle = self.player.desiredAngle
+		angle = self.viewpointObject.desiredAngle
 		start = ((blipLength * math.cos(angle)) + (self.resolution[0]*0.5) , (blipLength* math.sin(angle)) +( self.resolution[1] * 0.5) )
 		end = ((navcircleInnerRadius) * math.cos(angle)+ (self.resolution[0]*0.5), (navcircleInnerRadius) * math.sin(angle)+ (self.resolution[1]*0.5))
 		pygame.draw.lines(self.screen, (200,0,10), True, (start,end))
 
-		# draw the trajectory
-		# n_trajectory_points = 100
-		# trajectory_point_position = self.player.body.position
-		# trajectory_point_velocity = self.player.body.velocity
-		# prev_trajectory_point = trajectory_point_position
-		# for n in xrange(0,n_trajectory_points):
-		# 	sumGravity = [0,0]
-		# 	for attractor in self.attractors:
-		# 		sumGravity += self.gravityForce(self.player.body.position, attractor.body.position, attractor.body.mass) 
-		# 	prev_trajectory_point = trajectory_point_position
-		# 	trajectory_point_position += trajectory_point_velocity * self.timestepSize
-		# 	sumGravity[0] = sumGravity[0] * self.timestepSize
-		# 	sumGravity[1] = sumGravity[1] * self.timestepSize
-		# 	trajectory_point_velocity += sumGravity 
-		# 	pygame.draw.lines(self.screen, (200,0,10), True, (self.transformForView(prev_trajectory_point),self.transformForView(trajectory_point_position)))
+
+	def loadShipIntoBuildMenu():
+		self.modulesInUse = []
+		for module in self.player.modules:
+			self.modulesInUse.append(module)
+
 
 
 	def buildMenuGraphics(self):
 		self.screen.fill(THECOLORS["white"])
 
 		# draw the modules the player has dragged onto the screen
-
+		for module in modulesInUse:
+			drawModule()
 
 		# draw the inventory list up the left hand side
+
 
 
 		pygame.display.flip()
@@ -809,29 +799,22 @@ class World():
 		for attractor in self.attractors:
 			if attractor.atmosphere != None:
 				self.drawActor(attractor.atmosphere)
-
-				# atmosphere_pos = self.transformForView([-attractor.radius + attractor.body.position[0], -attractor.radius + attractor.body.position[1]])
-				# self.screen.blit(gradients.radial( (attractor.radius + attractor.atmosphere.height) * self.zoom  , (0,255,0,100), (100,0,50,255)), atmosphere_pos )
-
 			self.drawActor(attractor)
 		for actor in self.actors:
 			if actor.orbit is not None:
 				self.drawAPOrbit(actor.orbit, actor.orbiting, (100,100,100))
 			self.drawActor(actor)
 
-		# self.drawAPOrbit(self.calibrationOrbit, (100,100,100))
-
 		self.drawHUD()
-
 
 		pygame.display.flip()
 		self.clock.tick(150)
 		pygame.display.set_caption("fps: " + str(self.clock.get_fps()))
 
 	def step(self):
+		self.inputs()
 		if not self.buildMenu:
 			self.player = self._getPlayer()
-			self.inputs()
 			if not self.paused:
 				self.physics()
 			self.graphics()
@@ -845,8 +828,8 @@ class World():
 		self.add(planet_erf)
 		self.add(planet_moon)
 
-		dinghy_instance = Actor('NPC dinghy', dinghy,(1000000, -1080100), [0,0])
-		lothar_instance = Actor('NPC lothar', lothar,(-1000000, -1121600), [0,0])
+		dinghy_instance = Actor('NPC dinghy', dinghy,(1000000, -1080100), [30000,0])
+		lothar_instance = Actor('NPC lothar', lothar,(-1000000, -1121600), [65000,0])
 		lothar_instance2 = Actor('player Lothar', lothar,(100, -320050), [0,0], True)
 		boldang_instance = Actor('NPC boldang', boldang,(-100, -320050), [0,0],)
 		self.add(dinghy_instance)
@@ -854,9 +837,6 @@ class World():
 		self.add(lothar_instance2)
 		self.add(boldang_instance)
 		
-		# self.calibrationOrbit = Orbit.fromStateVector(numpy.array([self.player.body.position[0],self.player.body.position[1],1]), numpy.array([self.player.body.velocity[0],self.player.body.velocity[1],1]), self.attrplayer.APBody, Time('2000-01-01 00:00:00'), "calibration orbit")
-				
-
 		self.running = True
 		while self.running:
 			self.step()
