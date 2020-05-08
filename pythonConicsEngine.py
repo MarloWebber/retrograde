@@ -15,6 +15,14 @@ from astropy.time import Time, TimeDelta
 global contact
 global shape_to_remove
 
+# if __name__ == '__main__':
+#     # Import Psyco if available
+#     try:
+#         import psyco
+#         psyco.full()
+#     except ImportError:
+#         pass
+
 def mag(x):
 	return numpy.sqrt(x.dot(x))
 
@@ -526,14 +534,14 @@ class World():
 						actor.orbit = Orbit.fromStateVector(numpy.array([actor.body.position[0] - actor.orbiting.body.position[0] ,actor.body.position[1] - actor.orbiting.body.position[1],1]), numpy.array([actor.body.velocity[0] ,actor.body.velocity[1] ,1]), actor.orbiting.APBody, Time('2000-01-01 00:00:00'), actor.name + " orbit around " + actor.orbiting.planetName)
 					except:
 						actor.orbit = None
-				
-		
 
 	def rotatePolygon(self, points, angle):
 		return Rotate2D(points,(0,0),angle)
 
 	def transformForBuild(self, position):
-		transformedPosition = position * self.zoom  # shrink or expand everything around the 0,0 point
+		transformedPosition = [0,0] #* self.zoom  # shrink or expand everything around the 0,0 point
+		transformedPosition[0] = position[0] * self.zoom
+		transformedPosition[1] = position[1] * self.zoom
 		transformedPosition[0] += 0.5 * self.resolution[0] # add half the width of the screen, to get to the middle. 0,0 is naturally on the corner.
 		transformedPosition[1] += 0.5 * self.resolution[1] # add half the height.
 		return transformedPosition
@@ -551,16 +559,39 @@ class World():
 	def drawCircle(self,color, position, radius):
 		pygame.draw.circle(self.screen, color, [int(position[0]), int(position[1])], int((radius * self.zoom)))
 
-	def drawModuleForBuild(self, module):
-		rotatedPoints = rotate_polygon(module.points, module.angle, (-module.offset[0], -module.offset[1]))  # orient the polygon according to the body's current direction in space.
+	def drawModuleForList(self, module, position, iconSize):
+		# rotatedPoints = rotate_polygon(module.points, module.angle)  # orient the polygon according to the body's current direction in space.
 		# rotatedPoints = rotate_polygon(rotatedPoints,module.angle, -module.offset)  # orient the polygon according to the body's current direction in space.
+
+		individualZoom = 1 #iconSize / module.radius
+
+		print(position)
+
 		transformedPoints = []
-		for rotatedPoint in rotatedPoints:
-			transformedPoints.append(self.transformForBuild(rotatedPoint + module.offset)) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
+		for point in module.points:
+			transformedPoint = [0,0]
+			transformedPoint[0] = (point[0] * individualZoom ) + position[0]
+			transformedPoint[1] = (point[1] * individualZoom ) + position[1]
+			transformedPoints.append(transformedPoint) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
 		try:
 			pygame.draw.lines(self.screen, module.color, True, transformedPoints)
 		except:
-			pass
+			print('drawModuleForBuild error')
+			print(transformedPoints)
+
+	def drawModuleForBuild(self, module):
+		rotatedPoints = rotate_polygon(module.points, module.angle)  # orient the polygon according to the body's current direction in space.
+		# rotatedPoints = rotate_polygon(rotatedPoints,module.angle, -module.offset)  # orient the polygon according to the body's current direction in space.
+		transformedPoints = []
+		for rotatedPoint in rotatedPoints:
+			rotatedPoint[0] += module.offset[0]
+			rotatedPoint[1] += module.offset[1]
+			transformedPoints.append(self.transformForBuild(rotatedPoint)) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
+		try:
+			pygame.draw.lines(self.screen, module.color, True, transformedPoints)
+		except:
+			print('drawModuleForBuild error')
+			print(transformedPoints)
 
 	def drawModuleEffects(self, module, actor):
 		# put a circle in the middle if it is enabled, and a smaller red circle in the middle of that, if it is activated.
@@ -584,12 +615,8 @@ class World():
 						# print ananas
 						pygame.draw.lines(self.screen, (255,255,200), True, [activeCircle,ananas])
 
-
-
 	def drawModule(self, actor, module):
 		# draw the outline of the module.
-		
-		
 		rotatedPoints = rotate_polygon(module.points,actor.body.angle + module.angle, (-module.offset[0], -module.offset[1]))  # orient the polygon according to the body's current direction in space.
 		# rotatedPoints = rotate_polygon(rotatedPoints,module.angle, -module.offset)  # orient the polygon according to the body's current direction in space.
 		transformedPoints = []
@@ -598,13 +625,11 @@ class World():
 		try:
 			pygame.draw.lines(self.screen, module.color, True, transformedPoints)
 		except:
-			pass
+			print('drawModule error')
 
 		self.drawModuleEffects(module, actor)
 
-		
 	def drawActor(self, actor):
-
 		if actor.__class__ is Actor:
 			for module in actor.modules:
 					self.drawModule(actor, module)
@@ -617,8 +642,7 @@ class World():
 			try:
 				pygame.draw.lines(self.screen, actor.color, True, transformedPoints)
 			except:
-				pass
-
+				print('drawActor error')
 
 	def getActorFromBody(self, body):
 		for actor in self.actors:
@@ -630,8 +654,6 @@ class World():
 			if body == attractor.body:
 				return attractor
 		return None
-
-	# def handle_actor_collision(self, arbiter,space,data):
 
 	def handle_collision(self, arbiter, space, data):
 		shapes = arbiter._get_shapes()
@@ -686,18 +708,10 @@ class World():
 
 
 	def drawAPOrbit(self, orbit, attractor, color):
-
 		points = []
-
-
-		# print("period " + str(orbit.getPeriod()))
-		# print("apoapsis " + str(orbit.getApoapsis()))
-		# print("periapsis " + str(orbit.getPeriapsis()))
-		# print("crashing " + str(orbit.isCrashing()))
 
 		for i in range(0,100):
 			temp_vec3d = orbit.cartesianCoordinates(i * (2 * math.pi / 100))
-			# print(temp_vec3d)
 			point = (temp_vec3d[0] + attractor.body.position[0], temp_vec3d[1] + attractor.body.position[1])
 			point = self.transformForView(point)
 			points.append(point)
@@ -706,15 +720,16 @@ class World():
 			if i > 0:
 				pygame.draw.lines(self.screen, color, True, (points[i-1], points[i]))
 
+	def drawModuleListItem(self, module, index):
+		moduleListSpacing = 50
+		position = [moduleListSpacing,(index * moduleListSpacing) + 2 * module.radius]
 
-	
+		self.drawModuleForList( module, position, moduleListSpacing)
 
-
-		# self.drawCircle((255,0,0),self.transformForView(chickybabe), 5000)
-
+		textsurface = self.font.render(module.moduleType, False, (0,0,0))
+		self.screen.blit(textsurface,(module.radius + moduleListSpacing,index * moduleListSpacing))
 
 	def drawHUDListItem(self,string, quantity, index):
-
 		listItemSpacing = 15
 		listXPosition = 30
 
@@ -758,7 +773,6 @@ class World():
 		i = self.drawHUDListItem('zoom: ', self.zoom, i)
 		i = self.drawHUDListItem('paused: ', self.paused, i)
 		
-
 		# print the navcircle
 		n_navcircle_lines = 32
 		navcircleLinesLength = 10
@@ -777,7 +791,6 @@ class World():
 		end = ((navcircleInnerRadius) * math.cos(angle)+ (self.resolution[0]*0.5), (navcircleInnerRadius) * math.sin(angle)+ (self.resolution[1]*0.5))
 		pygame.draw.lines(self.screen, (200,0,10), True, (start,end))
 
-
 		blipLength = (navcircleInnerRadius-navcircleLinesLength)
 		angle = self.viewpointObject.desiredAngle
 		start = ((blipLength * math.cos(angle)) + (self.resolution[0]*0.5) , (blipLength* math.sin(angle)) +( self.resolution[1] * 0.5) )
@@ -789,29 +802,26 @@ class World():
 			if actor.orbit is not None:
 				self.drawAPOrbit(actor.orbit, actor.orbiting, (100,100,100))
 
-
 	def loadShipIntoBuildMenu(self, actor):
 		self.modulesInUse = []
 		for module in actor.modules:
 			self.modulesInUse.append(module)
 
-
-
 	def buildMenuGraphics(self):
-		self.screen.fill(THECOLORS["white"])
+		self.screen.fill((200,200,200))
 
 		# draw the modules the player has dragged onto the screen
 		for module in self.modulesInUse:
 			self.drawModuleForBuild(module)
 
 		# draw the inventory list up the left hand side
-
-
-
+		i = 0
+		for module in self.availableModules:
+			self.drawModuleListItem(module, i)
+			i += 1
 		pygame.display.flip()
 		self.clock.tick(150)
 		pygame.display.set_caption("fps: " + str(self.clock.get_fps()))
-
 
 	def graphics(self):
 		### Clear screen
@@ -860,6 +870,8 @@ class World():
 		self.add(lothar_instance2)
 		self.add(boldang_instance)
 		
+		self.availableModules = dinghy
+
 		self.running = True
 		while self.running:
 			self.step()
