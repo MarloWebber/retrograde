@@ -165,7 +165,7 @@ class Module():
 
 dinghy = [Module('generator',[0,0]), Module('engine',[0,8]), Module('RCS',[0,-10]) ]
 lothar = [Module('generator',[0,0]), Module('engine',[-13,8], 0.6/math.pi), Module('engine',[13,8],-0.6/math.pi), Module('RCS',[-13,-10]), Module('RCS',[13,-10]) ]
-boldang = [Module('spar 10',[0,-100], (0.3* math.pi)), Module('box 10',[0,0])]
+boldang = [Module('spar 10',[0,-100], (0.5* math.pi)), Module('box 10',[0,0])]
 
 class Actor():
 	def __init__(self, name, modulesList, position, velocity, isPlayer=False):
@@ -549,7 +549,8 @@ class World():
 		# draw the outline of the module.
 		
 		
-		rotatedPoints = rotate_polygon(module.points,actor.body.angle + module.angle, (-module.offset[0], -module.offset[1]))  # orient the polygon according to the body's current direction in space.
+		rotatedPoints = rotate_polygon(module.points,actor.body.angle, (-module.offset[0], -module.offset[1]))  # orient the polygon according to the body's current direction in space.
+		rotatedPoints = rotate_polygon(rotatedPoints,module.angle, actor.body.position+ module.offset)  # orient the polygon according to the body's current direction in space.
 		transformedPoints = []
 		for rotatedPoint in rotatedPoints:
 			transformedPoints.append(self.transformForView(rotatedPoint + actor.body.position + module.offset)) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
@@ -788,7 +789,7 @@ class World():
 				self.drawAPOrbit(actor.orbit, actor.orbiting, (100,100,100))
 			for module in actor.modules:
 				self.drawModule(actor, module)
-			# self.drawActor(actor)
+			self.drawActor(actor)
 
 		# self.drawAPOrbit(self.calibrationOrbit, (100,100,100))
 
@@ -813,11 +814,13 @@ class World():
 		self.add(planet_erf)
 		self.add(planet_moon)
 
-		dinghy_instance = Actor('player Lothar', lothar,(1000000, -1080100), [0,0])
+		dinghy_instance = Actor('NPC dinghy', dinghy,(1000000, -1080100), [0,0])
 		lothar_instance = Actor('NPC lothar', lothar,(-1000000, -1121600), [0,0])
-		boldang_instance = Actor('NPC boldang', lothar,(100, -320050), [0,0], True)
+		lothar_instance2 = Actor('player Lothar', lothar,(100, -320050), [0,0], True)
+		boldang_instance = Actor('NPC boldang', boldang,(-100, -320050), [0,0],)
 		self.add(dinghy_instance)
 		self.add(lothar_instance)
+		self.add(lothar_instance2)
 		self.add(boldang_instance)
 		
 		# self.calibrationOrbit = Orbit.fromStateVector(numpy.array([self.player.body.position[0],self.player.body.position[1],1]), numpy.array([self.player.body.velocity[0],self.player.body.velocity[1],1]), self.attrplayer.APBody, Time('2000-01-01 00:00:00'), "calibration orbit")
