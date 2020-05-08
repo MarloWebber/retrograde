@@ -65,7 +65,7 @@ def semiMinorAxis(a, e):
 
 class Atmosphere():
 	def __init__(self,radius, planetPosition):
-		self.height = 2000
+		self.height = 5000
 		self.density = 1
 		self.color = (0,50,200)
 		self.points = make_circle(radius+self.height, 314)
@@ -103,7 +103,6 @@ class Module():
 				'fuel': 5000,
 				'electricity': 50
 			}
-			self.mass = 1.5
 			self.radius = 5
 			self.points = [[-self.radius, -self.radius], [-self.radius, self.radius], [self.radius,self.radius], [self.radius, -self.radius]]
 			self.color = [150,20,20]
@@ -117,7 +116,6 @@ class Module():
 			}
 			self.stores = {}
 			self.initialStores = {}
-			self.mass = 1.5
 			self.radius = 5
 			size = self.radius
 			self.points = [[-size, -size*2], [-size, size*2], [size,size*2], [size, -size*2]]
@@ -133,7 +131,6 @@ class Module():
 			}
 			self.stores = {}
 			self.initialStores = {}
-			self.mass = 1.5
 			self.radius = 5
 			size = self.radius
 			self.points = [[-size, -size], [-size, size], [size,size], [size, -size]]
@@ -141,13 +138,34 @@ class Module():
 
 			self.momentArm = self.radius
 
-		for point in self.points:
-				point[0] += self.offset[0]
-				point[1] += self.offset[1]
+		elif self.moduleType is 'spar 10':
+			self.mass = 1
+			self.resources = {}
+			self.stores = {}
+			self.initialStores = {}
+			self.radius = 5
+			size = self.radius
+			self.points = [[-size, -size*10], [-size, size*10], [size,size*10], [size, -size*10]]
+			self.color = [50,50,50]
+
+			self.momentArm = self.radius
+
+		elif self.moduleType is 'box 10':
+			self.mass = 2
+			self.resources = {}
+			self.stores = {}
+			self.initialStores = {}
+			self.radius = 5
+			size = self.radius
+			self.points = [[-size*10, -size*10], [-size*10, size*10], [size*10,size*10], [size*10, -size*10]]
+			self.color = [50,50,50]
+
+			self.momentArm = self.radius
 
 
 dinghy = [Module('generator',[0,0]), Module('engine',[0,8]), Module('RCS',[0,-10]) ]
-lothar = [Module('generator',[0,0]), Module('engine',[-13,8]), Module('engine',[13,8]), Module('RCS',[-13,-10]), Module('RCS',[13,-10]) ]
+lothar = [Module('generator',[0,0]), Module('engine',[-13,8], 0.6/math.pi), Module('engine',[13,8],-0.6/math.pi), Module('RCS',[-13,-10]), Module('RCS',[13,-10]) ]
+boldang = [Module('spar 10',[0,-100], (0.3* math.pi)), Module('box 10',[0,0])]
 
 class Actor():
 	def __init__(self, name, modulesList, position, velocity, isPlayer=False):
@@ -168,7 +186,12 @@ class Actor():
 
 		for module in self.modules:
 			self.mass += module.mass
-			self.points += module.points
+			modulePoints = []
+			for point in module.points:
+				point = [point[0] + module.offset[0], point[1] + module.offset[1]]
+				point = rotate_point(point, module.angle, module.offset)
+				modulePoints.append(point)
+			self.points += modulePoints
 			for resource, quantity in list(module.initialStores.items()):
 				if resource not in self.storagePool: self.storagePool[resource] = quantity
 				else: self.storagePool[resource] += quantity
@@ -195,12 +218,13 @@ class Actor():
 			'right': False
 		}
 		self.orbiting = None
-		self.stepsToFreefall = 5
-		self.decompVelocity = 500000
-		# self.prevVelocity = [velocity[0], velocity[1]]
+		self.stepsToFreefall = 3
+		self.decompEnergy = 500000
+		self.desiredAngle = 0
+		self.exemptFromGravity = False
 
 	def leaveFreefall(self):
-		self.stepsToFreefall = 10
+		self.stepsToFreefall = 3
 		self.freefalling = False
 		self.orbit = None
 		
@@ -432,9 +456,15 @@ class World():
 				self.add( Actor(actor.name, actor.modules, actor.body.position, actor.body.velocity, actor.isPlayer ) ) # add the remaining parts of the original actor back into the space
 
 	def physics(self):
-		for actor in self.actors:
 
-			# actor.prevVelocity = actor.body.velocity
+		for actor in self.actors:
+			actor.exemptFromGravity = False
+
+		# iterate the physics engine. This is done first, so that changes can be reacted to (i.e. to exempt things from gravity if they collide with a planet, to prevent sinking).
+		self.space.step(self.timestepSize)
+		self.time += self.timestepSize
+
+		for actor in self.actors:
 
 			actor.doResources()
 
@@ -447,6 +477,7 @@ class World():
 					strongestForce = force
 					strongestAttractor = attractor
 
+			# when you enter a new sphere of ifluence, regenerate the orbit information
 			if strongestAttractor is not actor.orbiting or actor.orbiting is None:
 				actor.leaveFreefall()
 				actor.orbiting = strongestAttractor
@@ -454,8 +485,6 @@ class World():
 			# figure out if the actor is freefalling by seeing if any engines or collisions have moved it.
 			if actor.doModuleEffects(actor.keyStates, self.timestepSize):
 				actor.leaveFreefall()
-
-			# actor.leaveFreefall()
 
 			# if it is freefalling, move it along the orbital track.
 			if actor.freefalling and actor.orbit is not None:
@@ -476,18 +505,19 @@ class World():
 
 			else:
 				# if it is not freefalling, add some gravity to it so that it moves naturally, and try to recalculate the orbit.
-				self.gravitate(actor, strongestForce)
+				if not actor.exemptFromGravity:
+					self.gravitate(actor, strongestForce)
 				if actor.stepsToFreefall > 0:
 					actor.stepsToFreefall -= 1
 				else:
 					actor.freefalling = True
+					actor.exemptFromGravity = False
 					try:
 						actor.orbit = Orbit.fromStateVector(numpy.array([actor.body.position[0] - actor.orbiting.body.position[0] ,actor.body.position[1] - actor.orbiting.body.position[1],1]), numpy.array([actor.body.velocity[0] ,actor.body.velocity[1] ,1]), actor.orbiting.APBody, Time('2000-01-01 00:00:00'), actor.name + " orbit around " + actor.orbiting.planetName)
 					except:
 						actor.orbit = None
 				
-		self.space.step(self.timestepSize)
-		self.time += self.timestepSize
+		
 
 	def rotatePolygon(self, points, angle):
 		return Rotate2D(points,(0,0),angle)
@@ -510,15 +540,23 @@ class World():
 		transformedPoints = []
 		for rotatedPoint in rotatedPoints:
 			transformedPoints.append(self.transformForView(rotatedPoint + actor.body.position)) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
-		pygame.draw.lines(self.screen, actor.color, True, transformedPoints)
+		try:
+			pygame.draw.lines(self.screen, actor.color, True, transformedPoints)
+		except:
+			pass
 
 	def drawModule(self, actor, module):
 		# draw the outline of the module.
+		
+		
+		rotatedPoints = rotate_polygon(module.points,actor.body.angle + module.angle, (-module.offset[0], -module.offset[1]))  # orient the polygon according to the body's current direction in space.
 		transformedPoints = []
-		for rotatedPoint in module.points: 
-			transformedPoints.append(self.transformForView(rotatedPoint + actor.body.position )) # zoom and pan to fit the screen.
-		rotatedPoints = rotate_polygon(transformedPoints,actor.body.angle, self.transformForView(actor.body.position))  # orient the module according to the actor's current direction in space.
-		pygame.draw.lines(self.screen, module.color, True, rotatedPoints)
+		for rotatedPoint in rotatedPoints:
+			transformedPoints.append(self.transformForView(rotatedPoint + actor.body.position + module.offset)) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
+		try:
+			pygame.draw.lines(self.screen, module.color, True, transformedPoints)
+		except:
+			pass
 
 		# put a circle in the middle if it is enabled, and a smaller red circle in the middle of that, if it is activated.
 		if module.enabled:
@@ -533,7 +571,7 @@ class World():
 			for giveResource, giveQuantity in list(module.resources.items()): 
 				if giveResource == 'thrust':
 					if actor.keyStates['up']:
-						forceAngle = actor.body.angle
+						forceAngle = actor.body.angle + module.angle
 						force = [(giveQuantity * math.cos(addRadians(forceAngle, math.pi * 0.5))), giveQuantity * math.sin(addRadians(forceAngle, math.pi * 0.5) )]
 						activeCircle = self.transformForView(module.offset + actor.body.position)
 						activeCircle = rotate_point(activeCircle, actor.body.angle, self.transformForView(actor.body.position))
@@ -544,48 +582,62 @@ class World():
 
 	def getActorFromBody(self, body):
 		for actor in self.actors:
-			if body is actor.body:
+			if body == actor.body:
 				return actor
 		return None
+	def getAttractorFromBody(self, body):
+		for attractor in self.attractors:
+			if body == attractor.body:
+				return attractor
+		return None
+
+	# def handle_actor_collision(self, arbiter,space,data):
 
 	def handle_collision(self, arbiter, space, data):
-		# for c in arbiter.contact_point_set.points:
-		# 	r = max( 3, abs(c.distance*5) )
-		# 	r = int(r)
-		# 	p = tuple(map(int, c.point_a))
-			# pygame.draw.circle(data["surface"], THECOLORS["red"], p, r, 0)
-			# self.drawCircle((255,255,255), self.transformForView(p), 100) # this doesn't even work, i don't know why
-			# print( self.transformForView(p))
-
 		shapes = arbiter._get_shapes()
-		# for shape in shapes:
+		ke = arbiter._get_total_ke()
+
 		bodyA = shapes[0]._get_body()
 		actorA = self.getActorFromBody(bodyA)
 
-		bodyB = shapes[0]._get_body()
+		bodyB = shapes[1]._get_body()
 		actorB = self.getActorFromBody(bodyB)
 
-		# get difference in velocity
-		# deltaV = actorA.prevVelocity - actorB.prevVelocity
-		# print deltaV
-		ke = arbiter._get_total_ke()
-		ke_A = ke / actorA.mass
-		ke_B = ke / actorB.mass
+		#handle collisions between a planet and a ship differently than collisions between two ships
+		attractorCollision = False
+		if actorA is None:
+			attractorCollision = True
+		else:
+			# figure out the energy applied to each vessel, so you can tell how destructive it is.
+			ke_A = ke / actorA.mass
+			actorA.leaveFreefall()
 
-		# print(ke_A)
+			# if the energy is more than the actor can take, explode the actor.
+			if ke_A > actorA.decompEnergy:
+				self.decomposeActor(actorA, actorA.modules)
 
-		actorA.leaveFreefall()
-		actorB.leaveFreefall()
+		if actorB is None:
+			attractorCollision = True
+		else:
+			ke_B = ke / actorB.mass
+			actorB.leaveFreefall()
+			if ke_B > actorB.decompEnergy:
+				self.decomposeActor(actorB, actorB.modules)
 
-		if ke_A > actorA.decompVelocity:
-			self.decomposeActor(actorA, actorA.modules)
-		if ke_B > actorB.decompVelocity:
-			self.decomposeActor(actorB, actorB.modules)
+		if attractorCollision:
+			# print('attractorCollision')
+			if actorA is not None:
+				actorA.exemptFromGravity = True
 
+				#if the velocity is very small, kill it completely. Along with gravity exemption, this absolutely solves jitter and sinking.
+				if mag(bodyA.velocity - bodyB.velocity) < 50:
+					bodyA.velocity = bodyB.velocity
 
-			# print(deltaV)
-			# if deltaV > actor.decompVelocity:
-			# 	self.decomposeActor(actor, actor.modules)
+			if actorB is not None:
+				actorB.exemptFromGravity = True
+
+				if mag(bodyA.velocity - bodyB.velocity) < 50:
+					bodyB.velocity = bodyA.velocity
 
 	def _getPlayer(self):
 		for actor in self.actors:
@@ -652,6 +704,10 @@ class World():
 		i += 1
 		textsurface = self.font.render('freefalling: ' + str(self.player.freefalling), False, (255, 255, 255))
 		self.screen.blit(textsurface,(30,i * 20))
+		i += 1
+		textsurface = self.font.render('gravity exempt: ' + str(self.player.exemptFromGravity), False, (255, 255, 255))
+		self.screen.blit(textsurface,(30,i * 20))
+		
 		
 		if self.player.orbiting is not None:
 			i += 1
@@ -686,6 +742,13 @@ class World():
 
 		blipLength = (navcircleInnerRadius-navcircleLinesLength)
 		angle = self.player.body.angle - 0.5 * math.pi
+		start = ((blipLength * math.cos(angle)) + (self.resolution[0]*0.5) , (blipLength* math.sin(angle)) +( self.resolution[1] * 0.5) )
+		end = ((navcircleInnerRadius) * math.cos(angle)+ (self.resolution[0]*0.5), (navcircleInnerRadius) * math.sin(angle)+ (self.resolution[1]*0.5))
+		pygame.draw.lines(self.screen, (200,0,10), True, (start,end))
+
+
+		blipLength = (navcircleInnerRadius-navcircleLinesLength)
+		angle = self.player.desiredAngle
 		start = ((blipLength * math.cos(angle)) + (self.resolution[0]*0.5) , (blipLength* math.sin(angle)) +( self.resolution[1] * 0.5) )
 		end = ((navcircleInnerRadius) * math.cos(angle)+ (self.resolution[0]*0.5), (navcircleInnerRadius) * math.sin(angle)+ (self.resolution[1]*0.5))
 		pygame.draw.lines(self.screen, (200,0,10), True, (start,end))
@@ -725,6 +788,7 @@ class World():
 				self.drawAPOrbit(actor.orbit, actor.orbiting, (100,100,100))
 			for module in actor.modules:
 				self.drawModule(actor, module)
+			# self.drawActor(actor)
 
 		# self.drawAPOrbit(self.calibrationOrbit, (100,100,100))
 
@@ -749,10 +813,12 @@ class World():
 		self.add(planet_erf)
 		self.add(planet_moon)
 
-		dinghy_instance = Actor('player Lothar', lothar,(1000000, -1080100), [0,0], True)
+		dinghy_instance = Actor('player Lothar', lothar,(1000000, -1080100), [0,0])
 		lothar_instance = Actor('NPC lothar', lothar,(-1000000, -1121600), [0,0])
+		boldang_instance = Actor('NPC boldang', lothar,(100, -320050), [0,0], True)
 		self.add(dinghy_instance)
 		self.add(lothar_instance)
+		self.add(boldang_instance)
 		
 		# self.calibrationOrbit = Orbit.fromStateVector(numpy.array([self.player.body.position[0],self.player.body.position[1],1]), numpy.array([self.player.body.velocity[0],self.player.body.velocity[1],1]), self.attrplayer.APBody, Time('2000-01-01 00:00:00'), "calibration orbit")
 				
