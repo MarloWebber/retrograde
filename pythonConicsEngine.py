@@ -14,7 +14,6 @@ global contact
 global shape_to_remove
 
 
-import pyglet
 # import pygame
 # from pygame.locals import *
 # from pygame.color import *
@@ -22,11 +21,14 @@ import pyglet
 
 
 import pyglet
+from pyglet.window import Window
+from pyglet.window import key
 
-window = pyglet.window.Window(width=800, height=600)
+resolution = (1280,780)
+window = pyglet.window.Window(width=1280, height=780)
 label = pyglet.text.Label('Abc', x=5, y=5)
 
-
+white = [255]*4
 
 def mag(x):
 	return numpy.sqrt(x.dot(x))
@@ -394,7 +396,7 @@ class World():
 		self.gravitationalConstant = 0.03
 		self.actors = []
 		self.attractors = []
-		self.resolution = (1280,780)
+		self.resolution = resolution
 
 		# self.screen = pygame.display.set_mode(self.resolution)
 		# self.draw_options = pymunk.pygame_util.DrawOptions(self.screen)
@@ -454,72 +456,6 @@ class World():
 			# 	self.modulesInUse.remove(module)
 			# 	return module
 
-	def inputs(self):
-		pass
-	# 	for event in pygame.event.get():
-	# 		if event.type == KEYDOWN and event.key == K_ESCAPE:
-	# 			self.running = False
-	# 		elif event.type == KEYDOWN and event.key == K_RIGHTBRACKET:
-	# 			self.viewpointObjectIndex += 1
-	# 			if self.viewpointObjectIndex >= len(self.actors):
-	# 				self.viewpointObjectIndex = 0
-	# 			self.viewpointObject = self.actors[self.viewpointObjectIndex]
-	# 		elif event.type == KEYDOWN and event.key == K_LEFTBRACKET:
-	# 			self.viewpointObjectIndex -= 1
-	# 			if self.viewpointObjectIndex < 0:
-	# 				self.viewpointObjectIndex = len(self.actors) - 1
-	# 			self.viewpointObject = self.actors[self.viewpointObjectIndex]
-	# 		elif event.type == KEYDOWN and event.key == K_EQUALS:
-	# 			self.zoom += self.zoom * 0.5
-	# 		elif event.type == KEYDOWN and event.key == K_MINUS:
-	# 			self.zoom -= self.zoom * 0.5
-	# 		elif event.type == KEYDOWN and event.key == K_COMMA:
-	# 			self.timestepSize += self.timestepSize * 0.5
-	# 		elif event.type == KEYDOWN and event.key == K_PERIOD:
-	# 			self.timestepSize -= self.timestepSize * 0.5
-	# 		elif event.type == KEYDOWN and event.key == K_LEFT:
-	# 			self.player.keyStates['left'] = True
-	# 		elif event.type == KEYUP and event.key == K_LEFT:
-	# 			self.player.keyStates['left'] = False
-	# 		elif event.type == KEYDOWN and event.key == K_RIGHT:
-	# 			self.player.keyStates['right'] = True
-	# 		elif event.type == KEYUP and event.key == K_RIGHT:
-	# 			self.player.keyStates['right'] = False
-	# 		elif event.type == KEYDOWN and event.key == K_UP:
-	# 			self.player.keyStates['up'] = True
-	# 		elif event.type == KEYUP and event.key == K_UP:
-	# 			self.player.keyStates['up'] = False
-	# 		elif event.type == KEYDOWN and event.key == K_DOWN:
-	# 			self.player.keyStates['down'] = True
-	# 		elif event.type == KEYUP and event.key == K_DOWN:
-	# 			self.player.keyStates['down'] = False
-	# 		elif event.type == KEYDOWN and event.key == K_h:
-	# 			self.showHUD = not self.showHUD
-	# 		elif event.type == KEYDOWN and event.key == K_p:
-	# 			self.paused = not self.paused
-	# 		elif event.type == KEYDOWN and event.key == K_b:
-	# 			if self.buildMenu:
-	# 				self.buildMenu = False
-	# 			else:
-	# 				self.buildMenu = True
-	# 				self.paused = True
-
-	# 				self.loadShipIntoBuildMenu(self.player)
-	# 		elif event.type == KEYDOWN and event.key == K_y:
-	# 			if self.buildMenu:
-	# 				self.flyShipFromBuildMenu()
-	# 		elif event.type == pygame.MOUSEBUTTONDOWN:
-	# 			# event.button can equal several integer values:# 1 - left click# 2 - middle click# 3 - right click# 4 - scroll up# 5 - scroll down
-	# 			if self.buildMenu:
-	# 				if event.button == 1:
-	# 					self.buildDraggingModule = self.getModuleFromCursorPosition(pygame.mouse.get_pos())
-	# 		elif event.type == pygame.MOUSEBUTTONUP:
-	# 			if self.buildMenu:
-	# 				if event.button == 1:
-	# 					if self.buildDraggingModule is not None:
-	# 						self.dropModuleIntoBuildArea(self.buildDraggingModule, pygame.mouse.get_pos())
-	# 						self.buildDraggingModule = None
-						
 	def add(self, thing):  
 		self.space.add(thing.body, thing.shape)
 		if thing.__class__ == Actor:
@@ -646,7 +582,7 @@ class World():
 			transformedPosition = position - self.viewpointObject.body.position # offset everything by the position of the viewpointObject, so the viewpoint is at 0,0
 			transformedPosition = transformedPosition * self.zoom  # shrink or expand everything around the 0,0 point
 			transformedPosition[0] += 0.5 * self.resolution[0] # add half the width of the screen, to get to the middle. 0,0 is naturally on the corner.
-			transformedPosition[1] += 0.5 * self.resolution[1] # add half the height.
+			transformedPosition[1] = -transformedPosition[1] + 0.5 * self.resolution[1] # add half the height.
 			return transformedPosition
 
 	def drawCircle(self,color, position, radius):
@@ -718,36 +654,48 @@ class World():
 						# print ananas
 						# pygame.draw.lines(self.screen, (255,255,200), True, [activeCircle,ananas])
 
-	def drawModule(self, actor, module):
+	def drawModule(self, actor, module, main_batch):
 		# draw the outline of the module.
 		rotatedPoints = rotate_polygon(module.points,actor.body.angle + module.angle, (-module.offset[0], -module.offset[1]))  # orient the polygon according to the body's current direction in space.
 		# rotatedPoints = rotate_polygon(rotatedPoints,module.angle, -module.offset)  # orient the polygon according to the body's current direction in space.
 		transformedPoints = []
+		n_transformedPoints = 0
 		for rotatedPoint in rotatedPoints:
-			transformedPoints.append(self.transformForView(rotatedPoint + actor.body.position + module.offset)) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
-		try:
+			transformedPoint = self.transformForView(rotatedPoint + actor.body.position + module.offset) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
+			# transformedPoint = rotatedPoint
+			transformedPoints.append(int(transformedPoint[0]))
+			transformedPoints.append(int(transformedPoint[1]))
+			n_transformedPoints += 1
+
+		# try:
 			# pygame.draw.lines(self.screen, module.color, True, transformedPoints)
-			pass
-		except:
-			print('drawModule error')
+			# print(transformedPoints)
+			#batch.add(4, pyglet.gl.GL_POLYGON, None, ('v2i',[10,60,10,110,390,60,390,110]), ('c4B',white*4))
+		
+		main_batch.add(n_transformedPoints, pyglet.gl.GL_LINES, None, ('v2i', transformedPoints), ('c4B',white*n_transformedPoints))
+			# pass
+		# except:
+		# 	print('drawModule error')
 
 		self.drawModuleEffects(module, actor)
 
-	def drawActor(self, actor):
+	def drawActor(self, actor, main_batch):
 		if actor.__class__ is Actor:
 			for module in actor.modules:
-					self.drawModule(actor, module)
+					self.drawModule(actor, module, main_batch)
 		
 		if actor.__class__ is Attractor or actor.__class__ is Atmosphere: 
 			rotatedPoints = rotate_polygon(actor.points,actor.body.angle)  # orient the polygon according to the body's current direction in space.
 			transformedPoints = []
+			n_transformedPoints = 0
 			for rotatedPoint in rotatedPoints:
-				transformedPoints.append(self.transformForView(rotatedPoint + actor.body.position)) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
-			try:
-				# pygame.draw.lines(self.screen, actor.color, True, transformedPoints)
-				pass
-			except:
-				print('drawActor error')
+				transformedPoint = self.transformForView(rotatedPoint + actor.body.position) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
+				transformedPoints.append(int(transformedPoint[0]))
+				transformedPoints.append(int(transformedPoint[1]))
+				n_transformedPoints += 1
+			
+			main_batch.add(n_transformedPoints, pyglet.gl.GL_LINES, None, ('v2i', transformedPoints), ('c4B',white*n_transformedPoints))
+				
 
 	def getActorFromBody(self, body):
 		for actor in self.actors:
@@ -952,19 +900,19 @@ class World():
 
 	
 
-	def graphics(self):
+	def graphics(self, main_batch):
 		### Clear screen
 		# self.screen.fill(THECOLORS["black"])
 
 		### Draw stuff
 		for attractor in self.attractors:
 			if attractor.atmosphere != None:
-				self.drawActor(attractor.atmosphere)
-			self.drawActor(attractor)
+				self.drawActor(attractor.atmosphere, main_batch)
+			self.drawActor(attractor, main_batch)
 		for actor in self.actors:
 			# if actor.orbit is not None:
 			# 	self.drawAPOrbit(actor.orbit, actor.orbiting, (100,100,100))
-			self.drawActor(actor)
+			self.drawActor(actor, main_batch)
 
 		if self.showHUD:
 			self.drawHUD()
@@ -973,13 +921,13 @@ class World():
 		# self.clock.tick(150)
 		# pygame.display.set_caption("fps: " + str(self.clock.get_fps()))
 
-	def step(self):
-		self.inputs()
+	def step(self, main_batch):
+		# self.inputs()
 		if not self.buildMenu:
 			self.player = self._getPlayer()
 			if not self.paused:
 				self.physics()
-			self.graphics()
+			self.graphics(main_batch)
 		else:
 			self.buildMenuGraphics()
 
@@ -1003,22 +951,126 @@ class World():
 
 		# self.running = True
 
-		pyglet.app.run()
+		
 
 		# while self.running:
 		# 	self.step()
 
-mundus = World()
+Nirn = World()
+
+# keys = key.KeyStateHandler()
+# window.push_handlers(keys)
+
+@window.event
+def on_key_press(symbol, modifiers):
+    
+    if symbol == key.ESCAPE:
+    	exit()
+
+    elif symbol == key.LEFT:
+    	Nirn.player.keyStates['left'] = True
+    elif symbol == key.RIGHT:
+    	Nirn.player.keyStates['right'] = True
+    elif symbol == key.UP:
+    	Nirn.player.keyStates['up'] = True
+    elif symbol == key.P:
+    	Nirn.paused = not Nirn.paused
+
+
+@window.event
+def on_key_release(symbol, modifiers):
+    if symbol == key.LEFT:
+    	Nirn.player.keyStates['left'] = False
+    elif symbol == key.RIGHT:
+    	Nirn.player.keyStates['right'] = False
+    elif symbol == key.UP:
+    	Nirn.player.keyStates['up'] = False
+
+  # def inputs(self):
+		# pass
+	# 	for event in pygame.event.get():
+	# 		if event.type == KEYDOWN and event.key == K_ESCAPE:
+	# 			self.running = False
+	# 		elif event.type == KEYDOWN and event.key == K_RIGHTBRACKET:
+	# 			self.viewpointObjectIndex += 1
+	# 			if self.viewpointObjectIndex >= len(self.actors):
+	# 				self.viewpointObjectIndex = 0
+	# 			self.viewpointObject = self.actors[self.viewpointObjectIndex]
+	# 		elif event.type == KEYDOWN and event.key == K_LEFTBRACKET:
+	# 			self.viewpointObjectIndex -= 1
+	# 			if self.viewpointObjectIndex < 0:
+	# 				self.viewpointObjectIndex = len(self.actors) - 1
+	# 			self.viewpointObject = self.actors[self.viewpointObjectIndex]
+	# 		elif event.type == KEYDOWN and event.key == K_EQUALS:
+	# 			self.zoom += self.zoom * 0.5
+	# 		elif event.type == KEYDOWN and event.key == K_MINUS:
+	# 			self.zoom -= self.zoom * 0.5
+	# 		elif event.type == KEYDOWN and event.key == K_COMMA:
+	# 			self.timestepSize += self.timestepSize * 0.5
+	# 		elif event.type == KEYDOWN and event.key == K_PERIOD:
+	# 			self.timestepSize -= self.timestepSize * 0.5
+	# 		elif event.type == KEYDOWN and event.key == K_LEFT:
+	# 			self.player.keyStates['left'] = True
+	# 		elif event.type == KEYUP and event.key == K_LEFT:
+	# 			self.player.keyStates['left'] = False
+	# 		elif event.type == KEYDOWN and event.key == K_RIGHT:
+	# 			self.player.keyStates['right'] = True
+	# 		elif event.type == KEYUP and event.key == K_RIGHT:
+	# 			self.player.keyStates['right'] = False
+	# 		elif event.type == KEYDOWN and event.key == K_UP:
+	# 			self.player.keyStates['up'] = True
+	# 		elif event.type == KEYUP and event.key == K_UP:
+	# 			self.player.keyStates['up'] = False
+	# 		elif event.type == KEYDOWN and event.key == K_DOWN:
+	# 			self.player.keyStates['down'] = True
+	# 		elif event.type == KEYUP and event.key == K_DOWN:
+	# 			self.player.keyStates['down'] = False
+	# 		elif event.type == KEYDOWN and event.key == K_h:
+	# 			self.showHUD = not self.showHUD
+	# 		elif event.type == KEYDOWN and event.key == K_p:
+	# 			self.paused = not self.paused
+	# 		elif event.type == KEYDOWN and event.key == K_b:
+	# 			if self.buildMenu:
+	# 				self.buildMenu = False
+	# 			else:
+	# 				self.buildMenu = True
+	# 				self.paused = True
+
+	# 				self.loadShipIntoBuildMenu(self.player)
+	# 		elif event.type == KEYDOWN and event.key == K_y:
+	# 			if self.buildMenu:
+	# 				self.flyShipFromBuildMenu()
+	# 		elif event.type == pygame.MOUSEBUTTONDOWN:
+	# 			# event.button can equal several integer values:# 1 - left click# 2 - middle click# 3 - right click# 4 - scroll up# 5 - scroll down
+	# 			if self.buildMenu:
+	# 				if event.button == 1:
+	# 					self.buildDraggingModule = self.getModuleFromCursorPosition(pygame.mouse.get_pos())
+	# 		elif event.type == pygame.MOUSEBUTTONUP:
+	# 			if self.buildMenu:
+	# 				if event.button == 1:
+	# 					if self.buildDraggingModule is not None:
+	# 						self.dropModuleIntoBuildArea(self.buildDraggingModule, pygame.mouse.get_pos())
+	# 						self.buildDraggingModule = None
+						
+
+
+def stepWithBatch(dt):
+	pass
 
 @window.event()
 def on_draw():
+
+	print('weener')
+
 	main_batch = pyglet.graphics.Batch()
 
-	mundus.step()
+	Nirn.step(main_batch)
 
 	window.clear()
 	main_batch.draw()
 
 
-mundus.start()
-
+Nirn.start()
+# pyglet.clock.set_fps_limit(300)
+pyglet.clock.schedule_interval(stepWithBatch, 0.01)
+pyglet.app.run()
