@@ -1,7 +1,5 @@
 import math, sys, random
-import pygame
-from pygame.locals import *
-from pygame.color import *
+
 import pymunk
 from pymunk import Vec2d
 import pymunk.pygame_util
@@ -14,6 +12,20 @@ from astropy.time import Time, TimeDelta
     
 global contact
 global shape_to_remove
+
+
+import pyglet
+# import pygame
+# from pygame.locals import *
+# from pygame.color import *
+
+
+
+import pyglet
+
+window = pyglet.window.Window(width=800, height=600)
+label = pyglet.text.Label('Abc', x=5, y=5)
+
 
 
 def mag(x):
@@ -374,8 +386,8 @@ class buildMenuItem():
 
 class World():
 	def __init__(self):
-		pygame.init()
-		self.clock = pygame.time.Clock() # the pygame clock is NOT the same as the simulation clock.
+		# pygame.init()
+		# self.clock = pygame.time.Clock() # the pygame clock is NOT the same as the simulation clock.
 		self.time = 0 # the number of timesteps that have passed in-universe. used for physics and orbital calculations.
 		self.space = pymunk.Space()
 		self.space.gravity = (0.0, 0.0)
@@ -383,11 +395,15 @@ class World():
 		self.actors = []
 		self.attractors = []
 		self.resolution = (1280,780)
-		self.screen = pygame.display.set_mode(self.resolution)
-		self.draw_options = pymunk.pygame_util.DrawOptions(self.screen)
+
+		# self.screen = pygame.display.set_mode(self.resolution)
+		# self.draw_options = pymunk.pygame_util.DrawOptions(self.screen)
 		self.ch = self.space.add_collision_handler(0, 0)
-		self.ch.data["surface"] = self.screen
+		# self.ch.data["surface"] = self.screen
 		self.ch.post_solve = self.handle_collision
+
+		# self.window = pyglet.window.Window()
+
 		self.viewpointObject = None
 		self.viewpointObjectIndex = 0
 		self.player = None
@@ -396,7 +412,7 @@ class World():
 		self.rotate = 0
 		self.timestepSize = 0.2/60.0 #1.0/60.0
 		# pygame.key.set_repeat(50,50) # holding a key down repeats the instruction. https://www.pygame.org/docs/ref/key.html
-		self.font = pygame.font.SysFont('dejavusans', 12)
+		# self.font = pygame.font.SysFont('dejavusans', 12)
 		self.showHUD = False
 		self.paused = True
 
@@ -434,74 +450,75 @@ class World():
 				transformedPoints.append(self.transformForBuild(transformedPoint))
 
 			boundingBox = boundPolygon(transformedPoints)
-			if pointInRect( pygame.mouse.get_pos() , boundingBox):
-				self.modulesInUse.remove(module)
-				return module
+			# if pointInRect( pygame.mouse.get_pos() , boundingBox):
+			# 	self.modulesInUse.remove(module)
+			# 	return module
 
 	def inputs(self):
-		for event in pygame.event.get():
-			if event.type == KEYDOWN and event.key == K_ESCAPE:
-				self.running = False
-			elif event.type == KEYDOWN and event.key == K_RIGHTBRACKET:
-				self.viewpointObjectIndex += 1
-				if self.viewpointObjectIndex >= len(self.actors):
-					self.viewpointObjectIndex = 0
-				self.viewpointObject = self.actors[self.viewpointObjectIndex]
-			elif event.type == KEYDOWN and event.key == K_LEFTBRACKET:
-				self.viewpointObjectIndex -= 1
-				if self.viewpointObjectIndex < 0:
-					self.viewpointObjectIndex = len(self.actors) - 1
-				self.viewpointObject = self.actors[self.viewpointObjectIndex]
-			elif event.type == KEYDOWN and event.key == K_EQUALS:
-				self.zoom += self.zoom * 0.5
-			elif event.type == KEYDOWN and event.key == K_MINUS:
-				self.zoom -= self.zoom * 0.5
-			elif event.type == KEYDOWN and event.key == K_COMMA:
-				self.timestepSize += self.timestepSize * 0.5
-			elif event.type == KEYDOWN and event.key == K_PERIOD:
-				self.timestepSize -= self.timestepSize * 0.5
-			elif event.type == KEYDOWN and event.key == K_LEFT:
-				self.player.keyStates['left'] = True
-			elif event.type == KEYUP and event.key == K_LEFT:
-				self.player.keyStates['left'] = False
-			elif event.type == KEYDOWN and event.key == K_RIGHT:
-				self.player.keyStates['right'] = True
-			elif event.type == KEYUP and event.key == K_RIGHT:
-				self.player.keyStates['right'] = False
-			elif event.type == KEYDOWN and event.key == K_UP:
-				self.player.keyStates['up'] = True
-			elif event.type == KEYUP and event.key == K_UP:
-				self.player.keyStates['up'] = False
-			elif event.type == KEYDOWN and event.key == K_DOWN:
-				self.player.keyStates['down'] = True
-			elif event.type == KEYUP and event.key == K_DOWN:
-				self.player.keyStates['down'] = False
-			elif event.type == KEYDOWN and event.key == K_h:
-				self.showHUD = not self.showHUD
-			elif event.type == KEYDOWN and event.key == K_p:
-				self.paused = not self.paused
-			elif event.type == KEYDOWN and event.key == K_b:
-				if self.buildMenu:
-					self.buildMenu = False
-				else:
-					self.buildMenu = True
-					self.paused = True
+		pass
+	# 	for event in pygame.event.get():
+	# 		if event.type == KEYDOWN and event.key == K_ESCAPE:
+	# 			self.running = False
+	# 		elif event.type == KEYDOWN and event.key == K_RIGHTBRACKET:
+	# 			self.viewpointObjectIndex += 1
+	# 			if self.viewpointObjectIndex >= len(self.actors):
+	# 				self.viewpointObjectIndex = 0
+	# 			self.viewpointObject = self.actors[self.viewpointObjectIndex]
+	# 		elif event.type == KEYDOWN and event.key == K_LEFTBRACKET:
+	# 			self.viewpointObjectIndex -= 1
+	# 			if self.viewpointObjectIndex < 0:
+	# 				self.viewpointObjectIndex = len(self.actors) - 1
+	# 			self.viewpointObject = self.actors[self.viewpointObjectIndex]
+	# 		elif event.type == KEYDOWN and event.key == K_EQUALS:
+	# 			self.zoom += self.zoom * 0.5
+	# 		elif event.type == KEYDOWN and event.key == K_MINUS:
+	# 			self.zoom -= self.zoom * 0.5
+	# 		elif event.type == KEYDOWN and event.key == K_COMMA:
+	# 			self.timestepSize += self.timestepSize * 0.5
+	# 		elif event.type == KEYDOWN and event.key == K_PERIOD:
+	# 			self.timestepSize -= self.timestepSize * 0.5
+	# 		elif event.type == KEYDOWN and event.key == K_LEFT:
+	# 			self.player.keyStates['left'] = True
+	# 		elif event.type == KEYUP and event.key == K_LEFT:
+	# 			self.player.keyStates['left'] = False
+	# 		elif event.type == KEYDOWN and event.key == K_RIGHT:
+	# 			self.player.keyStates['right'] = True
+	# 		elif event.type == KEYUP and event.key == K_RIGHT:
+	# 			self.player.keyStates['right'] = False
+	# 		elif event.type == KEYDOWN and event.key == K_UP:
+	# 			self.player.keyStates['up'] = True
+	# 		elif event.type == KEYUP and event.key == K_UP:
+	# 			self.player.keyStates['up'] = False
+	# 		elif event.type == KEYDOWN and event.key == K_DOWN:
+	# 			self.player.keyStates['down'] = True
+	# 		elif event.type == KEYUP and event.key == K_DOWN:
+	# 			self.player.keyStates['down'] = False
+	# 		elif event.type == KEYDOWN and event.key == K_h:
+	# 			self.showHUD = not self.showHUD
+	# 		elif event.type == KEYDOWN and event.key == K_p:
+	# 			self.paused = not self.paused
+	# 		elif event.type == KEYDOWN and event.key == K_b:
+	# 			if self.buildMenu:
+	# 				self.buildMenu = False
+	# 			else:
+	# 				self.buildMenu = True
+	# 				self.paused = True
 
-					self.loadShipIntoBuildMenu(self.player)
-			elif event.type == KEYDOWN and event.key == K_y:
-				if self.buildMenu:
-					self.flyShipFromBuildMenu()
-			elif event.type == pygame.MOUSEBUTTONDOWN:
-				# event.button can equal several integer values:# 1 - left click# 2 - middle click# 3 - right click# 4 - scroll up# 5 - scroll down
-				if self.buildMenu:
-					if event.button == 1:
-						self.buildDraggingModule = self.getModuleFromCursorPosition(pygame.mouse.get_pos())
-			elif event.type == pygame.MOUSEBUTTONUP:
-				if self.buildMenu:
-					if event.button == 1:
-						if self.buildDraggingModule is not None:
-							self.dropModuleIntoBuildArea(self.buildDraggingModule, pygame.mouse.get_pos())
-							self.buildDraggingModule = None
+	# 				self.loadShipIntoBuildMenu(self.player)
+	# 		elif event.type == KEYDOWN and event.key == K_y:
+	# 			if self.buildMenu:
+	# 				self.flyShipFromBuildMenu()
+	# 		elif event.type == pygame.MOUSEBUTTONDOWN:
+	# 			# event.button can equal several integer values:# 1 - left click# 2 - middle click# 3 - right click# 4 - scroll up# 5 - scroll down
+	# 			if self.buildMenu:
+	# 				if event.button == 1:
+	# 					self.buildDraggingModule = self.getModuleFromCursorPosition(pygame.mouse.get_pos())
+	# 		elif event.type == pygame.MOUSEBUTTONUP:
+	# 			if self.buildMenu:
+	# 				if event.button == 1:
+	# 					if self.buildDraggingModule is not None:
+	# 						self.dropModuleIntoBuildArea(self.buildDraggingModule, pygame.mouse.get_pos())
+	# 						self.buildDraggingModule = None
 						
 	def add(self, thing):  
 		self.space.add(thing.body, thing.shape)
@@ -633,7 +650,8 @@ class World():
 			return transformedPosition
 
 	def drawCircle(self,color, position, radius):
-		pygame.draw.circle(self.screen, color, [int(position[0]), int(position[1])], int((radius * self.zoom)))
+		# pygame.draw.circle(self.screen, color, [int(position[0]), int(position[1])], int((radius * self.zoom)))
+		pass
 
 	def drawModuleForList(self, module, iconSize, position):
 		transformedPoints = []
@@ -643,7 +661,8 @@ class World():
 			transformedPoint[1] = (point[1] * iconSize) + position[1]
 			transformedPoints.append(transformedPoint) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
 		try:
-			return pygame.draw.lines(self.screen, module.color, True, transformedPoints) # return the bounding rectangle
+			# return pygame.draw.lines(self.screen, module.color, True, transformedPoints) # return the bounding rectangle
+			pass
 		except:
 			print('drawModuleForList error')
 
@@ -656,7 +675,8 @@ class World():
 			rotatedPoint[1] = (rotatedPoint[1] * self.zoom ) + position[1]
 			transformedPoints.append(rotatedPoint) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
 		try:
-			pygame.draw.lines(self.screen, module.color, True, transformedPoints)
+			# pygame.draw.lines(self.screen, module.color, True, transformedPoints)
+			pass
 		except:
 			print('drawModuleForBuild error')
 			print(transformedPoints)
@@ -670,7 +690,8 @@ class World():
 			rotatedPoint[1] += module.offset[1]
 			transformedPoints.append(self.transformForBuild(rotatedPoint)) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
 		try:
-			pygame.draw.lines(self.screen, module.color, True, transformedPoints)
+			# pygame.draw.lines(self.screen, module.color, True, transformedPoints)
+			pass
 		except:
 			print('drawModuleForBuild error')
 			print(transformedPoints)
@@ -695,7 +716,7 @@ class World():
 						activeCircle = rotate_point(activeCircle, actor.body.angle, self.transformForView(actor.body.position))
 						ananas = (int(activeCircle[0] + force[0] * self.zoom), int(activeCircle[1]+force[1] * self.zoom ) )
 						# print ananas
-						pygame.draw.lines(self.screen, (255,255,200), True, [activeCircle,ananas])
+						# pygame.draw.lines(self.screen, (255,255,200), True, [activeCircle,ananas])
 
 	def drawModule(self, actor, module):
 		# draw the outline of the module.
@@ -705,7 +726,8 @@ class World():
 		for rotatedPoint in rotatedPoints:
 			transformedPoints.append(self.transformForView(rotatedPoint + actor.body.position + module.offset)) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
 		try:
-			pygame.draw.lines(self.screen, module.color, True, transformedPoints)
+			# pygame.draw.lines(self.screen, module.color, True, transformedPoints)
+			pass
 		except:
 			print('drawModule error')
 
@@ -722,7 +744,8 @@ class World():
 			for rotatedPoint in rotatedPoints:
 				transformedPoints.append(self.transformForView(rotatedPoint + actor.body.position)) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
 			try:
-				pygame.draw.lines(self.screen, actor.color, True, transformedPoints)
+				# pygame.draw.lines(self.screen, actor.color, True, transformedPoints)
+				pass
 			except:
 				print('drawActor error')
 
@@ -799,7 +822,8 @@ class World():
 
 		for i in range(0,100):
 			if i > 0:
-				pygame.draw.lines(self.screen, color, True, (points[i-1], points[i]))
+				# pygame.draw.lines(self.screen, color, True, (points[i-1], points[i]))
+				pass
 
 	def drawModuleListItem(self, listItem, index):
 		# draw one of the modules in the list in the build menu.
@@ -867,19 +891,19 @@ class World():
 			start = ((navcircleInnerRadius * math.cos(angle)) + (self.resolution[0]*0.5) , (navcircleInnerRadius* math.sin(angle)) +( self.resolution[1] * 0.5) )
 			end = ((navcircleInnerRadius + navcircleLinesLength) * math.cos(angle)+ (self.resolution[0]*0.5), (navcircleInnerRadius + navcircleLinesLength) * math.sin(angle)+ (self.resolution[1]*0.5))
 			# navcircleLines.append([start, end])
-			pygame.draw.lines(self.screen, (100,100,100), True, (start,end))
+			# pygame.draw.lines(self.screen, (100,100,100), True, (start,end))
 
 		blipLength = (navcircleInnerRadius-navcircleLinesLength)
 		angle = self.viewpointObject.body.angle - 0.5 * math.pi
 		start = ((blipLength * math.cos(angle)) + (self.resolution[0]*0.5) , (blipLength* math.sin(angle)) +( self.resolution[1] * 0.5) )
 		end = ((navcircleInnerRadius) * math.cos(angle)+ (self.resolution[0]*0.5), (navcircleInnerRadius) * math.sin(angle)+ (self.resolution[1]*0.5))
-		pygame.draw.lines(self.screen, (200,0,10), True, (start,end))
+		# pygame.draw.lines(self.screen, (200,0,10), True, (start,end))
 
 		blipLength = (navcircleInnerRadius-navcircleLinesLength)
 		angle = self.viewpointObject.desiredAngle
 		start = ((blipLength * math.cos(angle)) + (self.resolution[0]*0.5) , (blipLength* math.sin(angle)) +( self.resolution[1] * 0.5) )
 		end = ((navcircleInnerRadius) * math.cos(angle)+ (self.resolution[0]*0.5), (navcircleInnerRadius) * math.sin(angle)+ (self.resolution[1]*0.5))
-		pygame.draw.lines(self.screen, (200,0,10), True, (start,end))
+		# pygame.draw.lines(self.screen, (200,0,10), True, (start,end))
 
 		# draw the actor's orbits
 		for actor in self.actors:
@@ -905,7 +929,7 @@ class World():
 		self.modulesInUse.append(module)
 
 	def buildMenuGraphics(self):
-		self.screen.fill((200,200,200))
+		# self.screen.fill((200,200,200))
 
 		# draw the modules the player has assembled 
 		for module in self.modulesInUse:
@@ -919,15 +943,18 @@ class World():
 
 		# draw the module item the player is dragging, if applicable
 		if self.buildDraggingModule is not None:
-			self.drawModuleForDrag(self.buildDraggingModule, pygame.mouse.get_pos())
+			# self.drawModuleForDrag(self.buildDraggingModule, pygame.mouse.get_pos())
+			pass
 
-		pygame.display.flip()
-		self.clock.tick(150)
-		pygame.display.set_caption("fps: " + str(self.clock.get_fps()))
+		# pygame.display.flip()
+		# self.clock.tick(150)
+		# pygame.display.set_caption("fps: " + str(self.clock.get_fps()))
+
+	
 
 	def graphics(self):
 		### Clear screen
-		self.screen.fill(THECOLORS["black"])
+		# self.screen.fill(THECOLORS["black"])
 
 		### Draw stuff
 		for attractor in self.attractors:
@@ -942,9 +969,9 @@ class World():
 		if self.showHUD:
 			self.drawHUD()
 
-		pygame.display.flip()
-		self.clock.tick(150)
-		pygame.display.set_caption("fps: " + str(self.clock.get_fps()))
+		# pygame.display.flip()
+		# self.clock.tick(150)
+		# pygame.display.set_caption("fps: " + str(self.clock.get_fps()))
 
 	def step(self):
 		self.inputs()
@@ -956,7 +983,7 @@ class World():
 		else:
 			self.buildMenuGraphics()
 
-	def start(self):
+	def setup(self):
 		planet_erf = Attractor('earth', [1,1], self.gravitationalConstant)
 		planet_moon = Attractor('moon',[1000000,-1000000], self.gravitationalConstant)
 		self.add(planet_erf)
@@ -971,9 +998,27 @@ class World():
 		self.add(boldang_instance)
 		self.availableModules = lothar
 
-		self.running = True
-		while self.running:
-			self.step()
+	def start(self):
+		self.setup()		
+
+		# self.running = True
+
+		pyglet.app.run()
+
+		# while self.running:
+		# 	self.step()
 
 mundus = World()
+
+@window.event()
+def on_draw():
+	main_batch = pyglet.graphics.Batch()
+
+	mundus.step()
+
+	window.clear()
+	main_batch.draw()
+
+
 mundus.start()
+
