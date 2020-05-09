@@ -29,15 +29,17 @@ def getFarthestPointInPolygon(polygon):
 
 def boundPolygon(polygon): # returns a rectangle that is a bounding box around the polygon.
 	mostX  = 0
-	leastX = 0
+	leastX = polygon[0][0]
 	mostY  = 0
-	leastY = 0
+	leastY = polygon[0][1]
 
 	for point in polygon:
 		if point[0] < leastX: leastX = point[0]
 		if point[1] < leastY: leastY = point[1]
 		if point[0] > mostX: mostX = point[0]
 		if point[1] > mostY: mostY = point[1]
+
+	print([[leastX, leastY], [mostX, mostY]])
 
 	return [[leastX, leastY], [mostX, mostY]]
 
@@ -429,10 +431,11 @@ class World():
 				transformedPoint = [0,0]
 				transformedPoint[0] = (point[0] + module.offset[0])
 				transformedPoint[1] = (point[1] + module.offset[1])
-				transformedPoints.append(transformedPoint)
+				transformedPoints.append(self.transformForBuild(transformedPoint))
 
 			boundingBox = boundPolygon(transformedPoints)
-			if pointInRect(self.antiTransformForBuild( pygame.mouse.get_pos() ), boundingBox):
+			if pointInRect( pygame.mouse.get_pos() , boundingBox):
+				self.modulesInUse.remove(module)
 				return module
 
 	def inputs(self):
@@ -496,8 +499,9 @@ class World():
 			elif event.type == pygame.MOUSEBUTTONUP:
 				if self.buildMenu:
 					if event.button == 1:
-						self.dropModuleIntoBuildArea(self.buildDraggingModule, pygame.mouse.get_pos())
-						self.buildDraggingModule = None
+						if self.buildDraggingModule is not None:
+							self.dropModuleIntoBuildArea(self.buildDraggingModule, pygame.mouse.get_pos())
+							self.buildDraggingModule = None
 						
 	def add(self, thing):  
 		self.space.add(thing.body, thing.shape)
@@ -611,10 +615,11 @@ class World():
 	def antiTransformForBuild(self, position):
 		# performs the inverse operation to transformForBuild, used to map the mouse cursor to coordinates in the game world.
 		transformedPosition = [0,0] #* self.zoom  # shrink or expand everything around the 0,0 point
-		transformedPosition[0] = position[0] / self.zoom
-		transformedPosition[1] = position[1] / self.zoom
-		transformedPosition[0] -= 0.5 * self.resolution[0] # add half the width of the screen, to get to the middle. 0,0 is naturally on the corner.
-		transformedPosition[1] -= 0.5 * self.resolution[1] # add half the height.
+		transformedPosition[0] = position[0] - 0.5 * self.resolution[0] # add half the width of the screen, to get to the middle. 0,0 is naturally on the corner.
+		transformedPosition[1] = position[1] - 0.5 * self.resolution[1] # add half the height.
+		transformedPosition[0] = transformedPosition[0] / self.zoom
+		transformedPosition[1] = transformedPosition[1] / self.zoom
+		
 		return transformedPosition
 
 	def transformForView(self, position):
@@ -891,7 +896,7 @@ class World():
 			self.availableModuleListItems.append(buildMenuItem(module))
 
 	def flyShipFromBuildMenu(self):
-		playersNewShip = Actor(self.player.name, self.modulesInUse, self.player.position, self.player.velocity, self.player.angle, True )
+		playersNewShip = Actor(self.player.name, self.modulesInUse, self.player.body.position, self.player.body.velocity, self.player.body.angle, True )
 		self.destroyActor(self.player)
 		self.add(playersNewShip)
 
