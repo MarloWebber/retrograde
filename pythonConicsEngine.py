@@ -27,6 +27,26 @@ def getFarthestPointInPolygon(polygon):
 			farthestPoint = point
 	return farthestPoint
 
+def boundPolygon(polygon): # returns a rectangle that is a bounding box around the polygon.
+	mostX  = 0
+	leastX = 0
+	mostY  = 0
+	leastY = 0
+
+	for point in polygon:
+		if point[0] < leastX: leastX = point[0]
+		if point[1] < leastY: leastY = point[1]
+		if point[0] > mostX: mostX = point[0]
+		if point[1] > mostY: mostY = point[1]
+
+	return [[leastX, leastY], [mostX, mostY]]
+
+def pointInRect(point,rect):
+    if (rect[0][0] < point[0] and point[0] < rect[1][0]):
+        if (rect[0][1] < point[1] and point[1] < rect[1][1]):
+            return True
+    return False
+
 def addRadians(a, b):
 	return (a + b + math.pi) % (2*math.pi) - math.pi
 
@@ -177,7 +197,7 @@ lothar = [Module('generator',[0,0]), Module('engine',[-13,8], 0.6/math.pi), Modu
 boldang = [Module('spar 10',[0,-100], (0.5* math.pi)), Module('box 10',[0,0])]
 
 class Actor():
-	def __init__(self, name, modulesList, position, velocity, isPlayer=False):
+	def __init__(self, name, modulesList, position, velocity, angle, isPlayer=False):
 		self.name = name #str(random.randint(0,1000)) # the individual name of the craft. Set to shipType for now.
 		self.modules = []
 
@@ -230,6 +250,7 @@ class Actor():
 		self.decompEnergy = 500000
 		self.desiredAngle = 0
 		self.exemptFromGravity = False
+		self.body.angle = angle
 
 	def leaveFreefall(self, stepsToFreefall=1):
 		self.stepsToFreefall = stepsToFreefall
@@ -349,7 +370,6 @@ class buildMenuItem():
 		self.quantity = 1
 		self.boundingRectangle = boundingRectangle
 
-
 class World():
 	def __init__(self):
 		pygame.init()
@@ -403,6 +423,18 @@ class World():
 				self.availableModuleListItems.remove(listItem)
 				return listItem.module
 
+		for module in self.modulesInUse:
+			transformedPoints = []
+			for point in module.points:
+				transformedPoint = [0,0]
+				transformedPoint[0] = (point[0] + module.offset[0])
+				transformedPoint[1] = (point[1] + module.offset[1])
+				transformedPoints.append(transformedPoint)
+
+			boundingBox = boundPolygon(transformedPoints)
+			if pointInRect(self.antiTransformForBuild( pygame.mouse.get_pos() ), boundingBox):
+				return module
+
 	def inputs(self):
 		for event in pygame.event.get():
 			if event.type == KEYDOWN and event.key == K_ESCAPE:
@@ -453,13 +485,11 @@ class World():
 					self.paused = True
 
 					self.loadShipIntoBuildMenu(self.player)
+			elif event.type == KEYDOWN and event.key == K_y:
+				if self.buildMenu:
+					self.flyShipFromBuildMenu()
 			elif event.type == pygame.MOUSEBUTTONDOWN:
-				# event.button can equal several integer values:
-				# 1 - left click
-				# 2 - middle click
-				# 3 - right click
-				# 4 - scroll up
-				# 5 - scroll down
+				# event.button can equal several integer values:# 1 - left click# 2 - middle click# 3 - right click# 4 - scroll up# 5 - scroll down
 				if self.buildMenu:
 					if event.button == 1:
 						self.buildDraggingModule = self.getModuleFromCursorPosition(pygame.mouse.get_pos())
@@ -469,7 +499,6 @@ class World():
 						self.dropModuleIntoBuildArea(self.buildDraggingModule, pygame.mouse.get_pos())
 						self.buildDraggingModule = None
 						
-        
 	def add(self, thing):  
 		self.space.add(thing.body, thing.shape)
 		if thing.__class__ == Actor:
@@ -480,17 +509,18 @@ class World():
 		self.player = self._getPlayer()
 		self.viewpointObject = self.player
 
-	def decomposeActor(self, actor, modules):
+	def destroyActor(self, actor):
+		self.space.remove(actor.body)
+		self.space.remove(actor.shape)
+		if actor in self.actors:
+				self.actors.remove(actor)
 
+	def decomposeActor(self, actor, modules):
 		if len(actor.modules) == 1:
 			return # the actor is already fully decomposed, destroy it if you want
 		else:
 			# remove the actor from the space.
-			self.space.remove(actor.body)
-			self.space.remove(actor.shape)
-
-			if actor in self.actors:
-				self.actors.remove(actor)
+			self.destroyActor(actor)
 
 			# create a new actor, minus the module
 			for module in modules:
@@ -506,7 +536,6 @@ class World():
 				self.add( Actor(actor.name, actor.modules, actor.body.position, actor.body.velocity, actor.isPlayer ) ) # add the remaining parts of the original actor back into the space
 
 	def physics(self):
-
 		for actor in self.actors:
 			actor.exemptFromGravity = False
 
@@ -602,18 +631,12 @@ class World():
 		pygame.draw.circle(self.screen, color, [int(position[0]), int(position[1])], int((radius * self.zoom)))
 
 	def drawModuleForList(self, module, iconSize, position):
-		# rotatedPoints = rotate_polygon(module.points, module.angle)  # orient the polygon according to the body's current direction in space.
-		# rotatedPoints = rotate_polygon(rotatedPoints,module.angle, -module.offset)  # orient the polygon according to the body's current direction in space.
-
-		# iconSize = 50
-
 		transformedPoints = []
 		for point in module.points:
 			transformedPoint = [0,0]
 			transformedPoint[0] = (point[0] * iconSize) + position[0]
 			transformedPoint[1] = (point[1] * iconSize) + position[1]
 			transformedPoints.append(transformedPoint) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
-
 		try:
 			return pygame.draw.lines(self.screen, module.color, True, transformedPoints) # return the bounding rectangle
 		except:
@@ -760,7 +783,6 @@ class World():
 			if actor.isPlayer:
 				return actor
 
-
 	def drawAPOrbit(self, orbit, attractor, color):
 		points = []
 
@@ -868,11 +890,14 @@ class World():
 		for module in self.availableModules:
 			self.availableModuleListItems.append(buildMenuItem(module))
 
+	def flyShipFromBuildMenu(self):
+		playersNewShip = Actor(self.player.name, self.modulesInUse, self.player.position, self.player.velocity, self.player.angle, True )
+		self.destroyActor(self.player)
+		self.add(playersNewShip)
 
 	def dropModuleIntoBuildArea(self, module, position):
 		module.offset = self.antiTransformForBuild(position)
 		self.modulesInUse.append(module)
-
 
 	def buildMenuGraphics(self):
 		self.screen.fill((200,200,200))
@@ -888,7 +913,6 @@ class World():
 			i += 1
 
 		# draw the module item the player is dragging, if applicable
-		# #self.getModuleFromCursorPosition(pygame.mouse.get_pos())
 		if self.buildDraggingModule is not None:
 			self.drawModuleForDrag(self.buildDraggingModule, pygame.mouse.get_pos())
 
@@ -928,21 +952,18 @@ class World():
 			self.buildMenuGraphics()
 
 	def start(self):
-
 		planet_erf = Attractor('earth', [1,1], self.gravitationalConstant)
 		planet_moon = Attractor('moon',[1000000,-1000000], self.gravitationalConstant)
 		self.add(planet_erf)
 		self.add(planet_moon)
-
-		dinghy_instance = Actor('NPC dinghy', dinghy,(1000000, -1080100), [30000,0])
-		lothar_instance = Actor('NPC lothar', lothar,(-1000000, -1121600), [65000,0])
-		lothar_instance2 = Actor('player Lothar', lothar,(100, -320050), [0,0], True)
-		boldang_instance = Actor('NPC boldang', boldang,(-100, -320050), [0,0],)
+		dinghy_instance = Actor('NPC dinghy', dinghy,(1000000, -1080100), [30000,0], 0)
+		lothar_instance = Actor('NPC lothar', lothar,(-1000000, -1121600), [65000,0], 0.6 * math.pi)
+		lothar_instance2 = Actor('player Lothar', lothar,(100, -320050), [0,0], 0, True)
+		boldang_instance = Actor('NPC boldang', boldang,(-100, -320050), [0,0],0)
 		self.add(dinghy_instance)
 		self.add(lothar_instance)
 		self.add(lothar_instance2)
 		self.add(boldang_instance)
-		
 		self.availableModules = lothar
 
 		self.running = True
