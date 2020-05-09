@@ -15,16 +15,17 @@ from astropy.time import Time, TimeDelta
 global contact
 global shape_to_remove
 
-# if __name__ == '__main__':
-#     # Import Psyco if available
-#     try:
-#         import psyco
-#         psyco.full()
-#     except ImportError:
-#         pass
 
 def mag(x):
 	return numpy.sqrt(x.dot(x))
+
+def getFarthestPointInPolygon(polygon):
+	farthestPoint = [0,0]
+	for point in polygon:
+		distance = mag(numpy.array(point))
+		if distance > mag(numpy.array(farthestPoint)):
+			farthestPoint = point
+	return farthestPoint
 
 def addRadians(a, b):
 	return (a + b + math.pi) % (2*math.pi) - math.pi
@@ -600,17 +601,17 @@ class World():
 	def drawCircle(self,color, position, radius):
 		pygame.draw.circle(self.screen, color, [int(position[0]), int(position[1])], int((radius * self.zoom)))
 
-	def drawModuleForList(self, module, index):
+	def drawModuleForList(self, module, iconSize, position):
 		# rotatedPoints = rotate_polygon(module.points, module.angle)  # orient the polygon according to the body's current direction in space.
 		# rotatedPoints = rotate_polygon(rotatedPoints,module.angle, -module.offset)  # orient the polygon according to the body's current direction in space.
 
-		iconSize = 50
+		# iconSize = 50
 
 		transformedPoints = []
 		for point in module.points:
 			transformedPoint = [0,0]
-			transformedPoint[0] = (point[0] ) 
-			transformedPoint[1] = (point[1] ) 
+			transformedPoint[0] = (point[0] * iconSize) + position[0]
+			transformedPoint[1] = (point[1] * iconSize) + position[1]
 			transformedPoints.append(transformedPoint) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
 
 		try:
@@ -775,15 +776,18 @@ class World():
 
 	def drawModuleListItem(self, listItem, index):
 		# draw one of the modules in the list in the build menu.
-		
-		
-		listItem.boundingRectangle = self.drawModuleForList( listItem.module, index) # returns a rectangle enclosing the icon. This is used as a clickable area for the mouse.
+		buildListSpacing = 30
+
+		itemSize = 2 * mag(numpy.array(getFarthestPointInPolygon(listItem.module.points)))
+
+		iconSize = buildListSpacing / itemSize
+		listItem.boundingRectangle = self.drawModuleForList( listItem.module, iconSize, (1 * buildListSpacing ,(index * buildListSpacing))) # returns a rectangle enclosing the icon. This is used as a clickable area for the mouse.
 		
 		textsurface = self.font.render(listItem.module.moduleType, False, (0,0,0))
-		self.screen.blit(textsurface,(listItem.module.radius ,index))
+		self.screen.blit(textsurface,(2 * buildListSpacing ,(index * buildListSpacing) - 0.3*buildListSpacing))
 
 	def drawHUDListItem(self,string, quantity, index):
-		listItemSpacing = 15
+		HUDlistItemSpacing = 15
 		listXPosition = 30
 
 		if quantity is None:
@@ -791,7 +795,7 @@ class World():
 		else:
 			textsurface = self.font.render(string + str(quantity), False, (255, 255, 255))
 
-		self.screen.blit(textsurface,(listXPosition,index * listItemSpacing))
+		self.screen.blit(textsurface,(listXPosition,index * HUDlistItemSpacing))
 		return index + 1
 
 	def drawHUD(self):
@@ -878,7 +882,7 @@ class World():
 			self.drawModuleForBuild(module)
 
 		# draw the inventory list up the left hand side
-		i = 0
+		i = 1
 		for listItem in self.availableModuleListItems:
 			self.drawModuleListItem(listItem, i)
 			i += 1
@@ -939,7 +943,7 @@ class World():
 		self.add(lothar_instance2)
 		self.add(boldang_instance)
 		
-		self.availableModules = dinghy
+		self.availableModules = lothar
 
 		self.running = True
 		while self.running:
