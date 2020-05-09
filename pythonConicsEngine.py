@@ -759,19 +759,23 @@ class World():
 			if actor.isPlayer:
 				return actor
 
-	def drawAPOrbit(self, orbit, attractor, color):
+	def drawAPOrbit(self, main_batch, orbit, attractor, color):
 		points = []
+		n_points = 100
 
-		for i in range(0,100):
-			temp_vec3d = orbit.cartesianCoordinates(i * (2 * math.pi / 100))
+		for i in range(0,n_points):
+			temp_vec3d = orbit.cartesianCoordinates(i * (2 * math.pi / n_points))
 			point = (temp_vec3d[0] + attractor.body.position[0], temp_vec3d[1] + attractor.body.position[1])
 			point = self.transformForView(point)
-			points.append(point)
+			points.append(int(point[0]))
+			points.append(int(point[1]))
 
-		for i in range(0,100):
-			if i > 0:
-				# pygame.draw.lines(self.screen, color, True, (points[i-1], points[i]))
-				pass
+		main_batch.add(n_points, pyglet.gl.GL_LINES, None, ('v2i', points), ('c4B',white*n_points))
+
+		# for i in range(0,100):
+		# 	if i > 0:
+		# 		# pygame.draw.lines(self.screen, color, True, (points[i-1], points[i]))
+		# 		pass
 
 	def drawModuleListItem(self, listItem, index):
 		# draw one of the modules in the list in the build menu.
@@ -780,24 +784,26 @@ class World():
 		itemSize = 2 * mag(numpy.array(getFarthestPointInPolygon(listItem.module.points)))
 
 		iconSize = buildListSpacing / itemSize
-		listItem.boundingRectangle = self.drawModuleForList( listItem.module, iconSize, (1 * buildListSpacing ,(index * buildListSpacing))) # returns a rectangle enclosing the icon. This is used as a clickable area for the mouse.
+		# listItem.boundingRectangle = self.drawModuleForList( listItem.module, iconSize, (1 * buildListSpacing ,(index * buildListSpacing))) # returns a rectangle enclosing the icon. This is used as a clickable area for the mouse.
 		
-		textsurface = self.font.render(listItem.module.moduleType, False, (0,0,0))
-		self.screen.blit(textsurface,(2 * buildListSpacing ,(index * buildListSpacing) - 0.3*buildListSpacing))
+		# textsurface = self.font.render(listItem.module.moduleType, False, (0,0,0))
+		# self.screen.blit(textsurface,(2 * buildListSpacing ,(index * buildListSpacing) - 0.3*buildListSpacing))
 
 	def drawHUDListItem(self,string, quantity, index):
 		HUDlistItemSpacing = 15
 		listXPosition = 30
 
 		if quantity is None:
-			textsurface = self.font.render(string, False, (255, 255, 255))
+			# textsurface = self.font.render(string, False, (255, 255, 255))
+			pass
 		else:
-			textsurface = self.font.render(string + str(quantity), False, (255, 255, 255))
+			# textsurface = self.font.render(string + str(quantity), False, (255, 255, 255))
+			pass
 
-		self.screen.blit(textsurface,(listXPosition,index * HUDlistItemSpacing))
+		# self.screen.blit(textsurface,(listXPosition,index * HUDlistItemSpacing))
 		return index + 1
 
-	def drawHUD(self):
+	def drawHUD(self, main_batch):
 
 		# show the player what resources are available
 		i = 1
@@ -856,7 +862,7 @@ class World():
 		# draw the actor's orbits
 		for actor in self.actors:
 			if actor.orbit is not None:
-				self.drawAPOrbit(actor.orbit, actor.orbiting, (100,100,100))
+				self.drawAPOrbit(main_batch, actor.orbit, actor.orbiting, (100,100,100))
 
 	def loadShipIntoBuildMenu(self, actor):
 		self.modulesInUse = []
@@ -915,7 +921,7 @@ class World():
 			self.drawActor(actor, main_batch)
 
 		if self.showHUD:
-			self.drawHUD()
+			self.drawHUD(main_batch)
 
 		# pygame.display.flip()
 		# self.clock.tick(150)
@@ -975,6 +981,12 @@ def on_key_press(symbol, modifiers):
     	Nirn.player.keyStates['up'] = True
     elif symbol == key.P:
     	Nirn.paused = not Nirn.paused
+    elif symbol == key.EQUAL:
+    	Nirn.zoom += Nirn.zoom * 0.5
+    elif symbol == key.MINUS:
+    	Nirn.zoom -= Nirn.zoom * 0.5
+    elif symbol == key.H:
+    	Nirn.showHUD = not Nirn.showHUD
 
 
 @window.event
