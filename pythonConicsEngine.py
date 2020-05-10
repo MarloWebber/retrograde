@@ -123,6 +123,30 @@ def centroidOfPolygon(polygon):
 
 	return [averageOfList(xValues), averageOfList(yValues)]
 
+def transformPolygonForLines(polygon):
+		n = 0
+		points = []
+		firstPoint = polygon[0]
+		lastPoint = firstPoint
+		points.extend([ int(firstPoint[0]) , int(firstPoint[1])])
+		n +=1 
+		
+		for index, point in enumerate(polygon):
+			points.extend([ int(point[0]) , int(point[1])])
+			points.extend([ int(point[0]) , int(point[1])])
+			lastPoint = point
+			n +=2
+
+		# make a segment joining the first one to the last one and then do a repeat to close it off.
+		points.extend([ int(firstPoint[0]) , int(firstPoint[1])])
+		points.extend([ int(lastPoint[0]) , int(lastPoint[1])])
+		points.extend([ int(lastPoint[0]) , int(lastPoint[1])])
+		n +=3
+		return [n,points]
+
+
+
+
 def transformPolygonForTriangleFan(polygon):
 	# the number of points returned by this function is always 1.5n + 5, where n is the number of points in polygon.
 	centroid = centroidOfPolygon(polygon)
@@ -173,12 +197,19 @@ def transformPolygonForTriangleFan(polygon):
 
 
 
-def renderAConvexPolygon(batch, polygon, color):
-	nsfe = int(1.5*len(polygon) + 5)
+def renderAConvexPolygon(batch, polygon, color, outlineColor=None):
+	# nsfe = int(1.5*len(polygon) + 5)
 	# print(nsfe)
 	transformedPoints = transformPolygonForTriangleFan(polygon)
 	# print(transformedPoints[0])
 	batch.add(transformedPoints[0], pyglet.gl.GL_TRIANGLE_STRIP, None, ('v2i',transformedPoints[1]), ('c4B',color*transformedPoints[0]))
+
+	if outlineColor is not None:
+		transformedPoints = transformPolygonForLines(polygon)
+		batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i',transformedPoints[1]), ('c4B',outlineColor*transformedPoints[0]))
+
+
+
 
 
 
@@ -187,6 +218,7 @@ class Atmosphere():
 		self.height = 5000
 		self.density = 1
 		self.color = [50,125,200,255]
+		self.outlineColor = [50,125,200,255]
 		self.points = make_circle(radius+self.height, 314)
 		self.mass = self.density * area_of_annulus(radius+self.height, radius)
 		inertia = pymunk.moment_for_poly(self.mass, self.points, (0,0))
@@ -224,7 +256,8 @@ class Module():
 			}
 			self.radius = 5
 			self.points = [[-self.radius, -self.radius], [-self.radius, self.radius], [self.radius,self.radius], [self.radius, -self.radius]]
-			self.color = [150,20,20,255]
+			self.color = [75,10,10,255]
+			self.outlineColor = [200,70,70,255]
 
 		elif self.moduleType is 'engine':
 			self.mass = 1
@@ -239,6 +272,7 @@ class Module():
 			size = self.radius
 			self.points = [[-size, -size*2], [-size, size*2], [size,size*2], [size, -size*2]]
 			self.color = [50,50,50,255]
+			self.outlineColor = [100,100,100,255]
 
 			self.effect = ModuleEffect([0,0])
 
@@ -254,6 +288,7 @@ class Module():
 			size = self.radius
 			self.points = [[-size, -size], [-size, size], [size,size], [size, -size]]
 			self.color = [120,100,100,255]
+			self.outlineColor = [170,150,150,255]
 
 			self.momentArm = self.radius
 
@@ -266,6 +301,7 @@ class Module():
 			size = self.radius
 			self.points = [[-size, -size*10], [-size, size*10], [size,size*10], [size, -size*10]]
 			self.color = [50,50,50,255]
+			self.outlineColor = [100,100,100,255]
 
 			self.momentArm = self.radius
 
@@ -278,6 +314,7 @@ class Module():
 			size = self.radius
 			self.points = [[-size*10, -size*10], [-size*10, size*10], [size*10,size*10], [size*10, -size*10]]
 			self.color = [50,50,50,255]
+			self.outlineColor = [100,100,100,255]
 
 			self.momentArm = self.radius
 
@@ -431,13 +468,15 @@ class Attractor():
 			self.density = 1
 			self.friction = 0.9
 			self.color = [180,170,145,255]
+			self.outlineColor = [200,190,155,255]
 			self.atmosphere = Atmosphere(self.radius, position)
 
 		elif planetType == 'moon':
 			self.radius = 80000
 			self.density = 1
 			self.friction = 0.9
-			self.color = [145,145,145,255]
+			self.color = [45,45,45,255]
+			self.outlineColor = [145,145,145,255]
 			self.atmosphere = None #Atmosphere(self)
 
 		# create pymunk physical body and shape
@@ -782,7 +821,7 @@ class World():
 			#batch.add(4, pyglet.gl.GL_POLYGON, None, ('v2i',[10,60,10,110,390,60,390,110]), ('c4B',white*4))
 		
 		# main_batch.add(n_transformedPoints, pyglet.gl.GL_TRIANGLE_STRIP, None, ('v2i', transformedPoints), ('c4B',white*n_transformedPoints))
-		renderAConvexPolygon(main_batch, transformedPoints, module.color)
+		renderAConvexPolygon(main_batch, transformedPoints, module.color, module.outlineColor)
 			# pass
 		# except:
 		# 	print('drawModule error')
@@ -803,7 +842,7 @@ class World():
 				transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
 				# n_transformedPoints += 1
 			
-			renderAConvexPolygon(main_batch, transformedPoints, actor.color)
+			renderAConvexPolygon(main_batch, transformedPoints, actor.color, actor.outlineColor)
 			# main_batch.add(n_transformedPoints, pyglet.gl.GL_LINE_LOOP, None, ('v2i', transformedPoints), ('c4B',white*n_transformedPoints))
 				
 
@@ -869,27 +908,24 @@ class World():
 			if actor.isPlayer:
 				return actor
 
+
+
+
 	def drawAPOrbit(self, main_batch, orbit, attractor, color):
 		points = []
 		n_points = 100
-		temp_vec3d = orbit.cartesianCoordinates(0)
-		firstPoint = self.transformForView((temp_vec3d[0] + attractor.body.position[0], temp_vec3d[1] + attractor.body.position[1]))
-		lastPoint = firstPoint
-		points.extend([ int(firstPoint[0]) , int(firstPoint[1])])
+		# temp_vec3d = orbit.cartesianCoordinates(0)
+
 		for i in range(0,n_points):
 			temp_vec3d = orbit.cartesianCoordinates(i * (2 * math.pi / n_points))
+
 			point = (temp_vec3d[0] + attractor.body.position[0], temp_vec3d[1] + attractor.body.position[1])
 			point = self.transformForView(point)
-			# points.extend([int(lastPoint[0]) , int(lastPoint[1]), int(point[0]) , int(point[1])])
-			points.extend([ int(point[0]) , int(point[1])])
-			points.extend([ int(point[0]) , int(point[1])])
-			lastPoint = point
+			points.append(point)
 
-		points.extend([ int(firstPoint[0]) , int(firstPoint[1])])
-		points.extend([ int(lastPoint[0]) , int(lastPoint[1])])
-		points.extend([ int(lastPoint[0]) , int(lastPoint[1])])
+		transformedPoints = transformPolygonForLines(points)
 
-		main_batch.add((2 * n_points+4), pyglet.gl.GL_LINES, None, ('v2i', points), ('c4B',white*(2 * n_points+4)))
+		main_batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i', transformedPoints[1]), ('c4B',[150,150,150,255]*(transformedPoints[0])))
 
 		# for i in range(0,100):
 		# 	if i > 0:
@@ -923,6 +959,9 @@ class World():
 		return index + 1
 
 	def drawHUD(self, main_batch):
+
+		if self.player is None:
+			return
 
 		# show the player what resources are available
 		i = 1
@@ -1207,6 +1246,9 @@ Nirn.start()
 # PRIMITIVE_RESTART_INDEX = 65536
 # pyglet.gl.glEnable(GL_PRIMITIVE_RESTART)
 # pyglet.gl.glPrimitiveRestartIndex(65536)
+
+
+pyglet.gl.glLineWidth(2)
 
 pyglet.clock.schedule_interval(stepWithBatch, 0.01)
 pyglet.app.run()
