@@ -547,24 +547,32 @@ class World():
 				self.actors.remove(actor)
 
 	def decomposeActor(self, actor, modules):
-		if len(actor.modules) == 1:
+		listLength = len(actor.modules)
+		if listLength == 1:
 			return # the actor is already fully decomposed, destroy it if you want
 		else:
-			# remove the actor from the space.
-			self.destroyActor(actor)
-
+		
 			# create a new actor, minus the module
-			for module in modules:
-				actor.modules.remove(module)
+			for index, module in enumerate(actor.modules):
 
 				# create the module on it's own as a new actor
 				fragmentPosition = [actor.body.position[0] + (module.offset[0] * math.cos(actor.body.angle)), actor.body.position[1] +  (module.offset[1] * math.sin(actor.body.angle))]
-				self.add(Actor(actor.name + ' fragment', [module], fragmentPosition, actor.body.velocity, False))
 
-			if not actor.modules:
-				pass
-			else:
-				self.add( Actor(actor.name, actor.modules, actor.body.position, actor.body.velocity, actor.isPlayer ) ) # add the remaining parts of the original actor back into the space
+				if actor.isPlayer and index == listLength-1:
+					self.add(Actor(actor.name + ' fragment', [module], fragmentPosition, actor.body.velocity, True))
+					self.player = self._getPlayer()
+					self.viewpointObject = self.player
+				else:
+					self.add(Actor(actor.name + ' fragment', [module], fragmentPosition, actor.body.velocity, False))
+
+			# remove the actor from the space.
+			self.destroyActor(actor)
+
+
+			# if not actor.modules:
+			# 	pass
+			# else:
+			# 	self.add( Actor(actor.name, actor.modules, actor.body.position, actor.body.velocity, actor.isPlayer ) ) # add the remaining parts of the original actor back into the space
 
 	def physics(self):
 		for actor in self.actors:
