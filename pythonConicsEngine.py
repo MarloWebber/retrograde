@@ -21,6 +21,7 @@ global shape_to_remove
 
 
 import pyglet
+from pyglet.gl import *
 from pyglet.window import Window
 from pyglet.window import key
 
@@ -53,7 +54,7 @@ def boundPolygon(polygon): # returns a rectangle that is a bounding box around t
 		if point[0] > mostX: mostX = point[0]
 		if point[1] > mostY: mostY = point[1]
 
-	print([[leastX, leastY], [mostX, mostY]])
+	# print([[leastX, leastY], [mostX, mostY]])
 
 	return [[leastX, leastY], [mostX, mostY]]
 
@@ -108,11 +109,84 @@ def mass_of_a_circle(density, radius):
 def semiMinorAxis(a, e):
 	return a * math.sqrt(1 - (math.pow(e,2))) # https://math.stackexchange.com/questions/1259945/calculating-semi-minor-axis-of-an-ellipse
 
+def averageOfList(TheList):
+    avg = sum(TheList) / len(TheList)
+    return avg
+
+def centroidOfPolygon(polygon):
+	xValues = []
+	yValues = []
+	# print(polygon)
+	for point in polygon:
+		xValues.append(point[0])
+		yValues.append(point[1])
+
+	return [averageOfList(xValues), averageOfList(yValues)]
+
+def transformPolygonForTriangleFan(polygon):
+	# the number of points returned by this function is always 1.5n + 5, where n is the number of points in polygon.
+	centroid = centroidOfPolygon(polygon)
+	centroid[0] = int(centroid[0])
+	centroid[1] = int(centroid[1])
+	transformedPoints = []
+	length = len(polygon)
+	n = 0
+	# repeat start
+	transformedPoints.append(polygon[0][0])
+	transformedPoints.append(polygon[0][1])
+	n+= 1
+
+	# take every first and second point, and make a triangle between them and the centroid.
+	closeTriangle = False
+	for point in polygon:
+		n+= 1
+		transformedPoints.append(point[0])
+		transformedPoints.append(point[1])
+		if closeTriangle:
+			transformedPoints.append(centroid[0])
+			transformedPoints.append(centroid[1])
+			n+= 1
+			closeTriangle = False
+
+		else:
+			closeTriangle = True
+
+	# you may need to run this again to close the last triangle if the polygon had an uneven number of points.
+	if closeTriangle:
+		transformedPoints.append(centroid[0])
+		transformedPoints.append(centroid[1])
+		n+= 1
+
+
+	# finally, you need to create another triangle to fill the space between the first and last vertices.
+	# this snippet adds that triangle plus the repeat end sequence required by pyglet. 
+	transformedPoints.append(polygon[length-1][0])
+	transformedPoints.append(polygon[length-1][1])
+	transformedPoints.append(polygon[0][0])
+	transformedPoints.append(polygon[0][1])
+	transformedPoints.append(centroid[0])
+	transformedPoints.append(centroid[1])
+	transformedPoints.append(centroid[0])
+	transformedPoints.append(centroid[1])
+	n+= 4
+	return [n,transformedPoints]
+
+
+
+def renderAConvexPolygon(batch, polygon, color):
+	nsfe = int(1.5*len(polygon) + 5)
+	# print(nsfe)
+	transformedPoints = transformPolygonForTriangleFan(polygon)
+	# print(transformedPoints[0])
+	batch.add(transformedPoints[0], pyglet.gl.GL_TRIANGLE_STRIP, None, ('v2i',transformedPoints[1]), ('c4B',color*transformedPoints[0]))
+
+
+
 class Atmosphere():
 	def __init__(self,radius, planetPosition):
 		self.height = 5000
 		self.density = 1
-		self.color = (0,50,200)
+		self.color = [50,125,200,255]
 		self.points = make_circle(radius+self.height, 314)
 		self.mass = self.density * area_of_annulus(radius+self.height, radius)
 		inertia = pymunk.moment_for_poly(self.mass, self.points, (0,0))
@@ -150,7 +224,7 @@ class Module():
 			}
 			self.radius = 5
 			self.points = [[-self.radius, -self.radius], [-self.radius, self.radius], [self.radius,self.radius], [self.radius, -self.radius]]
-			self.color = [150,20,20]
+			self.color = [150,20,20,255]
 
 		elif self.moduleType is 'engine':
 			self.mass = 1
@@ -164,7 +238,7 @@ class Module():
 			self.radius = 5
 			size = self.radius
 			self.points = [[-size, -size*2], [-size, size*2], [size,size*2], [size, -size*2]]
-			self.color = [120,100,100]
+			self.color = [50,50,50,255]
 
 			self.effect = ModuleEffect([0,0])
 
@@ -179,7 +253,7 @@ class Module():
 			self.radius = 5
 			size = self.radius
 			self.points = [[-size, -size], [-size, size], [size,size], [size, -size]]
-			self.color = [120,100,100]
+			self.color = [120,100,100,255]
 
 			self.momentArm = self.radius
 
@@ -191,7 +265,7 @@ class Module():
 			self.radius = 5
 			size = self.radius
 			self.points = [[-size, -size*10], [-size, size*10], [size,size*10], [size, -size*10]]
-			self.color = [50,50,50]
+			self.color = [50,50,50,255]
 
 			self.momentArm = self.radius
 
@@ -203,7 +277,7 @@ class Module():
 			self.radius = 5
 			size = self.radius
 			self.points = [[-size*10, -size*10], [-size*10, size*10], [size*10,size*10], [size*10, -size*10]]
-			self.color = [50,50,50]
+			self.color = [50,50,50,255]
 
 			self.momentArm = self.radius
 
@@ -356,14 +430,14 @@ class Attractor():
 			self.radius = 320000
 			self.density = 1
 			self.friction = 0.9
-			self.color = (190,165,145)
+			self.color = [180,170,145,255]
 			self.atmosphere = Atmosphere(self.radius, position)
 
 		elif planetType == 'moon':
 			self.radius = 80000
 			self.density = 1
 			self.friction = 0.9
-			self.color = (145,145,145)
+			self.color = [145,145,145,255]
 			self.atmosphere = None #Atmosphere(self)
 
 		# create pymunk physical body and shape
@@ -615,7 +689,7 @@ class World():
 			pass
 		except:
 			print('drawModuleForBuild error')
-			print(transformedPoints)
+			# print(transformedPoints)
 
 	def drawModuleForBuild(self, module):
 		rotatedPoints = rotate_polygon(module.points, module.angle)  # orient the polygon according to the body's current direction in space.
@@ -630,7 +704,7 @@ class World():
 			pass
 		except:
 			print('drawModuleForBuild error')
-			print(transformedPoints)
+			# print(transformedPoints)
 
 	def drawModuleEffects(self, module, actor):
 		# put a circle in the middle if it is enabled, and a smaller red circle in the middle of that, if it is activated.
@@ -659,20 +733,48 @@ class World():
 		rotatedPoints = rotate_polygon(module.points,actor.body.angle + module.angle, (-module.offset[0], -module.offset[1]))  # orient the polygon according to the body's current direction in space.
 		# rotatedPoints = rotate_polygon(rotatedPoints,module.angle, -module.offset)  # orient the polygon according to the body's current direction in space.
 		transformedPoints = []
-		n_transformedPoints = 0
-		for rotatedPoint in rotatedPoints:
+		# n_transformedPoints = 0
+		# mactualOffset = [module.offset[0] + actor.body.position[0], module.offset[1] +actor.body.position[1]]
+		# transformedOffset = self.transformForView(module.offset)
+		# transformedPoints.append(int(transformedOffset[0]))
+		# transformedPoints.append(int(transformedOffset[1]))
+
+		# end degenerate triangle from last polygon.
+		# transformedPoint = self.transformForView(module.points[0] + actor.body.position + module.offset) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
+			# transformedPoint = rotatedPoint
+		# transformedPoints.append(int(transformedPoint[0]))
+		# transformedPoints.append(int(transformedPoint[1]))
+		# n_transformedPoints += 1
+
+		for index, rotatedPoint in enumerate(rotatedPoints):
 			transformedPoint = self.transformForView(rotatedPoint + actor.body.position + module.offset) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
 			# transformedPoint = rotatedPoint
-			transformedPoints.append(int(transformedPoint[0]))
-			transformedPoints.append(int(transformedPoint[1]))
-			n_transformedPoints += 1
+			transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
+			# transformedPoints.append(int(transformedPoint[1]))
+			# n_transformedPoints += 1
+
+			# print(index)
+			# if index == len(rotatedPoints) - 1:
+			# 	# begin degenerate triangle
+			# 	transformedPoints.append(int(transformedPoint[0]))
+			# 	transformedPoints.append(int(transformedPoint[1]))
+			# 	n_transformedPoints += 1
+			# 	transformedPoints.append(int(transformedPoint[0]))
+			# 	transformedPoints.append(int(transformedPoint[1]))
+			# 	n_transformedPoints += 1
+				# print('mouschw')
+		# transformedPoints.append(65536)
+				# transformedPoints.append(65536)
+		# n_transformedPoints += 1
+
 
 		# try:
 			# pygame.draw.lines(self.screen, module.color, True, transformedPoints)
 			# print(transformedPoints)
 			#batch.add(4, pyglet.gl.GL_POLYGON, None, ('v2i',[10,60,10,110,390,60,390,110]), ('c4B',white*4))
 		
-		main_batch.add(n_transformedPoints, pyglet.gl.GL_LINES, None, ('v2i', transformedPoints), ('c4B',white*n_transformedPoints))
+		# main_batch.add(n_transformedPoints, pyglet.gl.GL_TRIANGLE_STRIP, None, ('v2i', transformedPoints), ('c4B',white*n_transformedPoints))
+		renderAConvexPolygon(main_batch, transformedPoints, module.color)
 			# pass
 		# except:
 		# 	print('drawModule error')
@@ -687,14 +789,14 @@ class World():
 		if actor.__class__ is Attractor or actor.__class__ is Atmosphere: 
 			rotatedPoints = rotate_polygon(actor.points,actor.body.angle)  # orient the polygon according to the body's current direction in space.
 			transformedPoints = []
-			n_transformedPoints = 0
+			# n_transformedPoints = 0
 			for rotatedPoint in rotatedPoints:
 				transformedPoint = self.transformForView(rotatedPoint + actor.body.position) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
-				transformedPoints.append(int(transformedPoint[0]))
-				transformedPoints.append(int(transformedPoint[1]))
-				n_transformedPoints += 1
+				transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
+				# n_transformedPoints += 1
 			
-			main_batch.add(n_transformedPoints, pyglet.gl.GL_LINES, None, ('v2i', transformedPoints), ('c4B',white*n_transformedPoints))
+			renderAConvexPolygon(main_batch, transformedPoints, actor.color)
+			# main_batch.add(n_transformedPoints, pyglet.gl.GL_LINE_LOOP, None, ('v2i', transformedPoints), ('c4B',white*n_transformedPoints))
 				
 
 	def getActorFromBody(self, body):
@@ -762,15 +864,24 @@ class World():
 	def drawAPOrbit(self, main_batch, orbit, attractor, color):
 		points = []
 		n_points = 100
-
+		temp_vec3d = orbit.cartesianCoordinates(0)
+		firstPoint = self.transformForView((temp_vec3d[0] + attractor.body.position[0], temp_vec3d[1] + attractor.body.position[1]))
+		lastPoint = firstPoint
+		points.extend([ int(firstPoint[0]) , int(firstPoint[1])])
 		for i in range(0,n_points):
 			temp_vec3d = orbit.cartesianCoordinates(i * (2 * math.pi / n_points))
 			point = (temp_vec3d[0] + attractor.body.position[0], temp_vec3d[1] + attractor.body.position[1])
 			point = self.transformForView(point)
-			points.append(int(point[0]))
-			points.append(int(point[1]))
+			# points.extend([int(lastPoint[0]) , int(lastPoint[1]), int(point[0]) , int(point[1])])
+			points.extend([ int(point[0]) , int(point[1])])
+			points.extend([ int(point[0]) , int(point[1])])
+			lastPoint = point
 
-		main_batch.add(n_points, pyglet.gl.GL_LINES, None, ('v2i', points), ('c4B',white*n_points))
+		points.extend([ int(firstPoint[0]) , int(firstPoint[1])])
+		points.extend([ int(lastPoint[0]) , int(lastPoint[1])])
+		points.extend([ int(lastPoint[0]) , int(lastPoint[1])])
+
+		main_batch.add((2 * n_points+4), pyglet.gl.GL_LINES, None, ('v2i', points), ('c4B',white*(2 * n_points+4)))
 
 		# for i in range(0,100):
 		# 	if i > 0:
@@ -1072,7 +1183,7 @@ def stepWithBatch(dt):
 @window.event()
 def on_draw():
 
-	print('weener')
+	# print('weener')
 
 	main_batch = pyglet.graphics.Batch()
 
@@ -1084,5 +1195,10 @@ def on_draw():
 
 Nirn.start()
 # pyglet.clock.set_fps_limit(300)
+
+# PRIMITIVE_RESTART_INDEX = 65536
+# pyglet.gl.glEnable(GL_PRIMITIVE_RESTART)
+# pyglet.gl.glPrimitiveRestartIndex(65536)
+
 pyglet.clock.schedule_interval(stepWithBatch, 0.01)
 pyglet.app.run()
