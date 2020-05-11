@@ -184,6 +184,63 @@ def transformPolygonForTriangleFan(polygon):
 	n+= 4
 	return [n,transformedPoints]
 
+def unwrapAtmosphereForGradient(n, inside_verts, outside_verts, inside_color, outside_color):
+		# shred one of the ingame annular atmospheres into a ribbon of triangles, and add a color gradient from the inner edge to the outer.
+
+		bitstream = []
+		colorstream = []
+
+		nn = 0
+
+		#repeat start
+		bitstream.append(inside_verts[0][0])
+		bitstream.append(inside_verts[0][1])
+
+		colorstream.append(inside_color[0])
+		colorstream.append(inside_color[1])
+		colorstream.append(inside_color[2])
+		colorstream.append(inside_color[3])
+		nn += 1
+
+		# now go around and for each pair of inner and outer points create two triangles and a color gradient.
+		# the bitstream order is: from https://stackoverflow.com/questions/20394727/gl-triangle-strip-vs-gl-triangle-fan
+		# inner n, outer n, inner n + 1, outer n + 1
+		# the colorstream order is (index matching bitstream order above):
+		# full color, no color, full color, no color
+
+		for index in range(0,n):
+			bitstream.append(inside_verts[index][0])
+			bitstream.append(inside_verts[index][1])
+
+			bitstream.append(outside_verts[index][0])
+			bitstream.append(outside_verts[index][1])
+			nn += 2
+
+			colorstream.append(inside_color[0])
+			colorstream.append(inside_color[1])
+			colorstream.append(inside_color[2])
+			colorstream.append(inside_color[3])
+
+			colorstream.append(outside_color[0])
+			colorstream.append(outside_color[1])
+			colorstream.append(outside_color[2])
+			colorstream.append(outside_color[3])
+
+		bitstream.append(outside_verts[index][0])
+		bitstream.append(outside_verts[index][1])
+		
+		colorstream.append(outside_color[0])
+		colorstream.append(outside_color[1])
+		colorstream.append(outside_color[2])
+		colorstream.append(outside_color[3])
+
+		nn += 1
+
+		return [nn, bitstream, colorstream]
+
+
+
+
 def renderAConvexPolygon(batch, polygon, color, outlineColor=None):
 	# nsfe = int(1.5*len(polygon) + 5)
 	# print(nsfe)
@@ -198,22 +255,24 @@ def renderAConvexPolygon(batch, polygon, color, outlineColor=None):
 class Atmosphere():
 	def __init__(self,radius, planetPosition):
 		self.height = 5000
-		self.density = 1
+		self.bottomDensity = 1
+		self.topDensity = 0
 		self.color = [50,125,200,255]
+		self.outerColor = [0,0,0,255]
 		self.outlineColor = [50,125,200,255]
 
 		# each atmosphere layer is an annulus.
 		# it is rendered as a triangle strip with a gradient between the inner and outer edges.
-		n_points = 100
+		self.n_points = 100
 		self.innerPoints = make_circle(radius, 100)
 		self.outerPoints = make_circle(radius+self.height, 100)
 
-		self.rendering = unwrapForGradient(self.innerPoints, self.outerPoints)
+		# self.rendering = unwrapForGradient(n_points, self.innerPoints, self.outerPoints, self.color, self.outerColor)
 
-		self.mass = self.density * area_of_annulus(radius+self.height, radius)
-		inertia = pymunk.moment_for_poly(self.mass, self.points, (0,0))
-		self.body = pymunk.Body(self.mass, inertia)
-		self.body.position = planetPosition
+		self.mass = ( (self.bottomDensity + self.topDensity) / 2 ) * area_of_annulus(radius+self.height, radius)
+		# inertia = pymunk.moment_for_poly(self.mass, self.points, (0,0))
+		# self.body = pymunk.Body(self.mass, inertia)
+		# self.body.position = planetPosition
 
 class ModuleEffect(): # a ModuleEffect is just a polygon that is visually displayed when a module is active.
 	def __init__(self, offset=[0,0]):
@@ -692,8 +751,8 @@ class World():
 		else:
 			transformedPosition = position - self.viewpointObject.body.position # offset everything by the position of the viewpointObject, so the viewpoint is at 0,0
 			transformedPosition = transformedPosition * self.zoom  # shrink or expand everything around the 0,0 point
-			transformedPosition[0] += 0.5 * self.resolution[0] # add half the width of the screen, to get to the middle. 0,0 is naturally on the corner.
-			transformedPosition[1] = -transformedPosition[1] + 0.5 * self.resolution[1] # add half the height.
+			transformedPosition[0] = int(transformedPosition[0] + 0.5 * self.resolution[0]) # add half the width of the screen, to get to the middle. 0,0 is naturally on the corner.
+			transformedPosition[1] = int(-transformedPosition[1] + 0.5 * self.resolution[1]) # add half the height. and invert it so that it's the right way up in opengl.
 			return transformedPosition
 
 	def drawCircle(self,color, position, radius):
@@ -779,43 +838,33 @@ class World():
 
 		self.drawModuleEffects(module, actor)
 
-	def unwrapForGradient(self, n, inside_verts, outside_verts, inside_color, outside_color):
-		bitstream = []
-		colorstream = []
-
-		#repeat start
-		bitstream.append(inside_verts[0])
-		colorstream.append(inside_color)
-
-		# now go around and for each pair of inner and outer points create two triangles and a color gradient.
-		# the bitstream order is: from https://stackoverflow.com/questions/20394727/gl-triangle-strip-vs-gl-triangle-fan
-		# inner n, outer n, inner n + 1, outer n + 1
-		# the colorstream order is (index matching bitstream order above):
-		# full color, no color, full color, no color
-
-		for index in xrange(0,n):
-			bitstream.append(inside_verts[index])
-			bitstream.append(outside_verts[index])
-
-			colorstream.append(inside_color)
-			colorstream.append(outside_color)
-
-		bitstream.append(outside_verts[index])
-		colorstream.append(outside_color)
-
-		return [n, bitstream, colorstream]
-
 	def drawActor(self, actor, main_batch):
 		if actor.__class__ is Actor:
 			for module in actor.modules:
 					self.drawModule(actor, module, main_batch)
-		
-		if actor.__class__ is Attractor or actor.__class__ is Atmosphere: 
 
-			# rotatedPoints = rotate_polygon(actor.points,actor.body.angle)  # you literally do not need to do this for planets and atmospheres. they never change orientation. # orient the polygon according to the body's current direction in space.
+		if actor.__class__ is Atmosphere:
+
+			transformedInnerPoints = []
+			transformedOuterPoints = []
+
+			for index, point in enumerate(actor.innerPoints): 
+				transformedInnerPoints.append(self.transformForView(point))
+			for index, point in enumerate(actor.outerPoints): 
+				transformedOuterPoints.append(self.transformForView(point))
+
+			rendering = unwrapAtmosphereForGradient(actor.n_points, transformedInnerPoints, transformedOuterPoints, actor.color, actor.outerColor)
+
+			print(rendering[0])
+			print(len(rendering[1]))
+			print(len(rendering[2]))
+
+			main_batch.add(rendering[0], pyglet.gl.GL_TRIANGLE_STRIP, None, ('v2i',rendering[1]), ('c4B',rendering[2]))
+		
+		if actor.__class__ is Attractor:
 			transformedPoints = []
-			for rotatedPoint in rotatedPoints:
-				transformedPoint = self.transformForView(rotatedPoint + actor.body.position) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
+			for point in actor.points:
+				transformedPoint = self.transformForView(point + actor.body.position) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
 				transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
 			
 			renderAConvexPolygon(main_batch, transformedPoints, actor.color, actor.outlineColor)	
@@ -1077,6 +1126,10 @@ def on_key_press(symbol, modifiers):
     	Nirn.zoom -= Nirn.zoom * 0.5
     elif symbol == key.H:
     	Nirn.showHUD = not Nirn.showHUD
+    elif symbol == key.COMMA:
+    	Nirn.timestepSize += Nirn.timestepSize * 0.5
+    elif symbol == key.PERIOD:
+    	Nirn.timestepSize -= Nirn.timestepSize * 0.5
 
 @window.event
 def on_key_release(symbol, modifiers):
