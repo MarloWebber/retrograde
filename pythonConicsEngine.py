@@ -556,6 +556,7 @@ class World():
 		self.space = pymunk.Space()
 		self.space.gravity = (0.0, 0.0)
 		self.gravitationalConstant = 0.03
+		self.dragCoefficient = 0.00001 # atmospheric drag
 		self.actors = []
 		self.attractors = []
 		self.resolution = resolution
@@ -683,7 +684,30 @@ class World():
 					strongestForce = force
 					strongestAttractor = attractor
 
-			# when you enter a new sphere of ifluence, regenerate the orbit information
+			# do atmospheric drag
+			for attractor in self.attractors:
+				if attractor.atmosphere is not None:
+					actorHeightFromAttractorCenter = mag(actor.body.position - attractor.body.position)
+					if actorHeightFromAttractorCenter < (attractor.radius + attractor.atmosphere.height):
+						
+						actor.leaveFreefall(0)
+
+						naturalDepth = 1 - ((actorHeightFromAttractorCenter - attractor.radius) / attractor.atmosphere.height) # this is a number between 0 and 1 which is signifies the actors depth into this atmosphere layer.
+
+						#drag = coefficient * (density * velocity**2 / 2) * reference area
+						density = attractor.atmosphere.topDensity + (naturalDepth * attractor.atmosphere.bottomDensity)
+						# dragForceX = self.dragCoefficient * (density * actor.body.velocity[0]**2 /2) * actor.body.mass # using mass as a placeholder because i don't have a drag frontal area calculation yet. but it still needs to apply to bigger things more.
+						# dragForceY = self.dragCoefficient * (density * actor.body.velocity[1]**2 /2) * actor.body.mass # using mass as a placeholder because i don't have a drag frontal area calculation yet. but it still needs to apply to bigger things more.
+						
+						# drag = [math.copysign(1, actor.body.velocity[0]) * dragForceX, -math.copysign(1, actor.body.velocity[0]) * dragForceY]
+
+						print(density)
+						# print(drag)
+
+						# actor.body.apply_impulse_at_local_point(drag, (0,0))
+
+
+			# when you enter a new sphere of influence, regenerate the orbit information
 			if strongestAttractor is not actor.orbiting or actor.orbiting is None:
 				actor.leaveFreefall(0)
 				actor.orbiting = strongestAttractor
@@ -1094,7 +1118,7 @@ class World():
 		self.add(dinghy_instance)
 		self.add(lothar_instance)
 		self.add(lothar_instance2)
-		self.add(boldang_instance)
+		# self.add(boldang_instance)
 		self.availableModules = lothar
 
 	def start(self):
