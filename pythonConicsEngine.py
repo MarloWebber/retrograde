@@ -13,13 +13,6 @@ from astropy.time import Time, TimeDelta
 global contact
 global shape_to_remove
 
-
-# import pygame
-# from pygame.locals import *
-# from pygame.color import *
-
-
-
 import pyglet
 from pyglet.gl import *
 from pyglet.window import Window
@@ -144,9 +137,6 @@ def transformPolygonForLines(polygon):
 		n +=3
 		return [n,points]
 
-
-
-
 def transformPolygonForTriangleFan(polygon):
 	# the number of points returned by this function is always 1.5n + 5, where n is the number of points in polygon.
 	centroid = centroidOfPolygon(polygon)
@@ -181,7 +171,6 @@ def transformPolygonForTriangleFan(polygon):
 		transformedPoints.append(centroid[1])
 		n+= 1
 
-
 	# finally, you need to create another triangle to fill the space between the first and last vertices.
 	# this snippet adds that triangle plus the repeat end sequence required by pyglet. 
 	transformedPoints.append(polygon[length-1][0])
@@ -195,8 +184,6 @@ def transformPolygonForTriangleFan(polygon):
 	n+= 4
 	return [n,transformedPoints]
 
-
-
 def renderAConvexPolygon(batch, polygon, color, outlineColor=None):
 	# nsfe = int(1.5*len(polygon) + 5)
 	# print(nsfe)
@@ -208,18 +195,21 @@ def renderAConvexPolygon(batch, polygon, color, outlineColor=None):
 		transformedPoints = transformPolygonForLines(polygon)
 		batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i',transformedPoints[1]), ('c4B',outlineColor*transformedPoints[0]))
 
-
-
-
-
-
 class Atmosphere():
 	def __init__(self,radius, planetPosition):
 		self.height = 5000
 		self.density = 1
 		self.color = [50,125,200,255]
 		self.outlineColor = [50,125,200,255]
-		self.points = make_circle(radius+self.height, 314)
+
+		# each atmosphere layer is an annulus.
+		# it is rendered as a triangle strip with a gradient between the inner and outer edges.
+		n_points = 100
+		self.innerPoints = make_circle(radius, 100)
+		self.outerPoints = make_circle(radius+self.height, 100)
+
+		self.rendering = unwrapForGradient(self.innerPoints, self.outerPoints)
+
 		self.mass = self.density * area_of_annulus(radius+self.height, radius)
 		inertia = pymunk.moment_for_poly(self.mass, self.points, (0,0))
 		self.body = pymunk.Body(self.mass, inertia)
@@ -775,87 +765,45 @@ class World():
 						# print ananas
 						# pygame.draw.lines(self.screen, (255,255,200), True, [activeCircle,ananas])
 
-	def drawModule(self, actor, module, main_batch):
-		# draw the outline of the module.
+	def drawModule(self, actor, module, main_batch): # draw the outline of the module.
 		rotatedPoints = module.points
 		rotatedPoints = rotate_polygon(rotatedPoints, actor.body.angle, [-module.offset[0], -module.offset[1]])
 		rotatedPoints = rotate_polygon(rotatedPoints,module.angle)  # orient the polygon according to the body's current direction in space.
 		transformedPoints = []
-		# n_transformedPoints = 0
-		# mactualOffset = [module.offset[0] + actor.body.position[0], module.offset[1] +actor.body.position[1]]
-		# transformedOffset = self.transformForView(module.offset)
-		# transformedPoints.append(int(transformedOffset[0]))
-		# transformedPoints.append(int(transformedOffset[1]))
-
-		# end degenerate triangle from last polygon.
-		# transformedPoint = self.transformForView(module.points[0] + actor.body.position + module.offset) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
-			# transformedPoint = rotatedPoint
-		# transformedPoints.append(int(transformedPoint[0]))
-		# transformedPoints.append(int(transformedPoint[1]))
-		# n_transformedPoints += 1
 
 		for index, rotatedPoint in enumerate(rotatedPoints):
 			transformedPoint = self.transformForView(rotatedPoint + actor.body.position + module.offset) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
-			# transformedPoint = rotatedPoint
 			transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
-			# transformedPoints.append(int(transformedPoint[1]))
-			# n_transformedPoints += 1
-
-			# print(index)
-			# if index == len(rotatedPoints) - 1:
-			# 	# begin degenerate triangle
-			# 	transformedPoints.append(int(transformedPoint[0]))
-			# 	transformedPoints.append(int(transformedPoint[1]))
-			# 	n_transformedPoints += 1
-			# 	transformedPoints.append(int(transformedPoint[0]))
-			# 	transformedPoints.append(int(transformedPoint[1]))
-			# 	n_transformedPoints += 1
-				# print('mouschw')
-		# transformedPoints.append(65536)
-				# transformedPoints.append(65536)
-		# n_transformedPoints += 1
-
-
-		# try:
-			# pygame.draw.lines(self.screen, module.color, True, transformedPoints)
-			# print(transformedPoints)
-			#batch.add(4, pyglet.gl.GL_POLYGON, None, ('v2i',[10,60,10,110,390,60,390,110]), ('c4B',white*4))
 		
-		# main_batch.add(n_transformedPoints, pyglet.gl.GL_TRIANGLE_STRIP, None, ('v2i', transformedPoints), ('c4B',white*n_transformedPoints))
 		renderAConvexPolygon(main_batch, transformedPoints, module.color, module.outlineColor)
-			# pass
-		# except:
-		# 	print('drawModule error')
 
 		self.drawModuleEffects(module, actor)
 
-	def unwrapForGradient():
-
-		annulus_inside_verts = []
-		annulus_outside_verts = []
-
+	def unwrapForGradient(self, n, inside_verts, outside_verts, inside_color, outside_color):
 		bitstream = []
 		colorstream = []
-		n = 0
 
-		# the inside of the annulus has full color.
-		annulus_inside_color = [255,255,255,255]
-		# the outside is black. 
-		annulus_inside_color = [0,0,0,255]
+		#repeat start
+		bitstream.append(inside_verts[0])
+		colorstream.append(inside_color)
 
-		# go around the inside of the annulus and for every point, radiate a point into the outer annulus.
-
-		# now go around again and for each quad (n and n+1 of inner and outer annulus), create two triangles and a color gradient.
-
-		# the bitstream order is thus: from https://stackoverflow.com/questions/20394727/gl-triangle-strip-vs-gl-triangle-fan
+		# now go around and for each pair of inner and outer points create two triangles and a color gradient.
+		# the bitstream order is: from https://stackoverflow.com/questions/20394727/gl-triangle-strip-vs-gl-triangle-fan
 		# inner n, outer n, inner n + 1, outer n + 1
-
 		# the colorstream order is (index matching bitstream order above):
 		# full color, no color, full color, no color
 
+		for index in xrange(0,n):
+			bitstream.append(inside_verts[index])
+			bitstream.append(outside_verts[index])
+
+			colorstream.append(inside_color)
+			colorstream.append(outside_color)
+
+		bitstream.append(outside_verts[index])
+		colorstream.append(outside_color)
 
 		return [n, bitstream, colorstream]
-
 
 	def drawActor(self, actor, main_batch):
 		if actor.__class__ is Actor:
@@ -863,17 +811,14 @@ class World():
 					self.drawModule(actor, module, main_batch)
 		
 		if actor.__class__ is Attractor or actor.__class__ is Atmosphere: 
-			rotatedPoints = rotate_polygon(actor.points,actor.body.angle)  # orient the polygon according to the body's current direction in space.
+
+			# rotatedPoints = rotate_polygon(actor.points,actor.body.angle)  # you literally do not need to do this for planets and atmospheres. they never change orientation. # orient the polygon according to the body's current direction in space.
 			transformedPoints = []
-			# n_transformedPoints = 0
 			for rotatedPoint in rotatedPoints:
 				transformedPoint = self.transformForView(rotatedPoint + actor.body.position) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
 				transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
-				# n_transformedPoints += 1
 			
-			renderAConvexPolygon(main_batch, transformedPoints, actor.color, actor.outlineColor)
-			# main_batch.add(n_transformedPoints, pyglet.gl.GL_LINE_LOOP, None, ('v2i', transformedPoints), ('c4B',white*n_transformedPoints))
-				
+			renderAConvexPolygon(main_batch, transformedPoints, actor.color, actor.outlineColor)	
 
 	def getActorFromBody(self, body):
 		for actor in self.actors:
@@ -937,34 +882,19 @@ class World():
 			if actor.isPlayer:
 				return actor
 
-
-
-
 	def drawAPOrbit(self, main_batch, orbit, attractor, color):
 		points = []
 		n_points = 100
-		# temp_vec3d = orbit.cartesianCoordinates(0)
-
 		sliceSize =  (2 * math.pi / n_points)
 		for i in range(0,n_points):
-
 			temp_vec3d = orbit.cartesianCoordinates(i *sliceSize)
-
 			point = (temp_vec3d[0] + attractor.body.position[0], temp_vec3d[1] + attractor.body.position[1])
 			point = self.transformForView(point)
 			points.append(point)
 
-
-
-
 		transformedPoints = transformPolygonForLines(points)
 
 		main_batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i', transformedPoints[1]), ('c4B',[150,150,150,255]*(transformedPoints[0])))
-
-		# for i in range(0,100):
-		# 	if i > 0:
-		# 		# pygame.draw.lines(self.screen, color, True, (points[i-1], points[i]))
-		# 		pass
 
 	def drawModuleListItem(self, listItem, index):
 		# draw one of the modules in the list in the build menu.
@@ -973,10 +903,6 @@ class World():
 		itemSize = 2 * mag(numpy.array(getFarthestPointInPolygon(listItem.module.points)))
 
 		iconSize = buildListSpacing / itemSize
-		# listItem.boundingRectangle = self.drawModuleForList( listItem.module, iconSize, (1 * buildListSpacing ,(index * buildListSpacing))) # returns a rectangle enclosing the icon. This is used as a clickable area for the mouse.
-		
-		# textsurface = self.font.render(listItem.module.moduleType, False, (0,0,0))
-		# self.screen.blit(textsurface,(2 * buildListSpacing ,(index * buildListSpacing) - 0.3*buildListSpacing))
 
 	def drawHUDListItem(self,string, quantity, index):
 		HUDlistItemSpacing = 15
@@ -993,7 +919,6 @@ class World():
 		return index + 1
 
 	def drawHUD(self, main_batch):
-
 		if self.player is None:
 			return
 
@@ -1032,23 +957,23 @@ class World():
 		navcircleLinesLength = 10
 		navcircleInnerRadius = 250
 
-		for n in range(0,n_navcircle_lines):
-			angle = n * (2 * math.pi / n_navcircle_lines)
-			start = ((navcircleInnerRadius * math.cos(angle)) + (self.resolution[0]*0.5) , (navcircleInnerRadius* math.sin(angle)) +( self.resolution[1] * 0.5) )
-			end = ((navcircleInnerRadius + navcircleLinesLength) * math.cos(angle)+ (self.resolution[0]*0.5), (navcircleInnerRadius + navcircleLinesLength) * math.sin(angle)+ (self.resolution[1]*0.5))
+		# for n in range(0,n_navcircle_lines):
+		# 	angle = n * (2 * math.pi / n_navcircle_lines)
+		# 	start = ((navcircleInnerRadius * math.cos(angle)) + (self.resolution[0]*0.5) , (navcircleInnerRadius* math.sin(angle)) +( self.resolution[1] * 0.5) )
+		# 	end = ((navcircleInnerRadius + navcircleLinesLength) * math.cos(angle)+ (self.resolution[0]*0.5), (navcircleInnerRadius + navcircleLinesLength) * math.sin(angle)+ (self.resolution[1]*0.5))
 			# navcircleLines.append([start, end])
 			# pygame.draw.lines(self.screen, (100,100,100), True, (start,end))
 
-		blipLength = (navcircleInnerRadius-navcircleLinesLength)
-		angle = self.viewpointObject.body.angle - 0.5 * math.pi
-		start = ((blipLength * math.cos(angle)) + (self.resolution[0]*0.5) , (blipLength* math.sin(angle)) +( self.resolution[1] * 0.5) )
-		end = ((navcircleInnerRadius) * math.cos(angle)+ (self.resolution[0]*0.5), (navcircleInnerRadius) * math.sin(angle)+ (self.resolution[1]*0.5))
+		# blipLength = (navcircleInnerRadius-navcircleLinesLength)
+		# angle = self.viewpointObject.body.angle - 0.5 * math.pi
+		# start = ((blipLength * math.cos(angle)) + (self.resolution[0]*0.5) , (blipLength* math.sin(angle)) +( self.resolution[1] * 0.5) )
+		# end = ((navcircleInnerRadius) * math.cos(angle)+ (self.resolution[0]*0.5), (navcircleInnerRadius) * math.sin(angle)+ (self.resolution[1]*0.5))
 		# pygame.draw.lines(self.screen, (200,0,10), True, (start,end))
 
-		blipLength = (navcircleInnerRadius-navcircleLinesLength)
-		angle = self.viewpointObject.desiredAngle
-		start = ((blipLength * math.cos(angle)) + (self.resolution[0]*0.5) , (blipLength* math.sin(angle)) +( self.resolution[1] * 0.5) )
-		end = ((navcircleInnerRadius) * math.cos(angle)+ (self.resolution[0]*0.5), (navcircleInnerRadius) * math.sin(angle)+ (self.resolution[1]*0.5))
+		# blipLength = (navcircleInnerRadius-navcircleLinesLength)
+		# angle = self.viewpointObject.desiredAngle
+		# start = ((blipLength * math.cos(angle)) + (self.resolution[0]*0.5) , (blipLength* math.sin(angle)) +( self.resolution[1] * 0.5) )
+		# end = ((navcircleInnerRadius) * math.cos(angle)+ (self.resolution[0]*0.5), (navcircleInnerRadius) * math.sin(angle)+ (self.resolution[1]*0.5))
 		# pygame.draw.lines(self.screen, (200,0,10), True, (start,end))
 
 		# draw the actor's orbits
@@ -1092,35 +1017,18 @@ class World():
 			# self.drawModuleForDrag(self.buildDraggingModule, pygame.mouse.get_pos())
 			pass
 
-		# pygame.display.flip()
-		# self.clock.tick(150)
-		# pygame.display.set_caption("fps: " + str(self.clock.get_fps()))
-
-	
-
 	def graphics(self, main_batch):
-		### Clear screen
-		# self.screen.fill(THECOLORS["black"])
-
-		### Draw stuff
 		for attractor in self.attractors:
 			if attractor.atmosphere != None:
 				self.drawActor(attractor.atmosphere, main_batch)
 			self.drawActor(attractor, main_batch)
 		for actor in self.actors:
-			# if actor.orbit is not None:
-			# 	self.drawAPOrbit(actor.orbit, actor.orbiting, (100,100,100))
 			self.drawActor(actor, main_batch)
 
 		if self.showHUD:
 			self.drawHUD(main_batch)
 
-		# pygame.display.flip()
-		# self.clock.tick(150)
-		# pygame.display.set_caption("fps: " + str(self.clock.get_fps()))
-
 	def step(self, main_batch):
-		# self.inputs()
 		if not self.buildMenu:
 			self.player = self._getPlayer()
 			if not self.paused:
@@ -1147,17 +1055,7 @@ class World():
 	def start(self):
 		self.setup()		
 
-		# self.running = True
-
-		
-
-		# while self.running:
-		# 	self.step()
-
 Nirn = World()
-
-# keys = key.KeyStateHandler()
-# window.push_handlers(keys)
 
 @window.event
 def on_key_press(symbol, modifiers):
@@ -1179,7 +1077,6 @@ def on_key_press(symbol, modifiers):
     	Nirn.zoom -= Nirn.zoom * 0.5
     elif symbol == key.H:
     	Nirn.showHUD = not Nirn.showHUD
-
 
 @window.event
 def on_key_release(symbol, modifiers):
@@ -1264,8 +1161,6 @@ def stepWithBatch(dt):
 @window.event()
 def on_draw():
 
-	# print('weener')
-
 	main_batch = pyglet.graphics.Batch()
 
 	Nirn.step(main_batch)
@@ -1273,14 +1168,7 @@ def on_draw():
 	window.clear()
 	main_batch.draw()
 
-
 Nirn.start()
-# pyglet.clock.set_fps_limit(300)
-
-# PRIMITIVE_RESTART_INDEX = 65536
-# pyglet.gl.glEnable(GL_PRIMITIVE_RESTART)
-# pyglet.gl.glPrimitiveRestartIndex(65536)
-
 
 pyglet.gl.glLineWidth(2)
 
