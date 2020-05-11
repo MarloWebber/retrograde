@@ -17,6 +17,7 @@ import pyglet
 from pyglet.gl import *
 from pyglet.window import Window
 from pyglet.window import key
+from pyglet.window import mouse
 
 resolution = (1280,780)
 window = pyglet.window.Window(width=1280, height=780)
@@ -254,10 +255,10 @@ def renderAConvexPolygon(batch, polygon, color, outlineColor=None):
 
 class Atmosphere():
 	def __init__(self,radius, planetPosition):
-		self.height = 5000
+		self.height = 15000
 		self.bottomDensity = 1
 		self.topDensity = 0
-		self.color = [50,125,200,255]
+		self.color = [70,145,220,255]
 		self.outerColor = [0,0,0,255]
 		self.outlineColor = [50,125,200,255]
 
@@ -585,6 +586,7 @@ class World():
 		self.availableModules = []			# a list of potentially useable modules that the player has in 'inventory'
 		self.modulesInUse = []  # a list of modules that the player has dragged onto the screen to make a ship
 		self.buildDraggingModule = None
+		self.mouseCursorPosition = []
 
 	def gravityForce(self, actorPosition, attractorPosition, attractorMass):
 		distance = attractorPosition - actorPosition # scalar distance between two bodies
@@ -766,8 +768,8 @@ class World():
 	def transformForBuild(self, position):
 		# map a position in the game world, where 0,0 is in a corner and numbers are very large, onto pixels on the screen with 0,0 in the middle. Handles zooming and offsetting. This one is for what you see in the build menu.
 		transformedPosition = [0,0] #* self.zoom  # shrink or expand everything around the 0,0 point
-		transformedPosition[0] = position[0] * self.zoom
-		transformedPosition[1] = position[1] * self.zoom
+		transformedPosition[0] = -position[0] * self.zoom
+		transformedPosition[1] = -position[1] * self.zoom
 		transformedPosition[0] += 0.5 * self.resolution[0] # add half the width of the screen, to get to the middle. 0,0 is naturally on the corner.
 		transformedPosition[1] += 0.5 * self.resolution[1] # add half the height.
 		return transformedPosition
@@ -775,8 +777,8 @@ class World():
 	def antiTransformForBuild(self, position):
 		# performs the inverse operation to transformForBuild, used to map the mouse cursor to coordinates in the game world.
 		transformedPosition = [0,0] #* self.zoom  # shrink or expand everything around the 0,0 point
-		transformedPosition[0] = position[0] - 0.5 * self.resolution[0] # add half the width of the screen, to get to the middle. 0,0 is naturally on the corner.
-		transformedPosition[1] = position[1] - 0.5 * self.resolution[1] # add half the height.
+		transformedPosition[0] = -position[0] - 0.5 * self.resolution[0] # add half the width of the screen, to get to the middle. 0,0 is naturally on the corner.
+		transformedPosition[1] = -position[1] - 0.5 * self.resolution[1] # add half the height.
 		transformedPosition[0] = transformedPosition[0] / self.zoom
 		transformedPosition[1] = transformedPosition[1] / self.zoom
 		
@@ -796,18 +798,23 @@ class World():
 		# pygame.draw.circle(self.screen, color, [int(position[0]), int(position[1])], int((radius * self.zoom)))
 		pass
 
-	def drawModuleForList(self, module, iconSize, position):
+	def drawModuleForList(self, main_batch, module, iconSize, position):
 		transformedPoints = []
 		for point in module.points:
 			transformedPoint = [0,0]
-			transformedPoint[0] = (point[0] * iconSize) + position[0]
-			transformedPoint[1] = (point[1] * iconSize) + position[1]
-			transformedPoints.append(transformedPoint) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
-		try:
-			# return pygame.draw.lines(self.screen, module.color, True, transformedPoints) # return the bounding rectangle
-			pass
-		except:
-			print('drawModuleForList error')
+			transformedPoint[0] = ((point[0] * iconSize) + position[0])
+			transformedPoint[1] = -((point[1] * iconSize) + position[1]) + self.resolution[1]
+			# transformedPoints.append(transformedPoint) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
+			transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
+		
+		# print(transformedPoints)
+		renderAConvexPolygon(main_batch, transformedPoints, module.color, module.outlineColor)
+
+		# try:
+		# 	# return pygame.draw.lines(self.screen, module.color, True, transformedPoints) # return the bounding rectangle
+		# 	pass
+		# except:
+		# 	print('drawModuleForList error')
 
 	def drawModuleForDrag(self, module, position):
 		rotatedPoints = rotate_polygon(module.points, module.angle)  # orient the polygon according to the body's current direction in space.
@@ -839,9 +846,12 @@ class World():
 		transformedPoints = []
 
 		for index, rotatedPoint in enumerate(rotatedPoints):
-			transformedPoint = self.transformForView(rotatedPoint + module.offset) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
+			rotatedPoint[0] += module.offset[0]
+			rotatedPoint[1] += module.offset[1]
+			transformedPoint = self.transformForBuild(rotatedPoint) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
 			transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
 		
+		# print(transformedPoints)
 		renderAConvexPolygon(main_batch, transformedPoints, module.color, module.outlineColor)
 
 
@@ -988,7 +998,7 @@ class World():
 
 		transformedPoints = transformPolygonForLines(points)
 
-		main_batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i', transformedPoints[1]), ('c4B',[150,150,150,255]*(transformedPoints[0])))
+		main_batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i', transformedPoints[1]), ('c4B',[100,100,100,255]*(transformedPoints[0])))
 
 	def drawModuleListItem(self, main_batch, listItem, index):
 		# draw one of the modules in the list in the build menu.
@@ -997,6 +1007,10 @@ class World():
 		itemSize = 2 * mag(numpy.array(getFarthestPointInPolygon(listItem.module.points)))
 
 		iconSize = buildListSpacing / itemSize
+
+		#self, main_batch, module, iconSize, position
+		self.drawModuleForList(main_batch, listItem.module, iconSize, [buildListSpacing, index * buildListSpacing] )
+
 
 	def drawHUDListItem(self,string, quantity, index):
 		HUDlistItemSpacing = 15
@@ -1096,6 +1110,7 @@ class World():
 	def buildMenuGraphics(self, main_batch):
 		# self.screen.fill((200,200,200))
 		self.drawScreenFill(main_batch)
+		# main_batch.draw()
 
 		# draw the modules the player has assembled 
 		for module in self.modulesInUse:
@@ -1186,11 +1201,7 @@ def on_key_press(symbol, modifiers):
 	elif symbol == key.Y:
 		if Nirn.buildMenu:
 			Nirn.flyShipFromBuildMenu()
-	# elif event.type == pygame.MOUSEBUTTONDOWN:
-	# 	# event.button can equal several integer values:# 1 - left click# 2 - middle click# 3 - right click# 4 - scroll up# 5 - scroll down
-	# 	if self.buildMenu:
-	# 		if event.button == 1:
-	# 			self.buildDraggingModule = self.getModuleFromCursorPosition(pygame.mouse.get_pos())
+
 	# elif event.type == pygame.MOUSEBUTTONUP:
 	# 	if self.buildMenu:
 	# 		if event.button == 1:
@@ -1278,6 +1289,32 @@ def on_key_release(symbol, modifiers):
 
 def stepWithBatch(dt):
 	pass
+
+
+@window.event()
+def on_mouse_press(x, y, button, modifiers):
+    # pass
+	print('on_mouse_release')
+    	# elif event.type == pygame.MOUSEBUTTONDOWN:
+	# 	# event.button can equal several integer values:# 1 - left click# 2 - middle click# 3 - right click# 4 - scroll up# 5 - scroll down
+	if Nirn.buildMenu:
+		# if event.button == 1:
+		if mouse.LEFT is button:
+			print('LEFT')
+			Nirn.buildDraggingModule = Nirn.getModuleFromCursorPosition(Nirn.mouseCursorPosition)
+
+@window.event()
+def on_mouse_release(x, y, button, modifiers):
+	print('on_mouse_release')
+	if Nirn.buildMenu:
+		if mouse.LEFT is button:
+			if Nirn.buildDraggingModule is not None:
+				Nirn.dropModuleIntoBuildArea(Nirn.buildDraggingModule, Nirn.mouseCursorPosition)
+				Nirn.buildDraggingModule = None
+
+@window.event()
+def on_mouse_drag(x, y, dx, dy, buttons, modifiers):
+    Nirn.mouseCursorPosition = Nirn.antiTransformForBuild([x,y])
 
 @window.event()
 def on_draw():
