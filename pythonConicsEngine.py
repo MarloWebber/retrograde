@@ -392,9 +392,9 @@ class Actor():
 			self.mass += module.mass
 			modulePoints = []
 			for point in module.points:
-				point = [point[0] + module.offset[0], point[1] + module.offset[1]]
-				point = rotate_point(point, module.angle, module.offset)
-				modulePoints.append(point)
+				transformedPoint = [point[0] + module.offset[0], point[1] + module.offset[1]]
+				transformedPoint = rotate_point(transformedPoint, module.angle, module.offset)
+				modulePoints.append(transformedPoint)
 			self.points += modulePoints
 			for resource, quantity in list(module.initialStores.items()):
 				if resource not in self.storagePool: self.storagePool[resource] = quantity
@@ -854,10 +854,6 @@ class World():
 				transformedOuterPoints.append(self.transformForView(point))
 
 			rendering = unwrapAtmosphereForGradient(actor.n_points, transformedInnerPoints, transformedOuterPoints, actor.color, actor.outerColor)
-
-			print(rendering[0])
-			print(len(rendering[1]))
-			print(len(rendering[2]))
 
 			main_batch.add(rendering[0], pyglet.gl.GL_TRIANGLE_STRIP, None, ('v2i',rendering[1]), ('c4B',rendering[2]))
 		
