@@ -423,7 +423,7 @@ class Actor():
 		}
 		self.orbiting = None
 		self.stepsToFreefall = 1
-		self.decompEnergy = 500000
+		self.decompEnergy = 5000000
 		self.desiredAngle = 0
 		self.exemptFromGravity = False
 		self.body.angle = angle
@@ -694,19 +694,32 @@ class World():
 
 						naturalDepth = 1 - ((actorHeightFromAttractorCenter - attractor.radius) / attractor.atmosphere.height) # this is a number between 0 and 1 which is signifies the actors depth into this atmosphere layer.
 
+
 						#drag = coefficient * (density * velocity**2 / 2) * reference area
 						density = attractor.atmosphere.topDensity + (naturalDepth * attractor.atmosphere.bottomDensity)
-						# dragForceX = self.dragCoefficient * (density * actor.body.velocity[0]**2 /2) * actor.body.mass # using mass as a placeholder because i don't have a drag frontal area calculation yet. but it still needs to apply to bigger things more.
-						# dragForceY = self.dragCoefficient * (density * actor.body.velocity[1]**2 /2) * actor.body.mass # using mass as a placeholder because i don't have a drag frontal area calculation yet. but it still needs to apply to bigger things more.
+
+						print (density)
+						dragForceX = self.dragCoefficient * ((density * actor.body.velocity[0]**2) /2) * actor.body.mass # using mass as a placeholder because i don't have a drag frontal area calculation yet. but it still needs to apply to bigger things more.
+						dragForceY = self.dragCoefficient * ((density * actor.body.velocity[1]**2) /2) * actor.body.mass # using mass as a placeholder because i don't have a drag frontal area calculation yet. but it still needs to apply to bigger things more.
 						
-						# drag = [math.copysign(1, actor.body.velocity[0]) * dragForceX, -math.copysign(1, actor.body.velocity[0]) * dragForceY]
+						if actor.body.velocity[0] > 0:
+							dragForceX = -abs(dragForceX)
+						if actor.body.velocity[0] < 0:
+							dragForceX = abs(dragForceX)
 
-						print(density)
-						# print(drag)
+						if actor.body.velocity[1] > 0:
+							dragForceY = -abs(dragForceY)
+						if actor.body.velocity[1] < 0:
+							dragForceY = abs(dragForceY)
 
-						# actor.body.apply_impulse_at_local_point(drag, (0,0))
+						# actor.body.velocity[0] += dragForceX
+						# actor.body.velocity[1] += dragForceY
 
-
+						rotatedForce = Vec2d(dragForceX, dragForceY)
+						rotatedForce = rotatedForce.rotated(-actor.body.angle)
+						actor.body.apply_impulse_at_local_point(rotatedForce, [0,0])
+						# actor.body.apply_impulse_at_local_point([dragForceX,dragForceY], [0,0])
+						
 			# when you enter a new sphere of influence, regenerate the orbit information
 			if strongestAttractor is not actor.orbiting or actor.orbiting is None:
 				actor.leaveFreefall(0)
