@@ -556,7 +556,7 @@ class World():
 		self.space = pymunk.Space()
 		self.space.gravity = (0.0, 0.0)
 		self.gravitationalConstant = 0.03
-		self.dragCoefficient = 0.00001 # atmospheric drag
+		self.dragCoefficient = 0.0025 # atmospheric drag
 		self.actors = []
 		self.attractors = []
 		self.resolution = resolution
@@ -699,8 +699,8 @@ class World():
 						density = attractor.atmosphere.topDensity + (naturalDepth * attractor.atmosphere.bottomDensity)
 
 						print (density)
-						dragForceX = self.dragCoefficient * ((density * actor.body.velocity[0]**2) /2) * actor.body.mass # using mass as a placeholder because i don't have a drag frontal area calculation yet. but it still needs to apply to bigger things more.
-						dragForceY = self.dragCoefficient * ((density * actor.body.velocity[1]**2) /2) * actor.body.mass # using mass as a placeholder because i don't have a drag frontal area calculation yet. but it still needs to apply to bigger things more.
+						dragForceX = self.timestepSize * self.dragCoefficient * ((density * actor.body.velocity[0]**2) /2) * actor.body.mass # using mass as a placeholder because i don't have a drag frontal area calculation yet. but it still needs to apply to bigger things more.
+						dragForceY = self.timestepSize * self.dragCoefficient * ((density * actor.body.velocity[1]**2) /2) * actor.body.mass # using mass as a placeholder because i don't have a drag frontal area calculation yet. but it still needs to apply to bigger things more.
 						
 						if actor.body.velocity[0] > 0:
 							dragForceX = -abs(dragForceX)
