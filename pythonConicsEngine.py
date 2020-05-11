@@ -777,7 +777,8 @@ class World():
 
 	def drawModule(self, actor, module, main_batch):
 		# draw the outline of the module.
-		rotatedPoints = rotate_polygon(module.points,actor.body.angle + module.angle, (-module.offset[0], -module.offset[1]))  # orient the polygon according to the body's current direction in space.
+		rotatedPoints = rotate_polygon(module.points, module.angle, [-module.offset[0], -module.offset[1]])  # orient the polygon according to the body's current direction in space.
+		rotatedPoints = rotate_polygon(rotatedPoints, actor.body.angle, [-module.offset[0], -module.offset[1]])
 		# rotatedPoints = rotate_polygon(rotatedPoints,module.angle, -module.offset)  # orient the polygon according to the body's current direction in space.
 		transformedPoints = []
 		# n_transformedPoints = 0
@@ -827,6 +828,34 @@ class World():
 		# 	print('drawModule error')
 
 		self.drawModuleEffects(module, actor)
+
+	def unwrapForGradient():
+
+		annulus_inside_verts = []
+		annulus_outside_verts = []
+
+		bitstream = []
+		colorstream = []
+		n = 0
+
+		# the inside of the annulus has full color.
+		annulus_inside_color = [255,255,255,255]
+		# the outside is black. 
+		annulus_inside_color = [0,0,0,255]
+
+		# go around the inside of the annulus and for every point, radiate a point into the outer annulus.
+
+		# now go around again and for each quad (n and n+1 of inner and outer annulus), create two triangles and a color gradient.
+
+		# the bitstream order is thus: from https://stackoverflow.com/questions/20394727/gl-triangle-strip-vs-gl-triangle-fan
+		# inner n, outer n, inner n + 1, outer n + 1
+
+		# the colorstream order is (index matching bitstream order above):
+		# full color, no color, full color, no color
+
+
+		return [n, bitstream, colorstream]
+
 
 	def drawActor(self, actor, main_batch):
 		if actor.__class__ is Actor:
@@ -916,12 +945,17 @@ class World():
 		n_points = 100
 		# temp_vec3d = orbit.cartesianCoordinates(0)
 
+		sliceSize =  (2 * math.pi / n_points)
 		for i in range(0,n_points):
-			temp_vec3d = orbit.cartesianCoordinates(i * (2 * math.pi / n_points))
+
+			temp_vec3d = orbit.cartesianCoordinates(i *sliceSize)
 
 			point = (temp_vec3d[0] + attractor.body.position[0], temp_vec3d[1] + attractor.body.position[1])
 			point = self.transformForView(point)
 			points.append(point)
+
+
+
 
 		transformedPoints = transformPolygonForLines(points)
 
@@ -1102,7 +1136,7 @@ class World():
 		self.add(planet_moon)
 		dinghy_instance = Actor('NPC dinghy', dinghy,(1000000, -1080100), [30000,0], 0)
 		lothar_instance = Actor('NPC lothar', lothar,(-1000000, -1121600), [65000,0], 0.6 * math.pi)
-		lothar_instance2 = Actor('player Lothar', lothar,(100, -320050), [0,0], 0, True)
+		lothar_instance2 = Actor('player Lothar', lothar,(100, -320030), [0,0], 0, True)
 		boldang_instance = Actor('NPC boldang', boldang,(-100, -320050), [0,0],0)
 		self.add(dinghy_instance)
 		self.add(lothar_instance)
