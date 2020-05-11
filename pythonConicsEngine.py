@@ -556,7 +556,7 @@ class World():
 		self.space = pymunk.Space()
 		self.space.gravity = (0.0, 0.0)
 		self.gravitationalConstant = 0.03
-		self.dragCoefficient = 0.0025 # atmospheric drag
+		self.dragCoefficient = 0.005 # atmospheric drag
 		self.actors = []
 		self.attractors = []
 		self.resolution = resolution
@@ -696,9 +696,9 @@ class World():
 
 
 						#drag = coefficient * (density * velocity**2 / 2) * reference area
-						density = attractor.atmosphere.topDensity + (naturalDepth * attractor.atmosphere.bottomDensity)
+						density = (attractor.atmosphere.topDensity + (naturalDepth * attractor.atmosphere.bottomDensity))**1.5 # not quite squared, but still exponential
 
-						print (density)
+						# print (density)
 						dragForceX = self.timestepSize * self.dragCoefficient * ((density * actor.body.velocity[0]**2) /2) * actor.body.mass # using mass as a placeholder because i don't have a drag frontal area calculation yet. but it still needs to apply to bigger things more.
 						dragForceY = self.timestepSize * self.dragCoefficient * ((density * actor.body.velocity[1]**2) /2) * actor.body.mass # using mass as a placeholder because i don't have a drag frontal area calculation yet. but it still needs to apply to bigger things more.
 						
@@ -824,20 +824,26 @@ class World():
 			print('drawModuleForBuild error')
 			# print(transformedPoints)
 
-	def drawModuleForBuild(self, module):
-		rotatedPoints = rotate_polygon(module.points, module.angle)  # orient the polygon according to the body's current direction in space.
+	def drawModuleForBuild(self, main_batch, module):
+		# rotatedPoints = rotate_polygon(module.points, module.angle)  # orient the polygon according to the body's current direction in space.
 		# rotatedPoints = rotate_polygon(rotatedPoints,module.angle, -module.offset)  # orient the polygon according to the body's current direction in space.
+		# transformedPoints = []
+		# for rotatedPoint in rotatedPoints:
+		# 	rotatedPoint[0] += module.offset[0]
+		# 	rotatedPoint[1] += module.offset[1]
+		# 	transformedPoints.append(self.transformForBuild(rotatedPoint)) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
+		
+
+
+		rotatedPoints = rotate_polygon(module.points, module.angle)
 		transformedPoints = []
-		for rotatedPoint in rotatedPoints:
-			rotatedPoint[0] += module.offset[0]
-			rotatedPoint[1] += module.offset[1]
-			transformedPoints.append(self.transformForBuild(rotatedPoint)) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
-		try:
-			# pygame.draw.lines(self.screen, module.color, True, transformedPoints)
-			pass
-		except:
-			print('drawModuleForBuild error')
-			# print(transformedPoints)
+
+		for index, rotatedPoint in enumerate(rotatedPoints):
+			transformedPoint = self.transformForView(rotatedPoint + module.offset) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
+			transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
+		
+		renderAConvexPolygon(main_batch, transformedPoints, module.color, module.outlineColor)
+
 
 	def drawModuleEffects(self, module, actor):
 		# put a circle in the middle if it is enabled, and a smaller red circle in the middle of that, if it is activated.
@@ -874,6 +880,12 @@ class World():
 		renderAConvexPolygon(main_batch, transformedPoints, module.color, module.outlineColor)
 
 		self.drawModuleEffects(module, actor)
+
+	def drawScreenFill(self, main_batch):
+
+		fillTriangles = [0,0, 0,0, 0,resolution[1], resolution[0],resolution[1], resolution[0],0, 0,0, 0,0 ]
+
+		main_batch.add(7, pyglet.gl.GL_TRIANGLE_STRIP, None, ('v2i',fillTriangles), ('c4B',[255,255,255,255]*7))
 
 	def drawActor(self, actor, main_batch):
 		if actor.__class__ is Actor:
@@ -978,7 +990,7 @@ class World():
 
 		main_batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i', transformedPoints[1]), ('c4B',[150,150,150,255]*(transformedPoints[0])))
 
-	def drawModuleListItem(self, listItem, index):
+	def drawModuleListItem(self, main_batch, listItem, index):
 		# draw one of the modules in the list in the build menu.
 		buildListSpacing = 30
 
@@ -1081,17 +1093,18 @@ class World():
 		module.offset = self.antiTransformForBuild(position)
 		self.modulesInUse.append(module)
 
-	def buildMenuGraphics(self):
+	def buildMenuGraphics(self, main_batch):
 		# self.screen.fill((200,200,200))
+		self.drawScreenFill(main_batch)
 
 		# draw the modules the player has assembled 
 		for module in self.modulesInUse:
-			self.drawModuleForBuild(module)
+			self.drawModuleForBuild(main_batch, module)
 
 		# draw the inventory list up the left hand side
 		i = 1
 		for listItem in self.availableModuleListItems:
-			self.drawModuleListItem(listItem, i)
+			self.drawModuleListItem(main_batch, listItem, i)
 			i += 1
 
 		# draw the module item the player is dragging, if applicable
@@ -1117,7 +1130,7 @@ class World():
 				self.physics()
 			self.graphics(main_batch)
 		else:
-			self.buildMenuGraphics()
+			self.buildMenuGraphics(main_batch)
 
 	def setup(self):
 		planet_erf = Attractor('earth', [1,1], self.gravitationalConstant)
@@ -1141,28 +1154,50 @@ Nirn = World()
 
 @window.event
 def on_key_press(symbol, modifiers):
-    
-    if symbol == key.ESCAPE:
-    	exit()
 
-    elif symbol == key.LEFT:
-    	Nirn.player.keyStates['left'] = True
-    elif symbol == key.RIGHT:
-    	Nirn.player.keyStates['right'] = True
-    elif symbol == key.UP:
-    	Nirn.player.keyStates['up'] = True
-    elif symbol == key.P:
-    	Nirn.paused = not Nirn.paused
-    elif symbol == key.EQUAL:
-    	Nirn.zoom += Nirn.zoom * 0.5
-    elif symbol == key.MINUS:
-    	Nirn.zoom -= Nirn.zoom * 0.5
-    elif symbol == key.H:
-    	Nirn.showHUD = not Nirn.showHUD
-    elif symbol == key.COMMA:
-    	Nirn.timestepSize += Nirn.timestepSize * 0.5
-    elif symbol == key.PERIOD:
-    	Nirn.timestepSize -= Nirn.timestepSize * 0.5
+	if symbol == key.ESCAPE:
+		exit()
+
+	elif symbol == key.LEFT:
+		Nirn.player.keyStates['left'] = True
+	elif symbol == key.RIGHT:
+		Nirn.player.keyStates['right'] = True
+	elif symbol == key.UP:
+		Nirn.player.keyStates['up'] = True
+	elif symbol == key.P:
+		Nirn.paused = not Nirn.paused
+	elif symbol == key.EQUAL:
+		Nirn.zoom += Nirn.zoom * 0.5
+	elif symbol == key.MINUS:
+		Nirn.zoom -= Nirn.zoom * 0.5
+	elif symbol == key.H:
+		Nirn.showHUD = not Nirn.showHUD
+	elif symbol == key.COMMA:
+		Nirn.timestepSize += Nirn.timestepSize * 0.5
+	elif symbol == key.PERIOD:
+		Nirn.timestepSize -= Nirn.timestepSize * 0.5
+	elif symbol == key.B:
+		if Nirn.buildMenu:
+			Nirn.buildMenu = False
+		else:
+			Nirn.buildMenu = True
+			Nirn.paused = True
+			Nirn.loadShipIntoBuildMenu(Nirn.player)
+	elif symbol == key.Y:
+		if Nirn.buildMenu:
+			Nirn.flyShipFromBuildMenu()
+	# elif event.type == pygame.MOUSEBUTTONDOWN:
+	# 	# event.button can equal several integer values:# 1 - left click# 2 - middle click# 3 - right click# 4 - scroll up# 5 - scroll down
+	# 	if self.buildMenu:
+	# 		if event.button == 1:
+	# 			self.buildDraggingModule = self.getModuleFromCursorPosition(pygame.mouse.get_pos())
+	# elif event.type == pygame.MOUSEBUTTONUP:
+	# 	if self.buildMenu:
+	# 		if event.button == 1:
+	# 			if self.buildDraggingModule is not None:
+	# 				self.dropModuleIntoBuildArea(self.buildDraggingModule, pygame.mouse.get_pos())
+	# 				self.buildDraggingModule = None
+				
 
 @window.event
 def on_key_release(symbol, modifiers):
