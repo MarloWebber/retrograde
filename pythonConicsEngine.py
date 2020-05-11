@@ -777,9 +777,9 @@ class World():
 
 	def drawModule(self, actor, module, main_batch):
 		# draw the outline of the module.
-		rotatedPoints = rotate_polygon(module.points, module.angle, [-module.offset[0], -module.offset[1]])  # orient the polygon according to the body's current direction in space.
+		rotatedPoints = module.points
 		rotatedPoints = rotate_polygon(rotatedPoints, actor.body.angle, [-module.offset[0], -module.offset[1]])
-		# rotatedPoints = rotate_polygon(rotatedPoints,module.angle, -module.offset)  # orient the polygon according to the body's current direction in space.
+		rotatedPoints = rotate_polygon(rotatedPoints,module.angle)  # orient the polygon according to the body's current direction in space.
 		transformedPoints = []
 		# n_transformedPoints = 0
 		# mactualOffset = [module.offset[0] + actor.body.position[0], module.offset[1] +actor.body.position[1]]
