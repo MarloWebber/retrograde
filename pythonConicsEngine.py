@@ -226,14 +226,20 @@ def transformForView( position ,viewpointObjectPosition, zoom, resolution):
 def isPointIlluminated(point, color, illuminators,viewpointObjectPosition, zoom, resolution):
 	resultColor = [color[0],color[1],color[2],255]
 	for illuminator in illuminators:
-		transformedPoint = transformForView( illuminator.position ,viewpointObjectPosition, zoom, resolution)
-		distance =numpy.array([point[0] - transformedPoint[0],point[1] - transformedPoint[1]])
+		transformedPosition = transformForView( illuminator.position ,viewpointObjectPosition, zoom, resolution)
+		distance =numpy.array([point[0] - transformedPosition[0],point[1] - transformedPosition[1]])
 		
 
-		if distance[0] < illuminator.radius and distance[1] < illuminator.radius and distance > 0:
-			print('TEHIFNEIF')
-
-			dispersion = 1/mag(distance)
+		if distance[0] < illuminator.radius and distance[1] < illuminator.radius :
+			
+			magnitude = mag(distance )
+			magnitude = magnitude/zoom
+			print(magnitude)
+			if magnitude == 0:
+				dispersion = 1
+			else:
+				dispersion = 1/magnitude
+			# print(dispersion)
 			resultColor[0] += int(dispersion * illuminator.color[0])
 			if resultColor[0] > 255: resultColor[0] = 255
 			resultColor[1] += int(dispersion * illuminator.color[1])
@@ -473,6 +479,8 @@ class Module():
 			self.points = [[-size, -size*2], [-size, size*2], [size,size*2], [size, -size*2]]
 			self.color = [50,50,50,255]
 			self.outlineColor = [100,100,100,255]
+
+			self.illuminatorOffset = [0,10]
 
 			self.effect = ModuleEffect([0,0])
 
@@ -722,6 +730,7 @@ class Actor():
 								self.body.apply_impulse_at_local_point(force, (0,0))
 								ifThrustHasBeenApplied = True
 
+
 						elif giveResource == 'torque':
 							if keyStates['left']:
 								# apply two impulses, pushing in opposite directions, an equal distance from the center to create torque
@@ -774,11 +783,11 @@ class buildMenuItem():
 		self.boundingRectangle = boundingRectangle
 
 class Illuminator():
-	def __init__(self):
-		self.radius = 100
+	def __init__(self, position):
+		self.radius = 1000
 		self.color = [255,255,0]
 		self.intensity = 1
-		self.position = (100, -320030)
+		self.position = position #(100, -320030)
 
 class World():
 	def __init__(self):
@@ -825,7 +834,7 @@ class World():
 		self.navcircleInnerRadius = 250
 
 		self.projectiles = []
-		self.illuminators = [Illuminator()]
+		self.illuminators = []
 
 	def gravityForce(self, actorPosition, attractorPosition, attractorMass):
 		distance = attractorPosition - actorPosition # scalar distance between two bodies
@@ -1002,6 +1011,15 @@ class World():
 			# figure out if the actor is freefalling by seeing if any engines or collisions have moved it.
 			if actor.doModuleEffects(actor.keyStates, self.timestepSize):
 				actor.leaveFreefall(0)
+				for module in actor.modules:
+					if module.enabled:
+						if module.active:
+							for giveResource, giveQuantity in list(module.resources.items()): #module.produces.items():
+								if giveResource == 'thrust':
+									if actor.keyStates['up']:
+										position = actor.body.position + module.offset + module.illuminatorOffset
+										position = rotate_point(position, actor.body.angle, actor.body.position)
+										self.illuminators.append(Illuminator(position))
 
 			# if it is freefalling, move it along the orbital track.
 			if actor.freefalling and actor.orbit is not None:
@@ -1494,6 +1512,9 @@ class World():
 			
 
 	def step(self):
+
+		self.illuminators = []
+
 		if not self.buildMenu:
 			self.player = self._getPlayer()
 			if not self.paused:
