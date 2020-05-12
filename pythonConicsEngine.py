@@ -678,6 +678,9 @@ class World():
 	def getModuleFromCursorPosition(self, cursorPositionRaw):
 		cursorPosition = cursorPositionRaw
 		# cursorPosition[1] = -cursorPosition[1] + 0.5 * resolution[0]
+		smellyCursor = [0,0]
+		smellyCursor[0] = cursorPositionRaw[0]
+		smellyCursor[1] = -cursorPositionRaw[1] +  resolution[1]
 		for listItem in self.availableModuleListItems:
 			# if listItem.boundingRectangle.collidepoint(cursorPosition):
 
@@ -688,10 +691,10 @@ class World():
 
 			# if point_in_polygon(cursorPosition, listItem.boundingRectangle,xMost ):
 
-			print(cursorPosition)
+			print(smellyCursor)
 			print(self.transformForBuild(cursorPosition))
 			print(listItem.boundingRectangle)
-			if pointInRect(cursorPosition, listItem.boundingRectangle):
+			if pointInRect(smellyCursor, boundPolygon(listItem.boundingRectangle)):
 				print('click a list item')
 				self.availableModuleListItems.remove(listItem)
 				return listItem.module
@@ -706,7 +709,7 @@ class World():
 
 			boundingBox = boundPolygon(transformedPoints)
 			print(boundingBox)
-			if pointInRect( self.transformForBuild(cursorPosition) , boundingBox):
+			if pointInRect( self.transformForBuild(cursorPositionRaw) , boundingBox):
 				print('click a module in use')
 				self.modulesInUse.remove(module)
 				return module
