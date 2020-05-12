@@ -21,6 +21,8 @@ from pyglet.window import mouse
 
 import copy
 
+import cProfile
+
 resolution = (1280,780)
 window = pyglet.window.Window(width=1280, height=780)
 label = pyglet.text.Label('Abc', x=5, y=5)
@@ -588,7 +590,7 @@ class Module():
 			self.color = [30,30,30,255]
 			self.outlineColor = [100,100,30,255]
 
-			self.barrelHole = [0,self.radius + 1.5]
+			self.barrelHole = [0,-self.radius + 1.5]
 			self.muzzleVelocity = 500000
 			self.cooldownTime = 100
 			self.cooldownValue = 0
@@ -1420,6 +1422,7 @@ class World():
 			bulletVelocity = [gunModule.muzzleVelocity * math.cos(gunModule.angle + actor.body.angle - 0.5*math.pi) , gunModule.muzzleVelocity * math.sin(gunModule.angle + actor.body.angle- 0.5*math.pi)]
 			bullet = Actor('cannonshell 10', [Module('cannonshell 10', (0,0))], bulletPosition ,bulletVelocity,0 ,False)
 			self.add(bullet)
+			self.illuminators.append(Illuminator(bulletPosition))
 
 
 	def loadShipIntoBuildMenu(self, actor):
@@ -1513,15 +1516,19 @@ class World():
 
 	def step(self):
 
-		self.illuminators = []
 
 		if not self.buildMenu:
 			self.player = self._getPlayer()
 			if not self.paused:
 				self.physics()
 			self.graphics()
+
+			self.illuminators = []
 		else:
 			self.buildMenuGraphics()
+
+
+		
 
 	def setup(self):
 
@@ -1733,15 +1740,19 @@ def on_mouse_drag(x, y, dx, dy, buttons, modifiers):
 @window.event()
 def on_draw():
 
-	
-
 	Nirn.step()
 
 	# main_batch.draw()
 
-Nirn.start()
 
-# pyglet.gl.glLineWidth(2)
+def hello():
 
-pyglet.clock.schedule_interval(stepWithBatch, 0.01)
-pyglet.app.run()
+	Nirn.start()
+
+
+	# pyglet.gl.glLineWidth(2)
+
+	pyglet.clock.schedule_interval(stepWithBatch, 0.01)
+	pyglet.app.run()
+
+cProfile.run('hello()')
