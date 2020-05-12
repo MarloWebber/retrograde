@@ -117,6 +117,79 @@ def centroidOfPolygon(polygon):
 
 	return [averageOfList(xValues), averageOfList(yValues)]
 
+# def point_inside_polygon(x, y, poly, include_edges=True):
+#     '''
+#     Test if point (x,y) is inside polygon poly.
+
+#     poly is N-vertices polygon defined as 
+#     [(x1,y1),...,(xN,yN)] or [(x1,y1),...,(xN,yN),(x1,y1)]
+#     (function works fine in both cases)
+
+#     Geometrical idea: point is inside polygon if horisontal beam
+#     to the right from point crosses polygon even number of times. 
+#     Works fine for non-convex polygons.
+#     '''
+#     n = len(poly)
+#     inside = False
+
+#     p1x, p1y = poly[0]
+#     for i in range(1, n + 1):
+#         p2x, p2y = poly[i % n]
+#         if p1y == p2y:
+#             if y == p1y:
+#                 if min(p1x, p2x) <= x <= max(p1x, p2x):
+#                     # point is on horisontal edge
+#                     inside = include_edges
+#                     break
+#                 elif x < min(p1x, p2x):  # point is to the left from current edge
+#                     inside = not inside
+#         else:  # p1y!= p2y
+#             if min(p1y, p2y) <= y <= max(p1y, p2y):
+#                 xinters = (y - p1y) * (p2x - p1x) / float(p2y - p1y) + p1x
+
+#                 if x == xinters:  # point is right on the edge
+#                     inside = include_edges
+#                     break
+
+#                 if x < xinters:  # point is to the left from current edge
+#                     inside = not inside
+
+#         p1x, p1y = p2x, p2y
+
+#     return inside
+
+# def ccw(A,B,C):
+#     return (C.y-A.y) * (B.x-A.x) > (B.y-A.y) * (C.x-A.x)
+
+# # Return true if line segments AB and CD intersect
+# def intersect(A,B,C,D):
+#     return ccw(A,C,D) != ccw(B,C,D) and ccw(A,B,C) != ccw(A,B,D)
+
+# def point_in_polygon(pt, poly, inf):
+#     result = False
+#     for i in range(len(poly)-1):
+#         if intersect((poly[i][0], poly[i][1]), ( poly[i+1][0], poly[i+1][1]), (pt[0], pt[1]), (inf, pt[1])):
+#             result = not result
+#     if intersect((poly[-1][0], poly[-1][1]), (poly[0][0], poly[0][1]), (pt[0], pt[1]), (inf, pt[1])):
+#         result = not result
+#     return result
+
+def point_inside_rectangle(point, rect):
+	xMin = 0
+	xMax = 0
+	yMin = 0
+	yMax = 0
+	for rPoint in rect:
+		if rPoint[0] > xMax or xMax == 0: xMax = rPoint[0]
+		if rPoint[1] > yMax or yMax == 0: yMax = rPoint[1]
+		if rPoint[0] < xMin or xMin == 0: xMin = rPoint[0]
+		if rPoint[1] < yMin or yMin == 0: yMin = rPoint[1]
+
+	if point[0] > xMin and point[0] < xMax and point[1] > yMin and point[1] < yMax:
+		return True
+	else:
+		return False
+
 def transformPolygonForLines(polygon):
 		n = 0
 		points = []
@@ -602,9 +675,24 @@ class World():
 		rotatedForce = rotatedForce.rotated(-actor.body.angle)
 		actor.body.apply_impulse_at_local_point(rotatedForce, [0,0])
 
-	def getModuleFromCursorPosition(self, cursorPosition):
+	def getModuleFromCursorPosition(self, cursorPositionRaw):
+		cursorPosition = cursorPositionRaw
+		# cursorPosition[1] = -cursorPosition[1] + 0.5 * resolution[0]
 		for listItem in self.availableModuleListItems:
-			if listItem.boundingRectangle.collidepoint(cursorPosition):
+			# if listItem.boundingRectangle.collidepoint(cursorPosition):
+
+			# xMost = 0
+			# for point in listItem.boundingRectangle:
+			# 	if point[0] > xMost:
+			# 		xMost = point[0]
+
+			# if point_in_polygon(cursorPosition, listItem.boundingRectangle,xMost ):
+
+			print(cursorPosition)
+			print(self.transformForBuild(cursorPosition))
+			print(listItem.boundingRectangle)
+			if pointInRect(cursorPosition, listItem.boundingRectangle):
+				print('click a list item')
 				self.availableModuleListItems.remove(listItem)
 				return listItem.module
 
@@ -614,12 +702,14 @@ class World():
 				transformedPoint = [0,0]
 				transformedPoint[0] = (point[0] + module.offset[0])
 				transformedPoint[1] = (point[1] + module.offset[1])
-				transformedPoints.append(self.transformForBuild(transformedPoint))
+				transformedPoints.append(transformedPoint)
 
 			boundingBox = boundPolygon(transformedPoints)
-			# if pointInRect( pygame.mouse.get_pos() , boundingBox):
-			# 	self.modulesInUse.remove(module)
-			# 	return module
+			print(boundingBox)
+			if pointInRect( self.transformForBuild(cursorPosition) , boundingBox):
+				print('click a module in use')
+				self.modulesInUse.remove(module)
+				return module
 
 	def add(self, thing):  
 		self.space.add(thing.body, thing.shape)
@@ -781,6 +871,8 @@ class World():
 		transformedPosition[1] = -position[1] - 0.5 * self.resolution[1] # add half the height.
 		transformedPosition[0] = transformedPosition[0] / self.zoom
 		transformedPosition[1] = transformedPosition[1] / self.zoom
+
+
 		
 		return transformedPosition
 
@@ -1007,6 +1099,8 @@ class World():
 		itemSize = 2 * mag(numpy.array(getFarthestPointInPolygon(listItem.module.points)))
 
 		iconSize = buildListSpacing / itemSize
+
+		listItem.boundingRectangle = [[buildListSpacing, index * buildListSpacing], [buildListSpacing, index+1 * buildListSpacing], [2 * buildListSpacing, index+1 * buildListSpacing], [2 * buildListSpacing, index * buildListSpacing]]
 
 		#self, main_batch, module, iconSize, position
 		self.drawModuleForList(main_batch, listItem.module, iconSize, [buildListSpacing, index * buildListSpacing] )
@@ -1294,7 +1388,8 @@ def stepWithBatch(dt):
 @window.event()
 def on_mouse_press(x, y, button, modifiers):
     # pass
-	print('on_mouse_release')
+	# print('on_mouse_release')
+	Nirn.mouseCursorPosition =[x,y]# Nirn.antiTransformForBuild([x,y])
     	# elif event.type == pygame.MOUSEBUTTONDOWN:
 	# 	# event.button can equal several integer values:# 1 - left click# 2 - middle click# 3 - right click# 4 - scroll up# 5 - scroll down
 	if Nirn.buildMenu:
@@ -1305,7 +1400,8 @@ def on_mouse_press(x, y, button, modifiers):
 
 @window.event()
 def on_mouse_release(x, y, button, modifiers):
-	print('on_mouse_release')
+	Nirn.mouseCursorPosition = [x,y]#Nirn.antiTransformForBuild([x,y])
+	# print('on_mouse_release')
 	if Nirn.buildMenu:
 		if mouse.LEFT is button:
 			if Nirn.buildDraggingModule is not None:
@@ -1314,7 +1410,7 @@ def on_mouse_release(x, y, button, modifiers):
 
 @window.event()
 def on_mouse_drag(x, y, dx, dy, buttons, modifiers):
-    Nirn.mouseCursorPosition = Nirn.antiTransformForBuild([x,y])
+    Nirn.mouseCursorPosition =[x,y]# Nirn.antiTransformForBuild([x,y])
 
 @window.event()
 def on_draw():
