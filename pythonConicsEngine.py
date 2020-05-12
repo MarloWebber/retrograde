@@ -19,6 +19,8 @@ from pyglet.window import Window
 from pyglet.window import key
 from pyglet.window import mouse
 
+import copy
+
 resolution = (1280,780)
 window = pyglet.window.Window(width=1280, height=780)
 label = pyglet.text.Label('Abc', x=5, y=5)
@@ -708,8 +710,9 @@ class World():
 				transformedPoints.append(transformedPoint)
 
 			boundingBox = boundPolygon(transformedPoints)
-			# print(boundingBox)
-			if pointInRect( self.transformForBuild(cursorPositionRaw) , boundingBox):
+			print(self.antiTransformForBuild(cursorPositionRaw))
+			print(boundingBox)
+			if pointInRect( self.antiTransformForBuild(cursorPositionRaw) , boundingBox):
 				# print('click a module in use')
 				self.modulesInUse.remove(module)
 				return module
@@ -1289,7 +1292,8 @@ class World():
 		self.add(lothar_instance)
 		self.add(lothar_instance2)
 		# self.add(boldang_instance)
-		self.availableModules = lothar
+		for module in lothar:
+			self.availableModules.append(copy.deepcopy(module))
 
 	def start(self):
 		self.setup()		
@@ -1338,6 +1342,14 @@ def on_key_press(symbol, modifiers):
 				Nirn.availableModuleListItems.append(buildMenuItem(Nirn.buildDraggingModule))
 				Nirn.availableModules.append(Nirn.buildDraggingModule)
 				Nirn.buildDraggingModule = None
+	elif symbol == key.E:
+		if Nirn.buildMenu:
+			if Nirn.buildDraggingModule is not None:
+				Nirn.buildDraggingModule.angle += (1/32) * math.pi
+	elif symbol == key.Q:
+		if Nirn.buildMenu:
+			if Nirn.buildDraggingModule is not None:
+				Nirn.buildDraggingModule.angle -= (1/32) * math.pi
 
 	# elif event.type == pygame.MOUSEBUTTONUP:
 	# 	if self.buildMenu:
