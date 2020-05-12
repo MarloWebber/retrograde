@@ -691,11 +691,11 @@ class World():
 
 			# if point_in_polygon(cursorPosition, listItem.boundingRectangle,xMost ):
 
-			print(smellyCursor)
-			print(self.transformForBuild(cursorPosition))
-			print(listItem.boundingRectangle)
+			# print(smellyCursor)
+			# print(self.transformForBuild(cursorPosition))
+			# print(listItem.boundingRectangle)
 			if pointInRect(smellyCursor, listItem.boundingRectangle):
-				print('click a list item')
+				# print('click a list item')
 				self.availableModuleListItems.remove(listItem)
 				return listItem.module
 
@@ -708,9 +708,9 @@ class World():
 				transformedPoints.append(transformedPoint)
 
 			boundingBox = boundPolygon(transformedPoints)
-			print(boundingBox)
+			# print(boundingBox)
 			if pointInRect( self.transformForBuild(cursorPositionRaw) , boundingBox):
-				print('click a module in use')
+				# print('click a module in use')
 				self.modulesInUse.remove(module)
 				return module
 
@@ -911,20 +911,34 @@ class World():
 		# except:
 		# 	print('drawModuleForList error')
 
-	def drawModuleForDrag(self, module, position):
-		rotatedPoints = rotate_polygon(module.points, module.angle)  # orient the polygon according to the body's current direction in space.
-		# rotatedPoints = rotate_polygon(rotatedPoints,module.angle, -module.offset)  # orient the polygon according to the body's current direction in space.
+	def drawModuleForDrag(self,main_batch, module, position):
+		# rotatedPoints = rotate_polygon(module.points, module.angle)  # orient the polygon according to the body's current direction in space.
+		# # rotatedPoints = rotate_polygon(rotatedPoints,module.angle, -module.offset)  # orient the polygon according to the body's current direction in space.
+		# transformedPoints = []
+		# for rotatedPoint in rotatedPoints:
+		# 	rotatedPoint[0] = (rotatedPoint[0] * self.zoom ) + position[0]
+		# 	rotatedPoint[1] = (rotatedPoint[1] * self.zoom ) + position[1]
+		# 	transformedPoints.append(rotatedPoint) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
+		# try:
+		# 	# pygame.draw.lines(self.screen, module.color, True, transformedPoints)
+		# 	pass
+		# except:
+		# 	print('drawModuleForBuild error')
+		# 	# print(transformedPoints)
+
+
+		rotatedPoints = rotate_polygon(module.points, module.angle)
 		transformedPoints = []
-		for rotatedPoint in rotatedPoints:
+
+		for index, rotatedPoint in enumerate(rotatedPoints):
 			rotatedPoint[0] = (rotatedPoint[0] * self.zoom ) + position[0]
 			rotatedPoint[1] = (rotatedPoint[1] * self.zoom ) + position[1]
-			transformedPoints.append(rotatedPoint) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
-		try:
-			# pygame.draw.lines(self.screen, module.color, True, transformedPoints)
-			pass
-		except:
-			print('drawModuleForBuild error')
-			# print(transformedPoints)
+			transformedPoint = rotatedPoint # transformForView does operations like zooming and mapping 0 to the center of the screen. 
+			transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
+		
+		# print(transformedPoints)
+		renderAConvexPolygon(main_batch, transformedPoints, module.color, module.outlineColor)
+
 
 	def drawModuleForBuild(self, main_batch, module):
 		# rotatedPoints = rotate_polygon(module.points, module.angle)  # orient the polygon according to the body's current direction in space.
@@ -1228,7 +1242,7 @@ class World():
 
 		# draw the module item the player is dragging, if applicable
 		if self.buildDraggingModule is not None:
-			# self.drawModuleForDrag(self.buildDraggingModule, pygame.mouse.get_pos())
+			self.drawModuleForDrag(main_batch, self.buildDraggingModule, self.mouseCursorPosition)
 			pass
 
 	def graphics(self, main_batch):
