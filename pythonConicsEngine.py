@@ -213,6 +213,67 @@ def transformPolygonForLines(polygon):
 		n +=3
 		return [n,points]
 
+def transformForView( position ,viewpointObjectPosition, zoom, resolution):
+	# if seviewpointObject == None:
+	# 	return position
+	# else:
+	transformedPosition = position - viewpointObjectPosition # offset everything by the position of the viewpointObject, so the viewpoint is at 0,0
+	transformedPosition = transformedPosition * zoom  # shrink or expand everything around the 0,0 point
+	transformedPosition[0] = int(transformedPosition[0] + 0.5 * resolution[0]) # add half the width of the screen, to get to the middle. 0,0 is naturally on the corner.
+	transformedPosition[1] = int(-transformedPosition[1] + 0.5 * resolution[1]) # add half the height. and invert it so that it's the right way up in opengl.
+	return transformedPosition
+
+def isPointIlluminated(point, color, illuminators,viewpointObjectPosition, zoom, resolution):
+	resultColor = [color[0],color[1],color[2],255]
+	for illuminator in illuminators:
+		transformedPoint = transformForView( illuminator.position ,viewpointObjectPosition, zoom, resolution)
+		distance =numpy.array([point[0] - transformedPoint[0],point[1] - transformedPoint[1]])
+		
+
+		if distance[0] < illuminator.radius and distance[1] < illuminator.radius and distance > 0:
+			print('TEHIFNEIF')
+
+			dispersion = 1/mag(distance)
+			resultColor[0] += int(dispersion * illuminator.color[0])
+			if resultColor[0] > 255: resultColor[0] = 255
+			resultColor[1] += int(dispersion * illuminator.color[1])
+			if resultColor[1] > 255: resultColor[1] = 255
+			resultColor[2] += int(dispersion * illuminator.color[2])
+			if resultColor[2] > 255: resultColor[2] = 255
+	return resultColor
+
+
+
+def transformPolygonForLinesWithIlluminators(polygon, color, illuminators, viewpointObjectPosition, zoom, resolution):
+		n = 0
+		points = []
+		colorstream = []
+		firstPoint = polygon[0]
+		lastPoint = firstPoint
+		points.extend([ int(firstPoint[0]) , int(firstPoint[1])])
+		colorstream.extend(isPointIlluminated(firstPoint, color, illuminators, viewpointObjectPosition, zoom, resolution))
+		n +=1 
+		
+		for index, point in enumerate(polygon):
+			points.extend([ int(point[0]) , int(point[1])])
+			points.extend([ int(point[0]) , int(point[1])])
+			colorstream.extend(isPointIlluminated(point, color, illuminators, viewpointObjectPosition, zoom, resolution))
+			colorstream.extend(isPointIlluminated(point, color, illuminators, viewpointObjectPosition, zoom, resolution))
+			lastPoint = point
+			n +=2
+
+		# make a segment joining the first one to the last one and then do a repeat to close it off.
+		points.extend([ int(firstPoint[0]) , int(firstPoint[1])])
+		colorstream.extend(isPointIlluminated(firstPoint, color, illuminators, viewpointObjectPosition, zoom, resolution))
+		points.extend([ int(lastPoint[0]) , int(lastPoint[1])])
+		colorstream.extend(isPointIlluminated(lastPoint, color, illuminators, viewpointObjectPosition, zoom, resolution))
+		points.extend([ int(lastPoint[0]) , int(lastPoint[1])])
+		colorstream.extend(isPointIlluminated(lastPoint, color, illuminators, viewpointObjectPosition, zoom, resolution))
+		n +=3
+
+		return [n,points, colorstream]
+
+
 def transformPolygonForTriangleFan(polygon):
 	# the number of points returned by this function is always 1.5n + 5, where n is the number of points in polygon.
 	centroid = centroidOfPolygon(polygon)
@@ -259,6 +320,7 @@ def transformPolygonForTriangleFan(polygon):
 	transformedPoints.append(centroid[1])
 	n+= 4
 	return [n,transformedPoints]
+
 
 def unwrapAtmosphereForGradient(n, inside_verts, outside_verts, inside_color, outside_color):
 		# shred one of the ingame annular atmospheres into a ribbon of triangles, and add a color gradient from the inner edge to the outer.
@@ -317,7 +379,7 @@ def unwrapAtmosphereForGradient(n, inside_verts, outside_verts, inside_color, ou
 
 
 
-def renderAConvexPolygon(batch, polygon, color, outlineColor=None):
+def renderAConvexPolygon(batch, polygon, viewpointObjectPosition, zoom, resolution, color, outlineColor=None, illuminators=None):
 	# nsfe = int(1.5*len(polygon) + 5)
 	# print(nsfe)
 	transformedPoints = transformPolygonForTriangleFan(polygon)
@@ -325,8 +387,13 @@ def renderAConvexPolygon(batch, polygon, color, outlineColor=None):
 	batch.add(transformedPoints[0], pyglet.gl.GL_TRIANGLE_STRIP, None, ('v2i',transformedPoints[1]), ('c4B',color*transformedPoints[0]))
 
 	if outlineColor is not None:
-		transformedPoints = transformPolygonForLines(polygon)
-		batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i',transformedPoints[1]), ('c4B',outlineColor*transformedPoints[0]))
+		# transformedPoints = transformPolygonForLines(polygon)
+		if illuminators is not None:
+			transformedPoints = transformPolygonForLinesWithIlluminators(polygon, outlineColor, illuminators, viewpointObjectPosition, zoom, resolution)
+			batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i',transformedPoints[1]), ('c4B',transformedPoints[2]))
+		else:
+			transformedPoints = transformPolygonForLines(polygon)
+			batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i',transformedPoints[1]), ('c4B',outlineColor*transformedPoints[0]))
 
 class Atmosphere():
 	def __init__(self,radius, planetPosition):
@@ -356,6 +423,14 @@ class ModuleEffect(): # a ModuleEffect is just a polygon that is visually displa
 		self.radius = 3
 		self.points = [[-self.radius, -self.radius], [-self.radius, self.radius], [self.radius,self.radius], [self.radius, -self.radius]]
 
+# class Bullet(): # a physical projectile that is too simple to be an actor.
+# 	def __init__(self, position, velocity, bulletType)
+# 		self.position = position
+# 		self.velocity = velocity
+
+# 		if bulletType == 'Cannon 10'
+# 			self.
+
 class Module():
 	def __init__(self, moduleType, offset=[0,0], angle=0):
 		self.enabled = True # whether or not the module has enough available resources to function.
@@ -368,7 +443,7 @@ class Module():
 			self.mass = 1
 			self.active = True
 			self.resources = {
-				'electricity': 0.01,
+				'electricity': 0.1,
 				'fuel': -0.0001
 			}
 			self.stores = {
@@ -404,8 +479,8 @@ class Module():
 		elif self.moduleType is 'RCS':
 			self.mass = 0.2
 			self.resources = {
-				'torque': 2,
-				'electricity': -0.1
+				'torque': 5,
+				'electricity': -0.2
 			}
 			self.stores = {}
 			self.initialStores = {}
@@ -469,9 +544,50 @@ class Module():
 
 			self.momentArm = self.radius
 
+		elif self.moduleType is 'cannonshell 10':
+			self.mass = 1
+			self.active = True
+			self.resources = {}
+			self.stores = {
+				'high explosive': 10
+			}
+			self.initialStores = {
+				'high explosive': 10
+			}
+			self.radius = 0.5
+			self.points = [[-self.radius, -self.radius], [-self.radius, self.radius], [self.radius,self.radius], [self.radius, -self.radius]]
+			self.color = [255,230,200,255]
+			self.outlineColor = [255,235,225,255]
+
+			self.lifetime = 100 # the shell lasts for 1000 somethings and then explodes.
+
+
+		elif self.moduleType is 'cannon 10':
+			self.mass = 1
+			self.active = False
+			self.resources = {
+				# 'cannonshell 10': 1
+				'electricity':0.001
+			}
+			self.stores = {
+				'cannonshell 10': 100
+			}
+			self.initialStores = {
+				'cannonshell 10': 100
+			}
+			self.radius = 5
+			self.points = [[-0.5*self.radius, -self.radius], [-0.5*self.radius, self.radius], [0.5*self.radius,self.radius], [0.5*self.radius, -self.radius]]
+			self.color = [30,30,30,255]
+			self.outlineColor = [100,100,30,255]
+
+			self.barrelHole = [0,self.radius + 1.5]
+			self.muzzleVelocity = 500000
+			self.cooldownTime = 100
+			self.cooldownValue = 0
+
 
 dinghy = [Module('generator',[0,0]), Module('engine',[0,8]), Module('RCS',[0,-10]) ]
-lothar = [Module('generator',[0,0]), Module('engine',[-13,8], 0.6/math.pi), Module('engine',[13,8],-0.6/math.pi), Module('RCS',[-13,-10]), Module('RCS',[13,-10]) ]
+lothar = [Module('generator',[0,0]), Module('engine',[-13,8], 0.6/math.pi), Module('engine',[13,8],-0.6/math.pi), Module('RCS',[-13,-10]), Module('RCS',[13,-10]) , Module('cannon 10',[0,-10]) ]
 boldang = [Module('spar 10',[0,-100], (0.5* math.pi)), Module('box 10',[0,0])]
 bigmolly = [Module('box 100',[0,0]), Module('spar 100',[1000,0], 0.5 * math.pi),Module('box 100',[-1000,0]),Module('box 100',[2000,0]), Module('box 100',[-2000,0]),  Module('box 100',[3000,0])]
 
@@ -589,25 +705,31 @@ class Actor():
 		for resource, quantity in list(self.storagePool.items()):
 			if quantity > self.maximumStores[resource]: quantity = self.maximumStores[resource]			
 
+	
+
 	def doModuleEffects(self, keyStates, timestepSize):
 		ifThrustHasBeenApplied = False
 		for module in self.modules:
-			if module.enabled and module.active:
-				for giveResource, giveQuantity in list(module.resources.items()): #module.produces.items():
-					if giveResource == 'thrust':
-						if keyStates['up']:
-							force = [(giveQuantity * timestepSize * 500 * math.cos(addRadians(module.angle, math.pi * 0.5))), -giveQuantity * timestepSize * 500 * math.sin(addRadians(module.angle, math.pi * 0.5) )]
-							self.body.apply_impulse_at_local_point(force, (0,0))
-							ifThrustHasBeenApplied = True
 
-					elif giveResource == 'torque':
-						if keyStates['left']:
-							# apply two impulses, pushing in opposite directions, an equal distance from the center to create torque
-							self.body.apply_impulse_at_local_point([-giveQuantity,0], [0,-module.momentArm])
-							self.body.apply_impulse_at_local_point([giveQuantity,0], [0,module.momentArm])
-						elif keyStates['right']:
-							self.body.apply_impulse_at_local_point([giveQuantity,0], [0,-module.momentArm])
-							self.body.apply_impulse_at_local_point([-giveQuantity,0], [0,module.momentArm])
+
+
+			if module.enabled:
+				if module.active:
+					for giveResource, giveQuantity in list(module.resources.items()): #module.produces.items():
+						if giveResource == 'thrust':
+							if keyStates['up']:
+								force = [(giveQuantity * timestepSize * 500 * math.cos(addRadians(module.angle, math.pi * 0.5))), -giveQuantity * timestepSize * 500 * math.sin(addRadians(module.angle, math.pi * 0.5) )]
+								self.body.apply_impulse_at_local_point(force, (0,0))
+								ifThrustHasBeenApplied = True
+
+						elif giveResource == 'torque':
+							if keyStates['left']:
+								# apply two impulses, pushing in opposite directions, an equal distance from the center to create torque
+								self.body.apply_impulse_at_local_point([-giveQuantity,0], [0,-module.momentArm])
+								self.body.apply_impulse_at_local_point([giveQuantity,0], [0,module.momentArm])
+							elif keyStates['right']:
+								self.body.apply_impulse_at_local_point([giveQuantity,0], [0,-module.momentArm])
+								self.body.apply_impulse_at_local_point([-giveQuantity,0], [0,module.momentArm])
 
 		return ifThrustHasBeenApplied
 
@@ -650,6 +772,13 @@ class buildMenuItem():
 		self.module = module
 		self.quantity = 1
 		self.boundingRectangle = boundingRectangle
+
+class Illuminator():
+	def __init__(self):
+		self.radius = 100
+		self.color = [255,255,0]
+		self.intensity = 1
+		self.position = (100, -320030)
 
 class World():
 	def __init__(self):
@@ -694,6 +823,9 @@ class World():
 		self.n_navcircle_lines = 32
 		self.navcircleLinesLength = 10
 		self.navcircleInnerRadius = 250
+
+		self.projectiles = []
+		self.illuminators = [Illuminator()]
 
 	def gravityForce(self, actorPosition, attractorPosition, attractorMass):
 		distance = attractorPosition - actorPosition # scalar distance between two bodies
@@ -802,6 +934,18 @@ class World():
 		self.time += self.timestepSize
 
 		for actor in self.actors:
+
+			destroyed = False
+			for module in actor.modules:
+				if module.moduleType == "cannonshell 10":
+					module.lifetime -= 1
+					if module.lifetime < 0:
+						self.destroyActor(actor)
+						destroyed = True
+						break
+			if destroyed:
+				continue
+
 
 			actor.doResources()
 
@@ -919,15 +1063,7 @@ class World():
 		
 		return transformedPosition
 
-	def transformForView(self, position):
-		if self.viewpointObject == None:
-			return position
-		else:
-			transformedPosition = position - self.viewpointObject.body.position # offset everything by the position of the viewpointObject, so the viewpoint is at 0,0
-			transformedPosition = transformedPosition * self.zoom  # shrink or expand everything around the 0,0 point
-			transformedPosition[0] = int(transformedPosition[0] + 0.5 * self.resolution[0]) # add half the width of the screen, to get to the middle. 0,0 is naturally on the corner.
-			transformedPosition[1] = int(-transformedPosition[1] + 0.5 * self.resolution[1]) # add half the height. and invert it so that it's the right way up in opengl.
-			return transformedPosition
+
 
 	def drawCircle(self,color, position, radius):
 		# pygame.draw.circle(self.screen, color, [int(position[0]), int(position[1])], int((radius * self.zoom)))
@@ -943,7 +1079,7 @@ class World():
 			transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
 		
 		# print(transformedPoints)
-		renderAConvexPolygon(main_batch, transformedPoints, module.color, module.outlineColor)
+		renderAConvexPolygon(main_batch, transformedPoints, self.viewpointObject.body.position, self.zoom, self.resolution, module.color, module.outlineColor)
 
 		# try:
 		# 	# return pygame.draw.lines(self.screen, module.color, True, transformedPoints) # return the bounding rectangle
@@ -977,7 +1113,7 @@ class World():
 			transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
 		
 		# print(transformedPoints)
-		renderAConvexPolygon(main_batch, transformedPoints, module.color, module.outlineColor)
+		renderAConvexPolygon(main_batch, transformedPoints,self.viewpointObject.body.position, self.zoom, self.resolution,  module.color, module.outlineColor)
 
 
 	def drawModuleForBuild(self, main_batch, module):
@@ -1001,28 +1137,29 @@ class World():
 			transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
 		
 		# print(transformedPoints)
-		renderAConvexPolygon(main_batch, transformedPoints, module.color, module.outlineColor)
+		renderAConvexPolygon(main_batch, transformedPoints, self.viewpointObject.body.position, self.zoom, self.resolution, module.color, module.outlineColor)
 
 
 	def drawModuleEffects(self, module, actor):
+		pass
 		# put a circle in the middle if it is enabled, and a smaller red circle in the middle of that, if it is activated.
-		if module.enabled:
-			activeCircle = self.transformForView(module.offset + actor.body.position)
-			activeCircle = rotate_point(activeCircle, actor.body.angle, self.transformForView(actor.body.position))
-			self.drawCircle(module.color, activeCircle, 2)
-			if module.active:
-				self.drawCircle((255,0,0), activeCircle, 1)
+		# if module.enabled:
+		# 	activeCircle = self.transformForView(module.offset + actor.body.position)
+		# 	activeCircle = rotate_point(activeCircle, actor.body.angle, self.transformForView(actor.body.position))
+		# 	self.drawCircle(module.color, activeCircle, 2)
+		# 	if module.active:
+		# 		self.drawCircle((255,0,0), activeCircle, 1)
 
-		# rocket engines have a line coming out of them.
-		if module.enabled and module.active:
-			for giveResource, giveQuantity in list(module.resources.items()): 
-				if giveResource == 'thrust':
-					if actor.keyStates['up']:
-						forceAngle = actor.body.angle + module.angle
-						force = [(giveQuantity * math.cos(addRadians(forceAngle, math.pi * 0.5))), giveQuantity * math.sin(addRadians(forceAngle, math.pi * 0.5) )]
-						activeCircle = self.transformForView(module.offset + actor.body.position)
-						activeCircle = rotate_point(activeCircle, actor.body.angle, self.transformForView(actor.body.position))
-						ananas = (int(activeCircle[0] + force[0] * self.zoom), int(activeCircle[1]+force[1] * self.zoom ) )
+		# # rocket engines have a line coming out of them.
+		# if module.enabled and module.active:
+		# 	for giveResource, giveQuantity in list(module.resources.items()): 
+		# 		if giveResource == 'thrust':
+		# 			if actor.keyStates['up']:
+		# 				forceAngle = actor.body.angle + module.angle
+		# 				force = [(giveQuantity * math.cos(addRadians(forceAngle, math.pi * 0.5))), giveQuantity * math.sin(addRadians(forceAngle, math.pi * 0.5) )]
+		# 				activeCircle = self.transformForView(module.offset + actor.body.position)
+		# 				activeCircle = rotate_point(activeCircle, actor.body.angle, self.transformForView(actor.body.position))
+		# 				ananas = (int(activeCircle[0] + force[0] * self.zoom), int(activeCircle[1]+force[1] * self.zoom ) )
 						# print ananas
 						# pygame.draw.lines(self.screen, (255,255,200), True, [activeCircle,ananas])
 
@@ -1033,10 +1170,11 @@ class World():
 		transformedPoints = []
 
 		for index, rotatedPoint in enumerate(rotatedPoints):
-			transformedPoint = self.transformForView(rotatedPoint + actor.body.position + module.offset) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
+			# transformForView(self, position, viewpointObjectPosition, zoom, resolution):
+			transformedPoint = transformForView(rotatedPoint + actor.body.position + module.offset,self.viewpointObject.body.position, self.zoom, self.resolution ) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
 			transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
 		
-		renderAConvexPolygon(main_batch, transformedPoints, module.color, module.outlineColor)
+		renderAConvexPolygon(main_batch, transformedPoints, self.viewpointObject.body.position, self.zoom, self.resolution,  module.color, module.outlineColor, self.illuminators)
 
 		self.drawModuleEffects(module, actor)
 
@@ -1056,10 +1194,11 @@ class World():
 			transformedInnerPoints = []
 			transformedOuterPoints = []
 
+			#transformForView(self, position, viewpointObjectPosition, zoom, resolution):
 			for index, point in enumerate(actor.innerPoints): 
-				transformedInnerPoints.append(self.transformForView(point))
+				transformedInnerPoints.append(transformForView(point,self.viewpointObject.body.position, self.zoom, self.resolution))
 			for index, point in enumerate(actor.outerPoints): 
-				transformedOuterPoints.append(self.transformForView(point))
+				transformedOuterPoints.append(transformForView(point,self.viewpointObject.body.position, self.zoom, self.resolution))
 
 			rendering = unwrapAtmosphereForGradient(actor.n_points, transformedInnerPoints, transformedOuterPoints, actor.color, actor.outerColor)
 
@@ -1068,10 +1207,10 @@ class World():
 		if actor.__class__ is Attractor:
 			transformedPoints = []
 			for point in actor.points:
-				transformedPoint = self.transformForView(point + actor.body.position) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
+				transformedPoint = transformForView(point + actor.body.position,self.viewpointObject.body.position, self.zoom, self.resolution) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
 				transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
 			
-			renderAConvexPolygon(main_batch, transformedPoints, actor.color, actor.outlineColor)	
+			renderAConvexPolygon(main_batch, transformedPoints,self.viewpointObject.body.position, self.zoom, self.resolution,  actor.color, actor.outlineColor)	
 
 	def getActorFromBody(self, body):
 		for actor in self.actors:
@@ -1142,7 +1281,7 @@ class World():
 		for i in range(0,n_points):
 			temp_vec3d = orbit.cartesianCoordinates(i *sliceSize)
 			point = (temp_vec3d[0] + attractor.body.position[0], temp_vec3d[1] + attractor.body.position[1])
-			point = self.transformForView(point)
+			point = transformForView(point,self.viewpointObject.body.position, self.zoom, self.resolution)
 			points.append(point)
 
 		transformedPoints = transformPolygonForLines(points)
@@ -1251,10 +1390,18 @@ class World():
 		# 	if actor.orbit is not None:
 		# 		self.drawAPOrbit(main_batch, actor.orbit, actor.orbiting, (100,100,100))
 
-	
+
 		
 
-
+	def shootABullet(self, gunModule, actor):
+		if gunModule.moduleType is 'cannon 10':
+			#(self, name, modulesList, position, velocity, angle, isPlayer=False):
+			bulletPosition = [actor.body.position[0] + gunModule.offset[0] + gunModule.barrelHole[0], actor.body.position[1] + gunModule.offset[1] + gunModule.barrelHole[1]]
+			bulletPosition = rotate_point(bulletPosition, gunModule.angle, actor.body.position + gunModule.offset )
+			bulletPosition = rotate_point(bulletPosition, actor.body.angle, actor.body.position )
+			bulletVelocity = [gunModule.muzzleVelocity * math.cos(gunModule.angle + actor.body.angle - 0.5*math.pi) , gunModule.muzzleVelocity * math.sin(gunModule.angle + actor.body.angle- 0.5*math.pi)]
+			bullet = Actor('cannonshell 10', [Module('cannonshell 10', (0,0))], bulletPosition ,bulletVelocity,0 ,False)
+			self.add(bullet)
 
 
 	def loadShipIntoBuildMenu(self, actor):
@@ -1305,8 +1452,6 @@ class World():
 		main_batch.draw()
 
 	def graphics(self):
-
-
 
 		window.clear()
 
@@ -1366,7 +1511,7 @@ class World():
 		self.add(planet_erf)
 		self.add(planet_moon)
 		dinghy_instance = Actor('NPC dinghy', dinghy,(1000000, -1080100), [20000,0], 0)
-		lothar_instance = Actor('NPC lothar', lothar,(100, -345050), [45000,0], 0.6 * math.pi)
+		lothar_instance = Actor('NPC lothar', lothar,(10000, -345050), [45000,0], 0.6 * math.pi)
 		lothar_instance2 = Actor('player Lothar', lothar,(100, -320030), [0,0], 0, True)
 		boldang_instance = Actor('NPC boldang', boldang,(-100, -320050), [0,0],0)
 		bigmolly_instance = Actor('NPC molly', bigmolly,(100, -350050), [45000,0],0)
@@ -1442,7 +1587,10 @@ def on_key_press(symbol, modifiers):
 		if Nirn.viewpointObjectIndex < 0:
 			Nirn.viewpointObjectIndex = len(Nirn.actors)-1
 		Nirn.viewpointObject = Nirn.actors[Nirn.viewpointObjectIndex]
-
+	elif symbol == key.SPACE:
+		for module in Nirn.player.modules:
+			if module.moduleType == 'cannon 10':
+				Nirn.shootABullet(module, Nirn.player)
 
 	# elif event.type == pygame.MOUSEBUTTONUP:
 	# 	if self.buildMenu:
