@@ -431,7 +431,7 @@ class Module():
 			self.momentArm = self.radius
 
 		elif self.moduleType is 'box 10':
-			self.mass = 2
+			self.mass = 10
 			self.resources = {}
 			self.stores = {}
 			self.initialStores = {}
@@ -443,10 +443,37 @@ class Module():
 
 			self.momentArm = self.radius
 
+		elif self.moduleType is 'box 100':
+			self.mass = 100
+			self.resources = {}
+			self.stores = {}
+			self.initialStores = {}
+			self.radius = 5
+			size = self.radius
+			self.points = [[-size*100, -size*100], [-size*100, size*100], [size*100,size*100], [size*100, -size*100]]
+			self.color = [50,50,50,255]
+			self.outlineColor = [100,100,100,255]
+
+			self.momentArm = self.radius
+
+		elif self.moduleType is 'spar 100':
+			self.mass = 1
+			self.resources = {}
+			self.stores = {}
+			self.initialStores = {}
+			self.radius = 5
+			size = self.radius
+			self.points = [[-size*10, -size*100], [-size*10, size*100], [size*10,size*100], [size*10, -size*100]]
+			self.color = [50,50,50,255]
+			self.outlineColor = [100,100,100,255]
+
+			self.momentArm = self.radius
+
 
 dinghy = [Module('generator',[0,0]), Module('engine',[0,8]), Module('RCS',[0,-10]) ]
 lothar = [Module('generator',[0,0]), Module('engine',[-13,8], 0.6/math.pi), Module('engine',[13,8],-0.6/math.pi), Module('RCS',[-13,-10]), Module('RCS',[13,-10]) ]
 boldang = [Module('spar 10',[0,-100], (0.5* math.pi)), Module('box 10',[0,0])]
+bigmolly = [Module('box 100',[0,0]), Module('spar 100',[1000,0], 0.5 * math.pi),Module('box 100',[-1000,0]),Module('box 100',[2000,0]), Module('box 100',[-2000,0])]
 
 class Actor():
 	def __init__(self, name, modulesList, position, velocity, angle, isPlayer=False):
@@ -485,7 +512,7 @@ class Actor():
 		inertia = pymunk.moment_for_poly(self.mass, self.points, (0,0))
 		self.body = pymunk.Body(self.mass, inertia)
 		self.body.position = position
-		self.body.apply_impulse_at_local_point(velocity, [0,0])
+		self.body.velocity = velocity
 		self.shape = pymunk.Poly(self.body, self.points)
 		self.shape.friction = 0.9
 		self.orbit = None #initpos_to_orbit(self.)
@@ -662,6 +689,11 @@ class World():
 		self.modulesInUse = []  # a list of modules that the player has dragged onto the screen to make a ship
 		self.buildDraggingModule = None
 		self.mouseCursorPosition = []
+
+		self.navCircleLines = []
+		self.n_navcircle_lines = 32
+		self.navcircleLinesLength = 10
+		self.navcircleInnerRadius = 250
 
 	def gravityForce(self, actorPosition, attractorPosition, attractorMass):
 		distance = attractorPosition - actorPosition # scalar distance between two bodies
@@ -1152,6 +1184,18 @@ class World():
 		# self.screen.blit(textsurface,(listXPosition,index * HUDlistItemSpacing))
 		return index + 1
 
+	def createHUDNavCircle(self):
+		# this function predraws the nav circle. because it is just static lines, it does not need to be recalculated every frame.
+		for n in range(0,self.n_navcircle_lines):
+			angle = n * (2 * math.pi / self.n_navcircle_lines)
+			start = ((self.navcircleInnerRadius * math.cos(angle)) + (self.resolution[0]*0.5) , (self.navcircleInnerRadius* math.sin(angle)) +( self.resolution[1] * 0.5) )
+			end = ((self.navcircleInnerRadius + self.navcircleLinesLength) * math.cos(angle)+ (self.resolution[0]*0.5), (self.navcircleInnerRadius + self.navcircleLinesLength) * math.sin(angle)+ (self.resolution[1]*0.5))
+			self.navCircleLines.append([start, end])
+			# pygame.draw.lines(self.screen, (100,100,100), True, (start,end))
+
+
+		
+
 	def drawHUD(self, main_batch):
 		if self.player is None:
 			return
@@ -1187,36 +1231,30 @@ class World():
 		i = self.drawHUDListItem('paused: ', self.paused, i)
 		
 		# print the navcircle
-		n_navcircle_lines = 32
-		navcircleLinesLength = 10
-		navcircleInnerRadius = 250
+		for line in self.navCircleLines:
 
-		# for n in range(0,n_navcircle_lines):
-		# 	angle = n * (2 * math.pi / n_navcircle_lines)
-		# 	start = ((navcircleInnerRadius * math.cos(angle)) + (self.resolution[0]*0.5) , (navcircleInnerRadius* math.sin(angle)) +( self.resolution[1] * 0.5) )
-		# 	end = ((navcircleInnerRadius + navcircleLinesLength) * math.cos(angle)+ (self.resolution[0]*0.5), (navcircleInnerRadius + navcircleLinesLength) * math.sin(angle)+ (self.resolution[1]*0.5))
-			# navcircleLines.append([start, end])
-			# pygame.draw.lines(self.screen, (100,100,100), True, (start,end))
+			transformedPoints = transformPolygonForLines(line)
+			main_batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i', transformedPoints[1]), ('c4B',[50,50,50,255]*(transformedPoints[0])))
 
-		# blipLength = (navcircleInnerRadius-navcircleLinesLength)
-		# angle = self.viewpointObject.body.angle - 0.5 * math.pi
-		# start = ((blipLength * math.cos(angle)) + (self.resolution[0]*0.5) , (blipLength* math.sin(angle)) +( self.resolution[1] * 0.5) )
-		# end = ((navcircleInnerRadius) * math.cos(angle)+ (self.resolution[0]*0.5), (navcircleInnerRadius) * math.sin(angle)+ (self.resolution[1]*0.5))
-		# pygame.draw.lines(self.screen, (200,0,10), True, (start,end))
 
-		# blipLength = (navcircleInnerRadius-navcircleLinesLength)
+		# blipLength = (self.navcircleInnerRadius-self.navcircleLinesLength)
 		# angle = self.viewpointObject.desiredAngle
 		# start = ((blipLength * math.cos(angle)) + (self.resolution[0]*0.5) , (blipLength* math.sin(angle)) +( self.resolution[1] * 0.5) )
-		# end = ((navcircleInnerRadius) * math.cos(angle)+ (self.resolution[0]*0.5), (navcircleInnerRadius) * math.sin(angle)+ (self.resolution[1]*0.5))
-		# pygame.draw.lines(self.screen, (200,0,10), True, (start,end))
+		# end = ((self.navcircleInnerRadius) * math.cos(angle)+ (self.resolution[0]*0.5), (self.navcircleInnerRadius) * math.sin(angle)+ (self.resolution[1]*0.5))
+		# # pygame.draw.lines(self.screen, (200,0,10), True, (start,end))
+		# transformedPoints = transformPolygonForLines([start,end])
+		# main_batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i', transformedPoints[1]), ('c4B',[100,0,0,255]*(transformedPoints[0])))
 
-		# draw the actor's orbits
-		for actor in self.actors:
-			if actor.orbit is not None:
-				self.drawAPOrbit(main_batch, actor.orbit, actor.orbiting, (100,100,100))
+		
+		# # draw the actor's orbits
+		# for actor in self.actors:
+		# 	if actor.orbit is not None:
+		# 		self.drawAPOrbit(main_batch, actor.orbit, actor.orbiting, (100,100,100))
 
 	
 		
+
+
 
 
 	def loadShipIntoBuildMenu(self, actor):
@@ -1240,6 +1278,11 @@ class World():
 		self.modulesInUse.append(module)
 
 	def buildMenuGraphics(self, main_batch):
+		window.clear()
+
+		main_batch = pyglet.graphics.Batch()
+		pyglet.gl.glLineWidth(2)
+
 		# self.screen.fill((200,200,200))
 		self.drawScreenFill(main_batch)
 		# main_batch.draw()
@@ -1259,7 +1302,17 @@ class World():
 			self.drawModuleForDrag(main_batch, self.buildDraggingModule, self.mouseCursorPosition)
 			pass
 
-	def graphics(self, main_batch):
+		main_batch.draw()
+
+	def graphics(self):
+
+
+
+		window.clear()
+
+		main_batch = pyglet.graphics.Batch()
+		pyglet.gl.glLineWidth(2)
+
 		for attractor in self.attractors:
 			if attractor.atmosphere != None:
 				self.drawActor(attractor.atmosphere, main_batch)
@@ -1267,19 +1320,47 @@ class World():
 		for actor in self.actors:
 			self.drawActor(actor, main_batch)
 
-		if self.showHUD:
-			self.drawHUD(main_batch)
 
-	def step(self, main_batch):
+		if self.showHUD:
+			blipLength = (self.navcircleInnerRadius-self.navcircleLinesLength)
+			angle = self.viewpointObject.body.angle - 0.5 * math.pi
+			start = ((blipLength * math.cos(angle)) + (self.resolution[0]*0.5) , -(blipLength* math.sin(angle)) +( self.resolution[1] * 0.5) )
+			end = ((self.navcircleInnerRadius) * math.cos(angle)+ (self.resolution[0]*0.5),- (self.navcircleInnerRadius) * math.sin(angle)+ (self.resolution[1]*0.5))
+			# pygame.draw.lines(self.screen, (200,0,10), True, (start,end))
+			transformedPoints = transformPolygonForLines([start,end])
+			main_batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i', transformedPoints[1]), ('c4B',[200,0,0,255]*(transformedPoints[0])))
+
+		
+		main_batch.draw()
+		second_batch = pyglet.graphics.Batch()
+		pyglet.gl.glLineWidth(1)
+
+		if self.showHUD:
+			self.drawHUD(second_batch)
+			# draw the actor's orbits
+			for actor in self.actors:
+				if actor.orbit is not None:
+					self.drawAPOrbit(second_batch, actor.orbit, actor.orbiting, (100,100,100))
+
+
+		second_batch.draw()
+
+
+			
+
+	def step(self):
 		if not self.buildMenu:
 			self.player = self._getPlayer()
 			if not self.paused:
 				self.physics()
-			self.graphics(main_batch)
+			self.graphics()
 		else:
-			self.buildMenuGraphics(main_batch)
+			self.buildMenuGraphics()
 
 	def setup(self):
+
+		self.createHUDNavCircle()
+
 		planet_erf = Attractor('earth', [1,1], self.gravitationalConstant)
 		planet_moon = Attractor('moon',[1000000,-1000000], self.gravitationalConstant)
 		self.add(planet_erf)
@@ -1288,10 +1369,11 @@ class World():
 		lothar_instance = Actor('NPC lothar', lothar,(-1000000, -1121600), [65000,0], 0.6 * math.pi)
 		lothar_instance2 = Actor('player Lothar', lothar,(100, -320030), [0,0], 0, True)
 		boldang_instance = Actor('NPC boldang', boldang,(-100, -320050), [0,0],0)
+		bigmolly_instance = Actor('NPC molly', bigmolly,(100, -350050), [45000,0],0)
 		self.add(dinghy_instance)
 		self.add(lothar_instance)
 		self.add(lothar_instance2)
-		# self.add(boldang_instance)
+		self.add(bigmolly_instance)
 		for module in lothar:
 			self.availableModules.append(copy.deepcopy(module))
 
@@ -1471,16 +1553,15 @@ def on_mouse_drag(x, y, dx, dy, buttons, modifiers):
 @window.event()
 def on_draw():
 
-	main_batch = pyglet.graphics.Batch()
+	
 
-	Nirn.step(main_batch)
+	Nirn.step()
 
-	window.clear()
-	main_batch.draw()
+	# main_batch.draw()
 
 Nirn.start()
 
-pyglet.gl.glLineWidth(2)
+# pyglet.gl.glLineWidth(2)
 
 pyglet.clock.schedule_interval(stepWithBatch, 0.01)
 pyglet.app.run()
