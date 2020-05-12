@@ -236,7 +236,7 @@ def isPointIlluminated(point, color, illuminators,viewpointObjectPosition, zoom,
 			
 			magnitude = mag(distance )
 			magnitude = magnitude/zoom
-			print(magnitude)
+			# print(magnitude)
 			if magnitude == 0:
 				dispersion = 1
 			else:
@@ -1755,4 +1755,6 @@ def hello():
 	pyglet.clock.schedule_interval(stepWithBatch, 0.01)
 	pyglet.app.run()
 
-cProfile.run('hello()')
+# print(cProfile.run("hello()"))
+
+hello()
