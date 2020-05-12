@@ -473,7 +473,7 @@ class Module():
 dinghy = [Module('generator',[0,0]), Module('engine',[0,8]), Module('RCS',[0,-10]) ]
 lothar = [Module('generator',[0,0]), Module('engine',[-13,8], 0.6/math.pi), Module('engine',[13,8],-0.6/math.pi), Module('RCS',[-13,-10]), Module('RCS',[13,-10]) ]
 boldang = [Module('spar 10',[0,-100], (0.5* math.pi)), Module('box 10',[0,0])]
-bigmolly = [Module('box 100',[0,0]), Module('spar 100',[1000,0], 0.5 * math.pi),Module('box 100',[-1000,0]),Module('box 100',[2000,0]), Module('box 100',[-2000,0])]
+bigmolly = [Module('box 100',[0,0]), Module('spar 100',[1000,0], 0.5 * math.pi),Module('box 100',[-1000,0]),Module('box 100',[2000,0]), Module('box 100',[-2000,0]),  Module('box 100',[3000,0])]
 
 class Actor():
 	def __init__(self, name, modulesList, position, velocity, angle, isPlayer=False):
@@ -1365,8 +1365,8 @@ class World():
 		planet_moon = Attractor('moon',[1000000,-1000000], self.gravitationalConstant)
 		self.add(planet_erf)
 		self.add(planet_moon)
-		dinghy_instance = Actor('NPC dinghy', dinghy,(1000000, -1080100), [30000,0], 0)
-		lothar_instance = Actor('NPC lothar', lothar,(-1000000, -1121600), [65000,0], 0.6 * math.pi)
+		dinghy_instance = Actor('NPC dinghy', dinghy,(1000000, -1080100), [20000,0], 0)
+		lothar_instance = Actor('NPC lothar', lothar,(100, -345050), [45000,0], 0.6 * math.pi)
 		lothar_instance2 = Actor('player Lothar', lothar,(100, -320030), [0,0], 0, True)
 		boldang_instance = Actor('NPC boldang', boldang,(-100, -320050), [0,0],0)
 		bigmolly_instance = Actor('NPC molly', bigmolly,(100, -350050), [45000,0],0)
@@ -1432,6 +1432,17 @@ def on_key_press(symbol, modifiers):
 		if Nirn.buildMenu:
 			if Nirn.buildDraggingModule is not None:
 				Nirn.buildDraggingModule.angle -= (1/32) * math.pi
+	elif symbol == key.BRACKETRIGHT:
+		Nirn.viewpointObjectIndex += 1
+		if Nirn.viewpointObjectIndex >= len(Nirn.actors):
+			Nirn.viewpointObjectIndex = 0
+		Nirn.viewpointObject = Nirn.actors[Nirn.viewpointObjectIndex]
+	elif symbol == key.BRACKETLEFT:
+		Nirn.viewpointObjectIndex -= 1
+		if Nirn.viewpointObjectIndex < 0:
+			Nirn.viewpointObjectIndex = len(Nirn.actors)-1
+		Nirn.viewpointObject = Nirn.actors[Nirn.viewpointObjectIndex]
+
 
 	# elif event.type == pygame.MOUSEBUTTONUP:
 	# 	if self.buildMenu:
