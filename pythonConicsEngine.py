@@ -694,7 +694,7 @@ class World():
 			print(smellyCursor)
 			print(self.transformForBuild(cursorPosition))
 			print(listItem.boundingRectangle)
-			if pointInRect(smellyCursor, boundPolygon(listItem.boundingRectangle)):
+			if pointInRect(smellyCursor, listItem.boundingRectangle):
 				print('click a list item')
 				self.availableModuleListItems.remove(listItem)
 				return listItem.module
@@ -1103,7 +1103,14 @@ class World():
 
 		iconSize = buildListSpacing / itemSize
 
-		listItem.boundingRectangle = [[buildListSpacing, index * buildListSpacing], [buildListSpacing, index+1 * buildListSpacing], [2 * buildListSpacing, index+1 * buildListSpacing], [2 * buildListSpacing, index * buildListSpacing]]
+		# listItem.boundingRectangle = [[buildListSpacing, index * buildListSpacing], [buildListSpacing, index+1 * buildListSpacing], [2 * buildListSpacing, index+1 * buildListSpacing], [2 * buildListSpacing, index * buildListSpacing]]
+
+		gnarlypoints = []
+		for point in listItem.module.points:
+			gnarlypoints.append([point[0] * iconSize + buildListSpacing,point[1] * iconSize + (index * buildListSpacing ) ])
+
+
+		listItem.boundingRectangle = boundPolygon(gnarlypoints)
 
 		#self, main_batch, module, iconSize, position
 		self.drawModuleForList(main_batch, listItem.module, iconSize, [buildListSpacing, index * buildListSpacing] )
