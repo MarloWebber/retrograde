@@ -1212,6 +1212,10 @@ class World():
 			if actor.orbit is not None:
 				self.drawAPOrbit(main_batch, actor.orbit, actor.orbiting, (100,100,100))
 
+	
+		
+
+
 	def loadShipIntoBuildMenu(self, actor):
 		self.modulesInUse = []
 		self.availableModuleListItems = []
@@ -1220,6 +1224,7 @@ class World():
 
 		for module in self.availableModules:
 			self.availableModuleListItems.append(buildMenuItem(module))
+			
 
 	def flyShipFromBuildMenu(self):
 		playersNewShip = Actor(self.player.name, self.modulesInUse, self.player.body.position, self.player.body.velocity, self.player.body.angle, True )
@@ -1325,6 +1330,14 @@ def on_key_press(symbol, modifiers):
 	elif symbol == key.Y:
 		if Nirn.buildMenu:
 			Nirn.flyShipFromBuildMenu()
+			Nirn.buildMenu = False
+	elif symbol == key.D:
+		if Nirn.buildMenu:
+			if Nirn.buildDraggingModule is not None:
+				# put buildDraggingModule back in to the player inventory
+				Nirn.availableModuleListItems.append(buildMenuItem(Nirn.buildDraggingModule))
+				Nirn.availableModules.append(Nirn.buildDraggingModule)
+				Nirn.buildDraggingModule = None
 
 	# elif event.type == pygame.MOUSEBUTTONUP:
 	# 	if self.buildMenu:
