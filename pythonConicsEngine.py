@@ -870,10 +870,15 @@ class World():
 	def antiTransformForBuild(self, position):
 		# performs the inverse operation to transformForBuild, used to map the mouse cursor to coordinates in the game world.
 		transformedPosition = [0,0] #* self.zoom  # shrink or expand everything around the 0,0 point
-		transformedPosition[0] = -position[0] - 0.5 * self.resolution[0] # add half the width of the screen, to get to the middle. 0,0 is naturally on the corner.
-		transformedPosition[1] = -position[1] - 0.5 * self.resolution[1] # add half the height.
+		transformedPosition[0] = (-position[0]) + 0.5 * self.resolution[0] # add half the width of the screen, to get to the middle. 0,0 is naturally on the corner.
+		transformedPosition[1] = (-position[1]) + 0.5 * self.resolution[1] # add half the height.
 		transformedPosition[0] = transformedPosition[0] / self.zoom
 		transformedPosition[1] = transformedPosition[1] / self.zoom
+		# transformedPosition[0] = -transformedPosition[0] + 0.5 * self.resolution[0]
+		# transformedPosition[1] = -transformedPosition[1] + 0.5 * self.resolution[1]
+		# transformedPosition = rotate_point(transformedPosition, math.pi, [0.5 * self.resolution[0], 0.5 * self.resolution])
+
+
 
 
 		
@@ -1223,6 +1228,7 @@ class World():
 
 	def dropModuleIntoBuildArea(self, module, position):
 		module.offset = self.antiTransformForBuild(position)
+		print(self.antiTransformForBuild(position))
 		self.modulesInUse.append(module)
 
 	def buildMenuGraphics(self, main_batch):
@@ -1419,7 +1425,7 @@ def on_mouse_press(x, y, button, modifiers):
 	if Nirn.buildMenu:
 		# if event.button == 1:
 		if mouse.LEFT is button:
-			print('LEFT')
+			# print('LEFT')
 			Nirn.buildDraggingModule = Nirn.getModuleFromCursorPosition(Nirn.mouseCursorPosition)
 
 @window.event()
@@ -1428,6 +1434,7 @@ def on_mouse_release(x, y, button, modifiers):
 	# print('on_mouse_release')
 	if Nirn.buildMenu:
 		if mouse.LEFT is button:
+			# print('drop')
 			if Nirn.buildDraggingModule is not None:
 				Nirn.dropModuleIntoBuildArea(Nirn.buildDraggingModule, Nirn.mouseCursorPosition)
 				Nirn.buildDraggingModule = None
