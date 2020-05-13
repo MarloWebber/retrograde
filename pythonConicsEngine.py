@@ -29,7 +29,6 @@ window = pyglet.window.Window(width=1280, height=780)
 label = pyglet.text.Label('Abc', x=5, y=5)
 
 white = [255]*4
-# resultColor = [color[0],color[1],color[2],255]
 
 def mag(x):
 	return numpy.sqrt(x.dot(x))
@@ -47,15 +46,11 @@ def boundPolygon(polygon): # returns a rectangle that is a bounding box around t
 	leastX = polygon[0][0]
 	mostY  = 0
 	leastY = polygon[0][1]
-
 	for point in polygon:
 		if point[0] < leastX: leastX = point[0]
 		if point[1] < leastY: leastY = point[1]
 		if point[0] > mostX: mostX = point[0]
 		if point[1] > mostY: mostY = point[1]
-
-	# print([[leastX, leastY], [mostX, mostY]])
-
 	return [[leastX, leastY], [mostX, mostY]]
 
 def pointInRect(point,rect):
@@ -116,69 +111,11 @@ def averageOfList(TheList):
 def centroidOfPolygon(polygon):
 	xValues = []
 	yValues = []
-	# print(polygon)
 	for point in polygon:
 		xValues.append(point[0])
 		yValues.append(point[1])
 
 	return [averageOfList(xValues), averageOfList(yValues)]
-
-# def point_inside_polygon(x, y, poly, include_edges=True):
-#     '''
-#     Test if point (x,y) is inside polygon poly.
-
-#     poly is N-vertices polygon defined as 
-#     [(x1,y1),...,(xN,yN)] or [(x1,y1),...,(xN,yN),(x1,y1)]
-#     (function works fine in both cases)
-
-#     Geometrical idea: point is inside polygon if horisontal beam
-#     to the right from point crosses polygon even number of times. 
-#     Works fine for non-convex polygons.
-#     '''
-#     n = len(poly)
-#     inside = False
-
-#     p1x, p1y = poly[0]
-#     for i in range(1, n + 1):
-#         p2x, p2y = poly[i % n]
-#         if p1y == p2y:
-#             if y == p1y:
-#                 if min(p1x, p2x) <= x <= max(p1x, p2x):
-#                     # point is on horisontal edge
-#                     inside = include_edges
-#                     break
-#                 elif x < min(p1x, p2x):  # point is to the left from current edge
-#                     inside = not inside
-#         else:  # p1y!= p2y
-#             if min(p1y, p2y) <= y <= max(p1y, p2y):
-#                 xinters = (y - p1y) * (p2x - p1x) / float(p2y - p1y) + p1x
-
-#                 if x == xinters:  # point is right on the edge
-#                     inside = include_edges
-#                     break
-
-#                 if x < xinters:  # point is to the left from current edge
-#                     inside = not inside
-
-#         p1x, p1y = p2x, p2y
-
-#     return inside
-
-# def ccw(A,B,C):
-#     return (C.y-A.y) * (B.x-A.x) > (B.y-A.y) * (C.x-A.x)
-
-# # Return true if line segments AB and CD intersect
-# def intersect(A,B,C,D):
-#     return ccw(A,C,D) != ccw(B,C,D) and ccw(A,B,C) != ccw(A,B,D)
-
-# def point_in_polygon(pt, poly, inf):
-#     result = False
-#     for i in range(len(poly)-1):
-#         if intersect((poly[i][0], poly[i][1]), ( poly[i+1][0], poly[i+1][1]), (pt[0], pt[1]), (inf, pt[1])):
-#             result = not result
-#     if intersect((poly[-1][0], poly[-1][1]), (poly[0][0], poly[0][1]), (pt[0], pt[1]), (inf, pt[1])):
-#         result = not result
-#     return result
 
 def point_inside_rectangle(point, rect):
 	xMin = 0
@@ -228,9 +165,7 @@ def transformForView( position ,viewpointObjectPosition, zoom, resolution):
 	transformedPosition[1] = int(-transformedPosition[1] + resolution_half[1]) # add half the height. and invert it so that it's the right way up in opengl.
 	return transformedPosition
 
-def antiTransformForView( position ,viewpointObjectPosition, zoom, resolution):
-	# the inverse of transformForView
-	# print(position)
+def antiTransformForView( position ,viewpointObjectPosition, zoom, resolution): # the inverse of transformForView
 	transformedPosition = [0,0]
 	transformedPosition[0] = int(position[0] - resolution_half[0]) # add half the width of the screen, to get to the middle. 0,0 is naturally on the corner.
 	transformedPosition[1] = int(-position[1] - resolution_half[1]) # add half the height. and invert it so that it's the right way up in opengl.
@@ -239,25 +174,20 @@ def antiTransformForView( position ,viewpointObjectPosition, zoom, resolution):
 	
 	return [transformedPosition[0], transformedPosition[1]]
 
-
 def isPointIlluminated(point, color, illuminators,viewpointObjectPosition, zoom, resolution):
 	isItTho = False
 	for illuminator in illuminators:
-		# transformedPosition = transformForView( illuminator.position ,viewpointObjectPosition, zoom, resolution)
 		distance = [point[0] - illuminator.transformedPosition[0],point[1] - illuminator.transformedPosition[1]]
 		
 		magnitude = (distance[0] ** 2 + distance[1] ** 2) ** 0.5
 		if magnitude < illuminator.radius :
 			isItTho = True
 			
-			 # mag(distance)#(distance[0] + distance[1]) / 2
 			dangitude = magnitude/zoom
-			# print(magnitude)
 			if dangitude == 0:
 				dispersion = 1
 			else:
 				dispersion = 1/dangitude
-			# print(dispersion)
 			resultColor = copy.copy(color) #[0,0,0,255]
 			resultColor[0] += int(dispersion * illuminator.color[0])
 			if resultColor[0] > 255: resultColor[0] = 255
@@ -267,11 +197,9 @@ def isPointIlluminated(point, color, illuminators,viewpointObjectPosition, zoom,
 			if resultColor[2] > 255: resultColor[2] = 255
 
 	if isItTho:
-		return resultColor #[resultColor[0, resultColor[1], resultColor[2], resultColor]]
+		return resultColor 
 	else:
 		return color
-
-
 
 def transformPolygonForLinesWithIlluminators(polygon, color, illuminators, viewpointObjectPosition, zoom, resolution):
 		n = 0
@@ -301,7 +229,6 @@ def transformPolygonForLinesWithIlluminators(polygon, color, illuminators, viewp
 		n +=3
 
 		return [n,points, colorstream]
-
 
 def transformPolygonForTriangleFan(polygon):
 	# the number of points returned by this function is always 1.5n + 5, where n is the number of points in polygon.
@@ -351,12 +278,9 @@ def transformPolygonForTriangleFan(polygon):
 	return [n,transformedPoints]
 
 
-def unwrapAtmosphereForGradient(n, inside_verts, outside_verts, inside_color, outside_color):
-		# shred one of the ingame annular atmospheres into a ribbon of triangles, and add a color gradient from the inner edge to the outer.
-
+def unwrapAtmosphereForGradient(n, inside_verts, outside_verts, inside_color, outside_color): # shred one of the ingame annular atmospheres into a ribbon of triangles, and add a color gradient from the inner edge to the outer.
 		bitstream = []
 		colorstream = []
-
 		nn = 0
 
 		#repeat start
@@ -405,18 +329,11 @@ def unwrapAtmosphereForGradient(n, inside_verts, outside_verts, inside_color, ou
 
 		return [nn, bitstream, colorstream]
 
-
-
-
 def renderAConvexPolygon(batch, polygon, viewpointObjectPosition, zoom, resolution, color, outlineColor=None, illuminators=None):
-	# nsfe = int(1.5*len(polygon) + 5)
-	# print(nsfe)
 	transformedPoints = transformPolygonForTriangleFan(polygon)
-	# print(transformedPoints[0])
 	batch.add(transformedPoints[0], pyglet.gl.GL_TRIANGLE_STRIP, None, ('v2i',transformedPoints[1]), ('c4B',color*transformedPoints[0]))
 
 	if outlineColor is not None:
-		# transformedPoints = transformPolygonForLines(polygon)
 		if illuminators is not None:
 			transformedPoints = transformPolygonForLinesWithIlluminators(polygon, outlineColor, illuminators, viewpointObjectPosition, zoom, resolution)
 			batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i',transformedPoints[1]), ('c4B',transformedPoints[2]))
@@ -442,23 +359,12 @@ class Atmosphere():
 		# self.rendering = unwrapForGradient(n_points, self.innerPoints, self.outerPoints, self.color, self.outerColor)
 
 		self.mass = ( (self.bottomDensity + self.topDensity) / 2 ) * area_of_annulus(radius+self.height, radius)
-		# inertia = pymunk.moment_for_poly(self.mass, self.points, (0,0))
-		# self.body = pymunk.Body(self.mass, inertia)
-		# self.body.position = planetPosition
 
 class ModuleEffect(): # a ModuleEffect is just a polygon that is visually displayed when a module is active.
 	def __init__(self, offset=[0,0]):
 		self.offset = offset
 		self.radius = 3
 		self.points = [[-self.radius, -self.radius], [-self.radius, self.radius], [self.radius,self.radius], [self.radius, -self.radius]]
-
-# class Bullet(): # a physical projectile that is too simple to be an actor.
-# 	def __init__(self, position, velocity, bulletType)
-# 		self.position = position
-# 		self.velocity = velocity
-
-# 		if bulletType == 'Cannon 10'
-# 			self.
 
 class Module():
 	def __init__(self, moduleType, offset=[0,0], angle=0):
@@ -592,7 +498,6 @@ class Module():
 
 			self.lifetime = 100 # the shell lasts for 1000 somethings and then explodes.
 
-
 		elif self.moduleType is 'cannon 10':
 			self.mass = 1
 			self.active = False
@@ -615,7 +520,6 @@ class Module():
 			self.muzzleVelocity = 500000
 			self.cooldownTime = 100
 			self.cooldownValue = 0
-
 
 dinghy = [Module('generator',[0,0]), Module('engine',[0,8]), Module('RCS',[0,-10]) ]
 lothar = [Module('generator',[0,0]), Module('engine',[-13,8], 0.6/math.pi), Module('engine',[13,8],-0.6/math.pi), Module('RCS',[-13,-10]), Module('RCS',[13,-10]) , Module('cannon 10',[0,-10]) ]
@@ -742,9 +646,6 @@ class Actor():
 	def doModuleEffects(self, keyStates, timestepSize):
 		ifThrustHasBeenApplied = False
 		for module in self.modules:
-
-
-
 			if module.enabled:
 				if module.active:
 					for giveResource, giveQuantity in list(module.resources.items()): #module.produces.items():
@@ -753,7 +654,6 @@ class Actor():
 								force = [(giveQuantity * timestepSize * 500 * math.cos(addRadians(module.angle, math.pi * 0.5))), -giveQuantity * timestepSize * 500 * math.sin(addRadians(module.angle, math.pi * 0.5) )]
 								self.body.apply_impulse_at_local_point(force, (0,0))
 								ifThrustHasBeenApplied = True
-
 
 						elif giveResource == 'torque':
 							if keyStates['left']:
@@ -816,8 +716,6 @@ class Illuminator():
 
 class World():
 	def __init__(self):
-		# pygame.init()
-		# self.clock = pygame.time.Clock() # the pygame clock is NOT the same as the simulation clock.
 		self.time = 0 # the number of timesteps that have passed in-universe. used for physics and orbital calculations.
 		self.space = pymunk.Space()
 		self.space.gravity = (0.0, 0.0)
@@ -826,15 +724,8 @@ class World():
 		self.actors = []
 		self.attractors = []
 		self.resolution = resolution
-
-		# self.screen = pygame.display.set_mode(self.resolution)
-		# self.draw_options = pymunk.pygame_util.DrawOptions(self.screen)
 		self.ch = self.space.add_collision_handler(0, 0)
-		# self.ch.data["surface"] = self.screen
 		self.ch.post_solve = self.handle_collision
-
-		# self.window = pyglet.window.Window()
-
 		self.viewpointObject = None
 		self.viewpointObjectIndex = 0
 		self.player = None
@@ -842,8 +733,6 @@ class World():
 		self.pan = [0,0]
 		self.rotate = 0
 		self.timestepSize = 0.2/60.0 #1.0/60.0
-		# pygame.key.set_repeat(50,50) # holding a key down repeats the instruction. https://www.pygame.org/docs/ref/key.html
-		# self.font = pygame.font.SysFont('dejavusans', 12)
 		self.showHUD = False
 		self.paused = True
 
@@ -882,20 +771,7 @@ class World():
 		smellyCursor[0] = cursorPositionRaw[0]
 		smellyCursor[1] = -cursorPositionRaw[1] +  resolution[1]
 		for listItem in self.availableModuleListItems:
-			# if listItem.boundingRectangle.collidepoint(cursorPosition):
-
-			# xMost = 0
-			# for point in listItem.boundingRectangle:
-			# 	if point[0] > xMost:
-			# 		xMost = point[0]
-
-			# if point_in_polygon(cursorPosition, listItem.boundingRectangle,xMost ):
-
-			# print(smellyCursor)
-			# print(self.transformForBuild(cursorPosition))
-			# print(listItem.boundingRectangle)
 			if pointInRect(smellyCursor, listItem.boundingRectangle):
-				# print('click a list item')
 				self.availableModuleListItems.remove(listItem)
 				return listItem.module
 
@@ -911,7 +787,6 @@ class World():
 			print(self.antiTransformForBuild(cursorPositionRaw))
 			print(boundingBox)
 			if pointInRect( self.antiTransformForBuild(cursorPositionRaw) , boundingBox):
-				# print('click a module in use')
 				self.modulesInUse.remove(module)
 				return module
 
@@ -936,7 +811,6 @@ class World():
 		if listLength == 1:
 			return # the actor is already fully decomposed, destroy it if you want
 		else:
-		
 			# create a new actor, minus the module
 			for index, module in enumerate(actor.modules):
 
@@ -952,12 +826,6 @@ class World():
 
 			# remove the actor from the space.
 			self.destroyActor(actor)
-
-
-			# if not actor.modules:
-			# 	pass
-			# else:
-			# 	self.add( Actor(actor.name, actor.modules, actor.body.position, actor.body.velocity, actor.isPlayer ) ) # add the remaining parts of the original actor back into the space
 
 	def physics(self):
 		for actor in self.actors:
@@ -980,7 +848,6 @@ class World():
 			if destroyed:
 				continue
 
-
 			actor.doResources()
 
 			# figure out which attractor you are orbiting
@@ -1002,11 +869,8 @@ class World():
 
 						naturalDepth = 1 - ((actorHeightFromAttractorCenter - attractor.radius) / attractor.atmosphere.height) # this is a number between 0 and 1 which is signifies the actors depth into this atmosphere layer.
 
-
-						#drag = coefficient * (density * velocity**2 / 2) * reference area
 						density = (attractor.atmosphere.topDensity + (naturalDepth * attractor.atmosphere.bottomDensity))**1.5 # not quite squared, but still exponential
 
-						# print (density)
 						dragForceX = self.timestepSize * self.dragCoefficient * ((density * actor.body.velocity[0]**2) /2) * actor.body.mass # using mass as a placeholder because i don't have a drag frontal area calculation yet. but it still needs to apply to bigger things more.
 						dragForceY = self.timestepSize * self.dragCoefficient * ((density * actor.body.velocity[1]**2) /2) * actor.body.mass # using mass as a placeholder because i don't have a drag frontal area calculation yet. but it still needs to apply to bigger things more.
 						
@@ -1020,13 +884,9 @@ class World():
 						if actor.body.velocity[1] < 0:
 							dragForceY = abs(dragForceY)
 
-						# actor.body.velocity[0] += dragForceX
-						# actor.body.velocity[1] += dragForceY
-
 						rotatedForce = Vec2d(dragForceX, dragForceY)
 						rotatedForce = rotatedForce.rotated(-actor.body.angle)
 						actor.body.apply_impulse_at_local_point(rotatedForce, [0,0])
-						# actor.body.apply_impulse_at_local_point([dragForceX,dragForceY], [0,0])
 						
 			# when you enter a new sphere of influence, regenerate the orbit information
 			if strongestAttractor is not actor.orbiting or actor.orbiting is None:
@@ -1088,7 +948,6 @@ class World():
 							actor.orbitPoints.append((temp_vec3d[0] + actor.orbiting.body.position[0], temp_vec3d[1] + actor.orbiting.body.position[1]))
 
 
-
 	def rotatePolygon(self, points, angle):
 		return Rotate2D(points,(0,0),angle)
 
@@ -1108,21 +967,7 @@ class World():
 		transformedPosition[1] = (-position[1]) + 0.5 * self.resolution[1] # add half the height.
 		transformedPosition[0] = transformedPosition[0] / self.zoom
 		transformedPosition[1] = transformedPosition[1] / self.zoom
-		# transformedPosition[0] = -transformedPosition[0] + 0.5 * self.resolution[0]
-		# transformedPosition[1] = -transformedPosition[1] + 0.5 * self.resolution[1]
-		# transformedPosition = rotate_point(transformedPosition, math.pi, [0.5 * self.resolution[0], 0.5 * self.resolution])
-
-
-
-
-		
 		return transformedPosition
-
-
-
-	def drawCircle(self,color, position, radius):
-		# pygame.draw.circle(self.screen, color, [int(position[0]), int(position[1])], int((radius * self.zoom)))
-		pass
 
 	def drawModuleForList(self, main_batch, module, iconSize, position):
 		transformedPoints = []
@@ -1130,34 +975,10 @@ class World():
 			transformedPoint = [0,0]
 			transformedPoint[0] = ((point[0] * iconSize) + position[0])
 			transformedPoint[1] = -((point[1] * iconSize) + position[1]) + self.resolution[1]
-			# transformedPoints.append(transformedPoint) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
 			transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
-		
-		# print(transformedPoints)
 		renderAConvexPolygon(main_batch, transformedPoints, self.viewpointObject.body.position, self.zoom, self.resolution, module.color, module.outlineColor)
 
-		# try:
-		# 	# return pygame.draw.lines(self.screen, module.color, True, transformedPoints) # return the bounding rectangle
-		# 	pass
-		# except:
-		# 	print('drawModuleForList error')
-
 	def drawModuleForDrag(self,main_batch, module, position):
-		# rotatedPoints = rotate_polygon(module.points, module.angle)  # orient the polygon according to the body's current direction in space.
-		# # rotatedPoints = rotate_polygon(rotatedPoints,module.angle, -module.offset)  # orient the polygon according to the body's current direction in space.
-		# transformedPoints = []
-		# for rotatedPoint in rotatedPoints:
-		# 	rotatedPoint[0] = (rotatedPoint[0] * self.zoom ) + position[0]
-		# 	rotatedPoint[1] = (rotatedPoint[1] * self.zoom ) + position[1]
-		# 	transformedPoints.append(rotatedPoint) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
-		# try:
-		# 	# pygame.draw.lines(self.screen, module.color, True, transformedPoints)
-		# 	pass
-		# except:
-		# 	print('drawModuleForBuild error')
-		# 	# print(transformedPoints)
-
-
 		rotatedPoints = rotate_polygon(module.points, module.angle)
 		transformedPoints = []
 
@@ -1166,22 +987,9 @@ class World():
 			rotatedPoint[1] = (rotatedPoint[1] * self.zoom ) + position[1]
 			transformedPoint = rotatedPoint # transformForView does operations like zooming and mapping 0 to the center of the screen. 
 			transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
-		
-		# print(transformedPoints)
 		renderAConvexPolygon(main_batch, transformedPoints,self.viewpointObject.body.position, self.zoom, self.resolution,  module.color, module.outlineColor)
 
-
 	def drawModuleForBuild(self, main_batch, module):
-		# rotatedPoints = rotate_polygon(module.points, module.angle)  # orient the polygon according to the body's current direction in space.
-		# rotatedPoints = rotate_polygon(rotatedPoints,module.angle, -module.offset)  # orient the polygon according to the body's current direction in space.
-		# transformedPoints = []
-		# for rotatedPoint in rotatedPoints:
-		# 	rotatedPoint[0] += module.offset[0]
-		# 	rotatedPoint[1] += module.offset[1]
-		# 	transformedPoints.append(self.transformForBuild(rotatedPoint)) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
-		
-
-
 		rotatedPoints = rotate_polygon(module.points, module.angle)
 		transformedPoints = []
 
@@ -1190,33 +998,10 @@ class World():
 			rotatedPoint[1] += module.offset[1]
 			transformedPoint = self.transformForBuild(rotatedPoint) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
 			transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
-		
-		# print(transformedPoints)
 		renderAConvexPolygon(main_batch, transformedPoints, self.viewpointObject.body.position, self.zoom, self.resolution, module.color, module.outlineColor)
-
 
 	def drawModuleEffects(self, module, actor):
 		pass
-		# put a circle in the middle if it is enabled, and a smaller red circle in the middle of that, if it is activated.
-		# if module.enabled:
-		# 	activeCircle = self.transformForView(module.offset + actor.body.position)
-		# 	activeCircle = rotate_point(activeCircle, actor.body.angle, self.transformForView(actor.body.position))
-		# 	self.drawCircle(module.color, activeCircle, 2)
-		# 	if module.active:
-		# 		self.drawCircle((255,0,0), activeCircle, 1)
-
-		# # rocket engines have a line coming out of them.
-		# if module.enabled and module.active:
-		# 	for giveResource, giveQuantity in list(module.resources.items()): 
-		# 		if giveResource == 'thrust':
-		# 			if actor.keyStates['up']:
-		# 				forceAngle = actor.body.angle + module.angle
-		# 				force = [(giveQuantity * math.cos(addRadians(forceAngle, math.pi * 0.5))), giveQuantity * math.sin(addRadians(forceAngle, math.pi * 0.5) )]
-		# 				activeCircle = self.transformForView(module.offset + actor.body.position)
-		# 				activeCircle = rotate_point(activeCircle, actor.body.angle, self.transformForView(actor.body.position))
-		# 				ananas = (int(activeCircle[0] + force[0] * self.zoom), int(activeCircle[1]+force[1] * self.zoom ) )
-						# print ananas
-						# pygame.draw.lines(self.screen, (255,255,200), True, [activeCircle,ananas])
 
 	def drawModule(self, actor, module, main_batch): # draw the outline of the module.
 		rotatedPoints = module.points
@@ -1225,7 +1010,6 @@ class World():
 		transformedPoints = []
 
 		for index, rotatedPoint in enumerate(rotatedPoints):
-			# transformForView(self, position, viewpointObjectPosition, zoom, resolution):
 			transformedPoint = transformForView(rotatedPoint + actor.body.position + module.offset,self.viewpointObject.body.position, self.zoom, self.resolution ) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
 			transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
 		
@@ -1234,9 +1018,7 @@ class World():
 		self.drawModuleEffects(module, actor)
 
 	def drawScreenFill(self, main_batch):
-
 		fillTriangles = [0,0, 0,0, 0,resolution[1], resolution[0],resolution[1], resolution[0],0, 0,0, 0,0 ]
-
 		main_batch.add(7, pyglet.gl.GL_TRIANGLE_STRIP, None, ('v2i',fillTriangles), ('c4B',[255,255,255,255]*7))
 
 	def drawActor(self, actor, main_batch):
@@ -1249,14 +1031,12 @@ class World():
 			transformedInnerPoints = []
 			transformedOuterPoints = []
 
-			#transformForView(self, position, viewpointObjectPosition, zoom, resolution):
 			for index, point in enumerate(actor.innerPoints): 
 				transformedInnerPoints.append(transformForView(point,self.viewpointObject.body.position, self.zoom, self.resolution))
 			for index, point in enumerate(actor.outerPoints): 
 				transformedOuterPoints.append(transformForView(point,self.viewpointObject.body.position, self.zoom, self.resolution))
 
 			rendering = unwrapAtmosphereForGradient(actor.n_points, transformedInnerPoints, transformedOuterPoints, actor.color, actor.outerColor)
-
 			main_batch.add(rendering[0], pyglet.gl.GL_TRIANGLE_STRIP, None, ('v2i',rendering[1]), ('c4B',rendering[2]))
 		
 		if actor.__class__ is Attractor:
@@ -1330,12 +1110,8 @@ class World():
 				return actor
 
 	def drawAPOrbit(self, main_batch, actor, orbit, attractor, color):
-
 		if actor.orbit is None:
 			return
-
-		# points = []
-		
 
 		# speed optimization: figure out what points are outside of the viewpoint very early on, and discard them.
 		topLimit = antiTransformForView( [resolution[0], resolution[1]]  ,self.viewpointObject.body.position, self.zoom, resolution)
@@ -1379,23 +1155,16 @@ class World():
 	def drawModuleListItem(self, main_batch, listItem, index):
 		# draw one of the modules in the list in the build menu.
 		buildListSpacing = 30
-
 		itemSize = 2 * mag(numpy.array(getFarthestPointInPolygon(listItem.module.points)))
-
 		iconSize = buildListSpacing / itemSize
-
-		# listItem.boundingRectangle = [[buildListSpacing, index * buildListSpacing], [buildListSpacing, index+1 * buildListSpacing], [2 * buildListSpacing, index+1 * buildListSpacing], [2 * buildListSpacing, index * buildListSpacing]]
 
 		gnarlypoints = []
 		for point in listItem.module.points:
 			gnarlypoints.append([point[0] * iconSize + buildListSpacing,point[1] * iconSize + (index * buildListSpacing ) ])
 
-
 		listItem.boundingRectangle = boundPolygon(gnarlypoints)
 
-		#self, main_batch, module, iconSize, position
 		self.drawModuleForList(main_batch, listItem.module, iconSize, [buildListSpacing, index * buildListSpacing] )
-
 
 	def drawHUDListItem(self,string, quantity, index):
 		HUDlistItemSpacing = 15
@@ -1408,25 +1177,18 @@ class World():
 			# textsurface = self.font.render(string + str(quantity), False, (255, 255, 255))
 			pass
 
-		# self.screen.blit(textsurface,(listXPosition,index * HUDlistItemSpacing))
 		return index + 1
 
-	def createHUDNavCircle(self):
-		# this function predraws the nav circle. because it is just static lines, it does not need to be recalculated every frame.
+	def createHUDNavCircle(self): # this function predraws the nav circle. because it is just static lines, it does not need to be recalculated every frame.
 		for n in range(0,self.n_navcircle_lines):
 			angle = n * (2 * math.pi / self.n_navcircle_lines)
 			start = ((self.navcircleInnerRadius * math.cos(angle)) + (self.resolution[0]*0.5) , (self.navcircleInnerRadius* math.sin(angle)) +( self.resolution[1] * 0.5) )
 			end = ((self.navcircleInnerRadius + self.navcircleLinesLength) * math.cos(angle)+ (self.resolution[0]*0.5), (self.navcircleInnerRadius + self.navcircleLinesLength) * math.sin(angle)+ (self.resolution[1]*0.5))
 			self.navCircleLines.append([start, end])
-			# pygame.draw.lines(self.screen, (100,100,100), True, (start,end))
-
-
 		
-
 	def drawHUD(self, main_batch):
 		if self.player is None:
 			return
-
 		# show the player what resources are available
 		i = 1
 		hudList = {}
@@ -1463,24 +1225,6 @@ class World():
 			transformedPoints = transformPolygonForLines(line)
 			main_batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i', transformedPoints[1]), ('c4B',[50,50,50,255]*(transformedPoints[0])))
 
-
-		# blipLength = (self.navcircleInnerRadius-self.navcircleLinesLength)
-		# angle = self.viewpointObject.desiredAngle
-		# start = ((blipLength * math.cos(angle)) + (self.resolution[0]*0.5) , (blipLength* math.sin(angle)) +( self.resolution[1] * 0.5) )
-		# end = ((self.navcircleInnerRadius) * math.cos(angle)+ (self.resolution[0]*0.5), (self.navcircleInnerRadius) * math.sin(angle)+ (self.resolution[1]*0.5))
-		# # pygame.draw.lines(self.screen, (200,0,10), True, (start,end))
-		# transformedPoints = transformPolygonForLines([start,end])
-		# main_batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i', transformedPoints[1]), ('c4B',[100,0,0,255]*(transformedPoints[0])))
-
-		
-		# # draw the actor's orbits
-		# for actor in self.actors:
-		# 	if actor.orbit is not None:
-		# 		self.drawAPOrbit(main_batch, actor.orbit, actor.orbiting, (100,100,100))
-
-
-		
-
 	def shootABullet(self, gunModule, actor):
 		if gunModule.moduleType is 'cannon 10':
 			#(self, name, modulesList, position, velocity, angle, isPlayer=False):
@@ -1492,7 +1236,6 @@ class World():
 			self.add(bullet)
 			self.illuminators.append(Illuminator(bulletPosition))
 
-
 	def loadShipIntoBuildMenu(self, actor):
 		self.modulesInUse = []
 		self.availableModuleListItems = []
@@ -1502,7 +1245,6 @@ class World():
 		for module in self.availableModules:
 			self.availableModuleListItems.append(buildMenuItem(module))
 			
-
 	def flyShipFromBuildMenu(self):
 		playersNewShip = Actor(self.player.name, self.modulesInUse, self.player.body.position, self.player.body.velocity, self.player.body.angle, True )
 		self.destroyActor(self.player)
@@ -1519,9 +1261,7 @@ class World():
 		main_batch = pyglet.graphics.Batch()
 		pyglet.gl.glLineWidth(2)
 
-		# self.screen.fill((200,200,200))
 		self.drawScreenFill(main_batch)
-		# main_batch.draw()
 
 		# draw the modules the player has assembled 
 		for module in self.modulesInUse:
@@ -1541,16 +1281,13 @@ class World():
 		main_batch.draw()
 
 	def graphics(self):
-
 		window.clear()
 
 		main_batch = pyglet.graphics.Batch()
 		pyglet.gl.glLineWidth(2)
 
-
 		for illuminator in self.illuminators:
 			illuminator.transformedPosition = transformForView( illuminator.position ,self.viewpointObject.body.position, self.zoom, resolution)
-		
 
 		for attractor in self.attractors:
 			if attractor.atmosphere != None:
@@ -1559,17 +1296,14 @@ class World():
 		for actor in self.actors:
 			self.drawActor(actor, main_batch)
 
-
 		if self.showHUD:
 			blipLength = (self.navcircleInnerRadius-self.navcircleLinesLength)
 			angle = self.viewpointObject.body.angle - 0.5 * math.pi
 			start = ((blipLength * math.cos(angle)) + (self.resolution[0]*0.5) , -(blipLength* math.sin(angle)) +( self.resolution[1] * 0.5) )
 			end = ((self.navcircleInnerRadius) * math.cos(angle)+ (self.resolution[0]*0.5),- (self.navcircleInnerRadius) * math.sin(angle)+ (self.resolution[1]*0.5))
-			# pygame.draw.lines(self.screen, (200,0,10), True, (start,end))
 			transformedPoints = transformPolygonForLines([start,end])
 			main_batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i', transformedPoints[1]), ('c4B',[200,0,0,255]*(transformedPoints[0])))
 
-		
 		main_batch.draw()
 		second_batch = pyglet.graphics.Batch()
 		pyglet.gl.glLineWidth(1)
@@ -1581,15 +1315,9 @@ class World():
 				if actor.orbit is not None:
 					self.drawAPOrbit(second_batch, actor, actor.orbit, actor.orbiting, (100,100,100))
 
-
 		second_batch.draw()
 
-
-			
-
 	def step(self):
-
-
 		if not self.buildMenu:
 			self.player = self._getPlayer()
 			if not self.paused:
@@ -1600,11 +1328,7 @@ class World():
 		else:
 			self.buildMenuGraphics()
 
-
-		
-
 	def setup(self):
-
 		self.createHUDNavCircle()
 
 		planet_erf = Attractor('earth', [1,1], self.gravitationalConstant)
@@ -1630,10 +1354,8 @@ Nirn = World()
 
 @window.event
 def on_key_press(symbol, modifiers):
-
 	if symbol == key.ESCAPE:
 		exit()
-
 	elif symbol == key.LEFT:
 		Nirn.player.keyStates['left'] = True
 	elif symbol == key.RIGHT:
@@ -1693,14 +1415,6 @@ def on_key_press(symbol, modifiers):
 			if module.moduleType == 'cannon 10':
 				Nirn.shootABullet(module, Nirn.player)
 
-	# elif event.type == pygame.MOUSEBUTTONUP:
-	# 	if self.buildMenu:
-	# 		if event.button == 1:
-	# 			if self.buildDraggingModule is not None:
-	# 				self.dropModuleIntoBuildArea(self.buildDraggingModule, pygame.mouse.get_pos())
-	# 				self.buildDraggingModule = None
-				
-
 @window.event
 def on_key_release(symbol, modifiers):
     if symbol == key.LEFT:
@@ -1708,126 +1422,38 @@ def on_key_release(symbol, modifiers):
     elif symbol == key.RIGHT:
     	Nirn.player.keyStates['right'] = False
     elif symbol == key.UP:
-    	Nirn.player.keyStates['up'] = False
-
-  # def inputs(self):
-		# pass
-	# 	for event in pygame.event.get():
-	# 		if event.type == KEYDOWN and event.key == K_ESCAPE:
-	# 			self.running = False
-	# 		elif event.type == KEYDOWN and event.key == K_RIGHTBRACKET:
-	# 			self.viewpointObjectIndex += 1
-	# 			if self.viewpointObjectIndex >= len(self.actors):
-	# 				self.viewpointObjectIndex = 0
-	# 			self.viewpointObject = self.actors[self.viewpointObjectIndex]
-	# 		elif event.type == KEYDOWN and event.key == K_LEFTBRACKET:
-	# 			self.viewpointObjectIndex -= 1
-	# 			if self.viewpointObjectIndex < 0:
-	# 				self.viewpointObjectIndex = len(self.actors) - 1
-	# 			self.viewpointObject = self.actors[self.viewpointObjectIndex]
-	# 		elif event.type == KEYDOWN and event.key == K_EQUALS:
-	# 			self.zoom += self.zoom * 0.5
-	# 		elif event.type == KEYDOWN and event.key == K_MINUS:
-	# 			self.zoom -= self.zoom * 0.5
-	# 		elif event.type == KEYDOWN and event.key == K_COMMA:
-	# 			self.timestepSize += self.timestepSize * 0.5
-	# 		elif event.type == KEYDOWN and event.key == K_PERIOD:
-	# 			self.timestepSize -= self.timestepSize * 0.5
-	# 		elif event.type == KEYDOWN and event.key == K_LEFT:
-	# 			self.player.keyStates['left'] = True
-	# 		elif event.type == KEYUP and event.key == K_LEFT:
-	# 			self.player.keyStates['left'] = False
-	# 		elif event.type == KEYDOWN and event.key == K_RIGHT:
-	# 			self.player.keyStates['right'] = True
-	# 		elif event.type == KEYUP and event.key == K_RIGHT:
-	# 			self.player.keyStates['right'] = False
-	# 		elif event.type == KEYDOWN and event.key == K_UP:
-	# 			self.player.keyStates['up'] = True
-	# 		elif event.type == KEYUP and event.key == K_UP:
-	# 			self.player.keyStates['up'] = False
-	# 		elif event.type == KEYDOWN and event.key == K_DOWN:
-	# 			self.player.keyStates['down'] = True
-	# 		elif event.type == KEYUP and event.key == K_DOWN:
-	# 			self.player.keyStates['down'] = False
-	# 		elif event.type == KEYDOWN and event.key == K_h:
-	# 			self.showHUD = not self.showHUD
-	# 		elif event.type == KEYDOWN and event.key == K_p:
-	# 			self.paused = not self.paused
-	# 		elif event.type == KEYDOWN and event.key == K_b:
-	# 			if self.buildMenu:
-	# 				self.buildMenu = False
-	# 			else:
-	# 				self.buildMenu = True
-	# 				self.paused = True
-
-	# 				self.loadShipIntoBuildMenu(self.player)
-	# 		elif event.type == KEYDOWN and event.key == K_y:
-	# 			if self.buildMenu:
-	# 				self.flyShipFromBuildMenu()
-	# 		elif event.type == pygame.MOUSEBUTTONDOWN:
-	# 			# event.button can equal several integer values:# 1 - left click# 2 - middle click# 3 - right click# 4 - scroll up# 5 - scroll down
-	# 			if self.buildMenu:
-	# 				if event.button == 1:
-	# 					self.buildDraggingModule = self.getModuleFromCursorPosition(pygame.mouse.get_pos())
-	# 		elif event.type == pygame.MOUSEBUTTONUP:
-	# 			if self.buildMenu:
-	# 				if event.button == 1:
-	# 					if self.buildDraggingModule is not None:
-	# 						self.dropModuleIntoBuildArea(self.buildDraggingModule, pygame.mouse.get_pos())
-	# 						self.buildDraggingModule = None
-						
-
+    	Nirn.player.keyStates['up'] = False		
 
 def stepWithBatch(dt):
 	pass
 
-
 @window.event()
 def on_mouse_press(x, y, button, modifiers):
-    # pass
-	# print('on_mouse_release')
-	Nirn.mouseCursorPosition =[x,y]# Nirn.antiTransformForBuild([x,y])
-    	# elif event.type == pygame.MOUSEBUTTONDOWN:
-	# 	# event.button can equal several integer values:# 1 - left click# 2 - middle click# 3 - right click# 4 - scroll up# 5 - scroll down
+	Nirn.mouseCursorPosition =[x,y]
 	if Nirn.buildMenu:
-		# if event.button == 1:
 		if mouse.LEFT is button:
-			# print('LEFT')
 			Nirn.buildDraggingModule = Nirn.getModuleFromCursorPosition(Nirn.mouseCursorPosition)
 
 @window.event()
 def on_mouse_release(x, y, button, modifiers):
-	Nirn.mouseCursorPosition = [x,y]#Nirn.antiTransformForBuild([x,y])
-	# print('on_mouse_release')
+	Nirn.mouseCursorPosition = [x,y]
 	if Nirn.buildMenu:
 		if mouse.LEFT is button:
-			# print('drop')
 			if Nirn.buildDraggingModule is not None:
 				Nirn.dropModuleIntoBuildArea(Nirn.buildDraggingModule, Nirn.mouseCursorPosition)
 				Nirn.buildDraggingModule = None
 
 @window.event()
 def on_mouse_drag(x, y, dx, dy, buttons, modifiers):
-    Nirn.mouseCursorPosition =[x,y]# Nirn.antiTransformForBuild([x,y])
+    Nirn.mouseCursorPosition =[x,y]
 
 @window.event()
 def on_draw():
-
 	Nirn.step()
 
-	# main_batch.draw()
-
-
 def hello():
-
 	Nirn.start()
-
-
-	# pyglet.gl.glLineWidth(2)
-
 	pyglet.clock.schedule_interval(stepWithBatch, 0.01)
 	pyglet.app.run()
-
-# print(cProfile.run("hello()"))
 
 hello()
