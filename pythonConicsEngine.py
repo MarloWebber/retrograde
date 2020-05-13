@@ -186,7 +186,7 @@ def antiTransformForView( position ,viewpointObjectPosition, zoom, resolution): 
 	# ((t-o)/z) = p-v
 	# ((t-o)/z)+v = p
 
-	transformedPosition = [(position[0] - resolution_half[0]) / zoom, (-position[1] + resolution_half[1]) / zoom]
+	transformedPosition = [(position[0] - resolution_half[0]) / zoom, (-1 * position[1] + resolution_half[1]) / zoom]
 	transformedPosition[0] += viewpointObjectPosition[0]
 	transformedPosition[1] += viewpointObjectPosition[1]
 	# transformedPosition[0] = int(position[0] - resolution_half[0]) # add half the width of the screen, to get to the middle. 0,0 is naturally on the corner.
@@ -783,6 +783,9 @@ class World():
 		self.projectiles = []
 		self.illuminators = []
 
+		self.topLimit = antiTransformForView( resolution  ,[0,0], self.zoom, resolution)
+		self.bottomLimit = antiTransformForView( [0,0] ,[0,0], self.zoom, resolution)
+
 	def gravityForce(self, actorPosition, attractorPosition, attractorMass):
 		distance = attractorPosition - actorPosition # scalar distance between two bodies
 		magnitude = mag(distance)
@@ -1054,7 +1057,7 @@ class World():
 		fillTriangles = [0,0, 0,0, 0,resolution[1], resolution[0],resolution[1], resolution[0],0, 0,0, 0,0 ]
 		main_batch.add(7, pyglet.gl.GL_TRIANGLE_STRIP, None, ('v2i',fillTriangles), ('c4B',[255,255,255,255]*7))
 
-	def drawActor(self, actor, main_batch, topLimit, bottomLimit):
+	def drawActor(self, actor, main_batch):
 		if actor.__class__ is Actor:
 			for module in actor.modules:
 					self.drawModule(actor, module, main_batch)
@@ -1074,9 +1077,11 @@ class World():
 		
 		if actor.__class__ is Attractor:
 			transformedPoints = []
-
+		
 			# work backwards to figure out what coordinates in the game world correspond to being offscreen in the view.
-			
+			self.topLimit = antiTransformForView( resolution  ,self.viewpointObject.body.position, self.zoom, resolution)
+			self.bottomLimit = antiTransformForView( [0,0] ,self.viewpointObject.body.position, self.zoom, resolution)
+
 			prevPointInside = True
 			pointInside = True
 
@@ -1088,58 +1093,68 @@ class World():
 
 			for index, point in enumerate(actor.points):
 
+				prevPoint = currentPoint
 				transformedPoint = point + actor.body.position
+				currentPoint = transformedPoint
 				
 				# lastPointInside = pointInside
 				# lastPoint = point
 				# lastPointInside = pointInside
 
+				# print(self.topLimit)
+				# print(self.bottomLimit)
+				# print(transformedPoint)
+
 				# if a point is outside
-				pointInside = True
-				if transformedPoint[0] > topLimit[0]:
+				prevPointInside = pointInside
+				pointInside = False
+
+				if transformedPoint[0] > self.bottomLimit[0] and transformedPoint[0] < self.topLimit[0]:
 					# transformedPoint[0] = topLimit[0]
-					pointInside = False
+					pointInside = True
 
-				if transformedPoint[1] > topLimit[1]:
+				if  transformedPoint[1] > self.bottomLimit[1] and transformedPoint[1] < self.topLimit[1]:
 					# transformedPoint[1] = topLimit[1]
-					pointInside = False
+					pointInside = True
 
-				if transformedPoint[0] < bottomLimit[0]:
-					# transformedPoint[0] = bottomLimit[0]
-					pointInside = False
+				# if :
+				# 	# transformedPoint[0] = bottomLimit[0]
+				# 	pointInside = False
 
-				if transformedPoint[1] < bottomLimit[1]:
-					# transformedPoint[1] = bottomLimit[1]
-					pointInside = False
+				# if
+				# 	# transformedPoint[1] = bottomLimit[1]
+				# 	pointInside = False
+
+				drawn = False
+
+				
+				
 
 				if (pointInside and not prevPointInside) or (prevPointInside and not pointInside):
-					prevPoint = currentPoint
-					currentPoint = transformedPoint
-					prevPointInside = pointInside
-
+					
 					transformedPoint = transformForView(prevPoint,self.viewpointObject.body.position, self.zoom, self.resolution) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
 					transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
 					transformedPoint = transformForView(currentPoint,self.viewpointObject.body.position, self.zoom, self.resolution) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
 					transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
+					drawn = True
 
 					if index == onTheVeryLastPoint:
 						transformedPoint = transformForView(firstPoint,self.viewpointObject.body.position, self.zoom, self.resolution) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
 						transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
 
 				elif pointInside and prevPointInside:
-					prevPoint = currentPoint
-					currentPoint = transformedPoint
-					prevPointInside = pointInside
+					
 
 					transformedPoint = transformForView(currentPoint,self.viewpointObject.body.position, self.zoom, self.resolution) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
 					transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
+					drawn = True
 
 					if index == onTheVeryLastPoint:
 						transformedPoint = transformForView(firstPoint,self.viewpointObject.body.position, self.zoom, self.resolution) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
 						transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
 
 
-
+				print( str(pointInside ) + ' ' + str(drawn))
 
 
 
@@ -1179,8 +1194,8 @@ class World():
 
 				# transformedPoint = transformForView(transformedPoint,self.viewpointObject.body.position, self.zoom, self.resolution) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
 				# transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
-			
-			renderAConvexPolygon(main_batch, transformedPoints,self.viewpointObject.body.position, self.zoom, self.resolution,  actor.color, actor.outlineColor)	
+			if len(transformedPoints) > 0:
+				renderAConvexPolygon(main_batch, transformedPoints,self.viewpointObject.body.position, self.zoom, self.resolution,  actor.color, actor.outlineColor)	
 
 	def getActorFromBody(self, body):
 		for actor in self.actors:
@@ -1420,8 +1435,8 @@ class World():
 		main_batch = pyglet.graphics.Batch()
 		pyglet.gl.glLineWidth(2)
 
-		topLimit = antiTransformForView( resolution  ,self.viewpointObject.body.position, self.zoom, resolution)
-		bottomLimit = antiTransformForView( [0,0] ,self.viewpointObject.body.position, self.zoom, resolution)
+		# self.topLimit = antiTransformForView( resolution  ,self.viewpointObject.body.position, self.zoom, resolution)
+		# self.bottomLimit = antiTransformForView( [0,0] ,self.viewpointObject.body.position, self.zoom, resolution)
 		# print(topLimit)
 		# print(bottomLimit)
 
@@ -1432,10 +1447,10 @@ class World():
 
 		for attractor in self.attractors:
 			if attractor.atmosphere != None:
-				self.drawActor(attractor.atmosphere, main_batch, topLimit, bottomLimit)
-			self.drawActor(attractor, main_batch, topLimit, bottomLimit)
+				self.drawActor(attractor.atmosphere, main_batch)
+			self.drawActor(attractor, main_batch)
 		for actor in self.actors:
-			self.drawActor(actor, main_batch, topLimit, bottomLimit)
+			self.drawActor(actor, main_batch)
 
 		if self.showHUD:
 			blipLength = (self.navcircleInnerRadius-self.navcircleLinesLength)
