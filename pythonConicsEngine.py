@@ -24,6 +24,7 @@ import copy
 import cProfile
 
 resolution = (1280,780)
+resolution_half = (1280/2,780/2)
 window = pyglet.window.Window(width=1280, height=780)
 label = pyglet.text.Label('Abc', x=5, y=5)
 
@@ -220,13 +221,10 @@ def transformPolygonForLines(polygon):
 		return [n,points]
 
 def transformForView( position ,viewpointObjectPosition, zoom, resolution):
-	# if seviewpointObject == None:
-	# 	return position
-	# else:
 	transformedPosition = position - viewpointObjectPosition # offset everything by the position of the viewpointObject, so the viewpoint is at 0,0
 	transformedPosition = transformedPosition * zoom  # shrink or expand everything around the 0,0 point
-	transformedPosition[0] = int(transformedPosition[0] + 0.5 * resolution[0]) # add half the width of the screen, to get to the middle. 0,0 is naturally on the corner.
-	transformedPosition[1] = int(-transformedPosition[1] + 0.5 * resolution[1]) # add half the height. and invert it so that it's the right way up in opengl.
+	transformedPosition[0] = int(transformedPosition[0] + resolution_half[0]) # add half the width of the screen, to get to the middle. 0,0 is naturally on the corner.
+	transformedPosition[1] = int(-transformedPosition[1] + resolution_half[1]) # add half the height. and invert it so that it's the right way up in opengl.
 	return transformedPosition
 
 def antiTransformForView( position ,viewpointObjectPosition, zoom, resolution):
@@ -1254,7 +1252,7 @@ class World():
 			main_batch.add(rendering[0], pyglet.gl.GL_TRIANGLE_STRIP, None, ('v2i',rendering[1]), ('c4B',rendering[2]))
 		
 		if actor.__class__ is Attractor:
-			transformedPoints = []
+			transformedPoints = numpy.array([])
 			for point in actor.points:
 				transformedPoint = transformForView(point + actor.body.position,self.viewpointObject.body.position, self.zoom, self.resolution) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
 				transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
@@ -1333,7 +1331,6 @@ class World():
 
 		# speed optimization: figure out what points are outside of the viewpoint very early on, and discard them.
 		topLimit = antiTransformForView( resolution  ,self.viewpointObject.body.position, self.zoom, resolution)
-
 		bottomLimit = antiTransformForView( [0,0] ,self.viewpointObject.body.position, self.zoom, resolution)
 		# print(topLimit)
 		# print(bottomLimit)
