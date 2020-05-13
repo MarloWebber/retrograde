@@ -197,6 +197,10 @@ def point_inside_rectangle(point, rect):
 def transformPolygonForLines(polygon):
 		n = 0
 		points = []
+
+		if len(polygon) == 0:
+			return
+
 		firstPoint = polygon[0]
 		lastPoint = firstPoint
 		points.extend([ int(firstPoint[0]) , int(firstPoint[1])])
@@ -224,6 +228,18 @@ def transformForView( position ,viewpointObjectPosition, zoom, resolution):
 	transformedPosition[0] = int(transformedPosition[0] + 0.5 * resolution[0]) # add half the width of the screen, to get to the middle. 0,0 is naturally on the corner.
 	transformedPosition[1] = int(-transformedPosition[1] + 0.5 * resolution[1]) # add half the height. and invert it so that it's the right way up in opengl.
 	return transformedPosition
+
+def antiTransformForView( position ,viewpointObjectPosition, zoom, resolution):
+	# the inverse of transformForView
+	# print(position)
+	transformedPosition = [0,0]
+	transformedPosition[0] = int(position[0] - 0.5 * resolution[0]) # add half the width of the screen, to get to the middle. 0,0 is naturally on the corner.
+	transformedPosition[1] = int(-position[1] - 0.5 * resolution[1]) # add half the height. and invert it so that it's the right way up in opengl.
+	transformedPosition = [transformedPosition[0] / zoom, transformedPosition[1] / zoom,]  # shrink or expand everything around the 0,0 point
+	transformedPosition = position + viewpointObjectPosition # offset everything by the position of the viewpointObject, so the viewpoint is at 0,0
+	
+	return [transformedPosition[0], transformedPosition[1]]
+
 
 def isPointIlluminated(point, color, illuminators,viewpointObjectPosition, zoom, resolution):
 	resultColor = [color[0],color[1],color[2],255]
@@ -656,6 +672,7 @@ class Actor():
 		self.desiredAngle = 0
 		self.exemptFromGravity = False
 		self.body.angle = angle
+		self.orbitPoints = []
 
 	def leaveFreefall(self, stepsToFreefall=1):
 		self.stepsToFreefall = stepsToFreefall
@@ -1054,6 +1071,18 @@ class World():
 					except:
 						actor.orbit = None
 
+					# generate the orbit points once only.
+					if actor.orbit is not None:
+						actor.orbitPoints = []
+						# print('peenus')
+						n_points = 100
+						sliceSize =  (2 * math.pi / n_points)
+						for i in range(0,100):
+							temp_vec3d = actor.orbit.cartesianCoordinates(i *sliceSize)
+							actor.orbitPoints.append((temp_vec3d[0] + actor.orbiting.body.position[0], temp_vec3d[1] + actor.orbiting.body.position[1]))
+
+
+
 	def rotatePolygon(self, points, angle):
 		return Rotate2D(points,(0,0),angle)
 
@@ -1294,19 +1323,41 @@ class World():
 			if actor.isPlayer:
 				return actor
 
-	def drawAPOrbit(self, main_batch, orbit, attractor, color):
+	def drawAPOrbit(self, main_batch, actor, orbit, attractor, color):
+
+		if actor.orbit is None:
+			return
+
+		# points = []
+		
+
+		# speed optimization: figure out what points are outside of the viewpoint very early on, and discard them.
+		topLimit = antiTransformForView( resolution  ,self.viewpointObject.body.position, self.zoom, resolution)
+
+		bottomLimit = antiTransformForView( [0,0] ,self.viewpointObject.body.position, self.zoom, resolution)
+		# print(topLimit)
+		# print(bottomLimit)
+
+		# second speed optimization: only compute the points when the orbit is changed, and leave it sitting after that. the computation is expensive
+
+
+		# for i in range(0,n_points):
+		# 	temp_vec3d = orbit.cartesianCoordinates(i *sliceSize)
+		# 	point = (temp_vec3d[0] + attractor.body.position[0], temp_vec3d[1] + attractor.body.position[1])
 		points = []
-		n_points = 100
-		sliceSize =  (2 * math.pi / n_points)
-		for i in range(0,n_points):
-			temp_vec3d = orbit.cartesianCoordinates(i *sliceSize)
-			point = (temp_vec3d[0] + attractor.body.position[0], temp_vec3d[1] + attractor.body.position[1])
-			point = transformForView(point,self.viewpointObject.body.position, self.zoom, self.resolution)
-			points.append(point)
+		# print(actor.orbitPoints)
+		for point in actor.orbitPoints:
+			# if point[0] > topLimit[0] or point[1] > topLimit[1]:
+			# print(point)
+			# print(bottomLimit)
+			# print(topLimit)
+			# if pointInRect(point, [bottomLimit, topLimit]):
+			transformedPoint = transformForView(point,self.viewpointObject.body.position, self.zoom, resolution)
+			points.append(transformedPoint)
 
 		transformedPoints = transformPolygonForLines(points)
-
-		main_batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i', transformedPoints[1]), ('c4B',[100,100,100,255]*(transformedPoints[0])))
+		if transformedPoints is not None:
+			main_batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i', transformedPoints[1]), ('c4B',[100,100,100,255]*(transformedPoints[0])))
 
 	def drawModuleListItem(self, main_batch, listItem, index):
 		# draw one of the modules in the list in the build menu.
@@ -1506,7 +1557,7 @@ class World():
 			# draw the actor's orbits
 			for actor in self.actors:
 				if actor.orbit is not None:
-					self.drawAPOrbit(second_batch, actor.orbit, actor.orbiting, (100,100,100))
+					self.drawAPOrbit(second_batch, actor, actor.orbit, actor.orbiting, (100,100,100))
 
 
 		second_batch.draw()
