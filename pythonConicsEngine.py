@@ -25,10 +25,14 @@ import cProfile
 
 resolution = (1280,780)
 resolution_half = (1280/2,780/2)
+topLimit = [0,0]#antiTransformForView( [resolution[0], resolution[1]]  ,self.viewpointObject.body.position, self.zoom, resolution)
+bottomLimit = [0,0]#antiTransformForView( [0,0] ,self.viewpointObject.body.position, self.zoom, resolution)
 window = pyglet.window.Window(width=1280, height=780)
 label = pyglet.text.Label('Abc', x=5, y=5)
 
-white = [255]*4
+# antiTransformTest = resolution
+
+white = [255]*4 
 
 def mag(x):
 	return numpy.sqrt(x.dot(x))
@@ -163,16 +167,36 @@ def transformForView( position ,viewpointObjectPosition, zoom, resolution):
 	transformedPosition = transformedPosition * zoom  # shrink or expand everything around the 0,0 point
 	transformedPosition[0] = int(transformedPosition[0] + resolution_half[0]) # add half the width of the screen, to get to the middle. 0,0 is naturally on the corner.
 	transformedPosition[1] = int(-transformedPosition[1] + resolution_half[1]) # add half the height. and invert it so that it's the right way up in opengl.
+	
+	# t: transformed position
+	# p: pos
+	# v: viewpoint pos
+	# z: zoom
+	# o: offset
+	# t = ((p - v) * z) + o
+
 	return transformedPosition
 
 def antiTransformForView( position ,viewpointObjectPosition, zoom, resolution): # the inverse of transformForView
-	transformedPosition = [0,0]
-	transformedPosition[0] = int(position[0] - resolution_half[0]) # add half the width of the screen, to get to the middle. 0,0 is naturally on the corner.
-	transformedPosition[1] = int(-position[1] - resolution_half[1]) # add half the height. and invert it so that it's the right way up in opengl.
-	transformedPosition = [transformedPosition[0] / zoom, transformedPosition[1] / zoom,]  # shrink or expand everything around the 0,0 point
-	transformedPosition = position + viewpointObjectPosition # offset everything by the position of the viewpointObject, so the viewpoint is at 0,0
+
+	# t = ((p - v) * z) + o
+
+	# t - o = ((p - v) * z)
+
+	# ((t-o)/z) = p-v
+	# ((t-o)/z)+v = p
+
+	transformedPosition = [(position[0] - resolution_half[0]) / zoom, (-position[1] - resolution_half[1]) / zoom]
+	transformedPosition[0] += viewpointObjectPosition[0]
+	transformedPosition[1] += viewpointObjectPosition[1]
+	# transformedPosition[0] = int(position[0] - resolution_half[0]) # add half the width of the screen, to get to the middle. 0,0 is naturally on the corner.
+	# transformedPosition[1] = int(-position[1] - resolution_half[1]) # add half the height. and invert it so that it's the right way up in opengl.
+	# transformedPosition = [transformedPosition[0] / zoom, transformedPosition[1] / zoom]  # shrink or expand everything around the 0,0 point
+	# transformedPosition = position + viewpointObjectPosition # offset everything by the position of the viewpointObject, so the viewpoint is at 0,0
 	
-	return [transformedPosition[0], transformedPosition[1]]
+
+
+	return transformedPosition #[transformedPosition[0], transformedPosition[1]]
 
 def isPointIlluminated(point, color, illuminators,viewpointObjectPosition, zoom, resolution):
 	isItTho = False
@@ -784,8 +808,8 @@ class World():
 				transformedPoints.append(transformedPoint)
 
 			boundingBox = boundPolygon(transformedPoints)
-			print(self.antiTransformForBuild(cursorPositionRaw))
-			print(boundingBox)
+			# print(self.antiTransformForBuild(cursorPositionRaw))
+			# print(boundingBox)
 			if pointInRect( self.antiTransformForBuild(cursorPositionRaw) , boundingBox):
 				self.modulesInUse.remove(module)
 				return module
@@ -1021,7 +1045,7 @@ class World():
 		fillTriangles = [0,0, 0,0, 0,resolution[1], resolution[0],resolution[1], resolution[0],0, 0,0, 0,0 ]
 		main_batch.add(7, pyglet.gl.GL_TRIANGLE_STRIP, None, ('v2i',fillTriangles), ('c4B',[255,255,255,255]*7))
 
-	def drawActor(self, actor, main_batch):
+	def drawActor(self, actor, main_batch, topLimit, bottomLimit):
 		if actor.__class__ is Actor:
 			for module in actor.modules:
 					self.drawModule(actor, module, main_batch)
@@ -1041,8 +1065,30 @@ class World():
 		
 		if actor.__class__ is Attractor:
 			transformedPoints = []
+
+			# work backwards to figure out what coordinates in the game world correspond to being offscreen in the view.
+			
+			print(topLimit)
+			print(bottomLimit)
+
 			for point in actor.points:
-				transformedPoint = transformForView(point + actor.body.position,self.viewpointObject.body.position, self.zoom, self.resolution) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
+
+				transformedPoint = point + actor.body.position
+
+				# if a point is outside
+				if transformedPoint[0] > topLimit[0]:
+					transformedPoint[0] = topLimit[0]
+
+				if transformedPoint[1] > topLimit[1]:
+					transformedPoint[1] = topLimit[1]
+
+				if transformedPoint[0] < bottomLimit[0]:
+					transformedPoint[0] = bottomLimit[0]
+
+				if transformedPoint[1] < bottomLimit[1]:
+					transformedPoint[1] = bottomLimit[1]
+
+				transformedPoint = transformForView(transformedPoint,self.viewpointObject.body.position, self.zoom, self.resolution) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
 				transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
 			
 			renderAConvexPolygon(main_batch, transformedPoints,self.viewpointObject.body.position, self.zoom, self.resolution,  actor.color, actor.outlineColor)	
@@ -1114,15 +1160,14 @@ class World():
 			return
 
 		# speed optimization: figure out what points are outside of the viewpoint very early on, and discard them.
-		topLimit = antiTransformForView( [resolution[0], resolution[1]]  ,self.viewpointObject.body.position, self.zoom, resolution)
-		bottomLimit = antiTransformForView( [0,0] ,self.viewpointObject.body.position, self.zoom, resolution)
+		
 		# print(topLimit)
 		# print(bottomLimit)
 
 		# second speed optimization: only compute the points when the orbit is changed, and leave it sitting after that. the computation is expensive
 
-		print(transformForView(topLimit,self.viewpointObject.body.position, self.zoom, resolution))
-		print(transformForView(bottomLimit,self.viewpointObject.body.position, self.zoom, resolution))
+		# print(transformForView(topLimit,self.viewpointObject.body.position, self.zoom, resolution))
+		# print(transformForView(bottomLimit,self.viewpointObject.body.position, self.zoom, resolution))
 		# for i in range(0,n_points):
 		# 	temp_vec3d = orbit.cartesianCoordinates(i *sliceSize)
 		# 	point = (temp_vec3d[0] + attractor.body.position[0], temp_vec3d[1] + attractor.body.position[1])
@@ -1286,15 +1331,20 @@ class World():
 		main_batch = pyglet.graphics.Batch()
 		pyglet.gl.glLineWidth(2)
 
+		topLimit = antiTransformForView( resolution  ,self.viewpointObject.body.position, self.zoom, resolution)
+		bottomLimit = antiTransformForView( [0,0] ,self.viewpointObject.body.position, self.zoom, resolution)
+		# print(topLimit)
+		# print(bottomLimit)
+
 		for illuminator in self.illuminators:
 			illuminator.transformedPosition = transformForView( illuminator.position ,self.viewpointObject.body.position, self.zoom, resolution)
 
 		for attractor in self.attractors:
 			if attractor.atmosphere != None:
-				self.drawActor(attractor.atmosphere, main_batch)
-			self.drawActor(attractor, main_batch)
+				self.drawActor(attractor.atmosphere, main_batch, topLimit, bottomLimit)
+			self.drawActor(attractor, main_batch, topLimit, bottomLimit)
 		for actor in self.actors:
-			self.drawActor(actor, main_batch)
+			self.drawActor(actor, main_batch, topLimit, bottomLimit)
 
 		if self.showHUD:
 			blipLength = (self.navcircleInnerRadius-self.navcircleLinesLength)
