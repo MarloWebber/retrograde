@@ -393,10 +393,11 @@ class Atmosphere():
 		self.mass = ( (self.bottomDensity + self.topDensity) / 2 ) * area_of_annulus(radius+self.height, radius)
 
 class ModuleEffect(): # a ModuleEffect is just a polygon that is visually displayed when a module is active.
-	def __init__(self, offset=[0,0]):
-		self.offset = offset
+	def __init__(self, position=[0,0]):
+		self.position = position
 		self.radius = 3
 		self.points = [[-self.radius, -self.radius], [-self.radius, self.radius], [self.radius,self.radius], [self.radius, -self.radius]]
+		self.color = [255,255,100,255]
 
 class Module():
 	def __init__(self, moduleType, offset=[0,0], angle=0):
@@ -405,6 +406,7 @@ class Module():
 		self.offset = offset # x,y position on the ship
 		self.moduleType = moduleType
 		self.angle = angle
+		self.effect = None
 
 		if self.moduleType is 'generator':
 			self.mass = 1
@@ -443,7 +445,7 @@ class Module():
 
 			self.illuminatorOffset = [0,10]
 
-			self.effect = ModuleEffect([0,0])
+			self.effect = ModuleEffect([0,size*2])
 
 		elif self.moduleType is 'RCS':
 			self.mass = 0.2
@@ -1036,13 +1038,21 @@ class World():
 			transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
 		renderAConvexPolygon(main_batch, transformedPoints, self.viewpointObject.body.position, self.zoom, self.resolution, module.color, module.outlineColor)
 
-	def drawModuleEffects(self, module, actor):
+	def drawModuleEffects(self, main_batch, module, actor):
+		rotatedPoints = rotate_polygon(module.effect.points, module.angle+actor.body.angle)
+		transformedPoints = []
+		for index, rotatedPoint in enumerate(module.effect.points):
+			transformedPoint = transformForView(rotatedPoint + actor.body.position + module.offset + module.effect.position,self.viewpointObject.body.position, self.zoom, self.resolution ) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
+			transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
+		
+		renderAConvexPolygon(main_batch, transformedPoints, self.viewpointObject.body.position, self.zoom, self.resolution,  module.effect.color, None, None)
+
 		pass
 
 	def drawModule(self, actor, module, main_batch): # draw the outline of the module.
 		rotatedPoints = module.points
-		rotatedPoints = rotate_polygon(rotatedPoints, actor.body.angle, [-module.offset[0], -module.offset[1]])
 		rotatedPoints = rotate_polygon(rotatedPoints,module.angle)  # orient the polygon according to the body's current direction in space.
+		rotatedPoints = rotate_polygon(rotatedPoints, actor.body.angle, [-module.offset[0], -module.offset[1]])
 		transformedPoints = []
 
 		for index, rotatedPoint in enumerate(rotatedPoints):
@@ -1051,7 +1061,8 @@ class World():
 		
 		renderAConvexPolygon(main_batch, transformedPoints, self.viewpointObject.body.position, self.zoom, self.resolution,  module.color, module.outlineColor, self.illuminators)
 
-		self.drawModuleEffects(module, actor)
+		if module.effect is not None:
+			self.drawModuleEffects(main_batch, module, actor)
 
 	def drawScreenFill(self, main_batch):
 		fillTriangles = [0,0, 0,0, 0,resolution[1], resolution[0],resolution[1], resolution[0],0, 0,0, 0,0 ]
@@ -1154,7 +1165,7 @@ class World():
 						transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
 
 
-				print( str(pointInside ) + ' ' + str(drawn))
+				# print( str(pointInside ) + ' ' + str(drawn))
 
 
 
