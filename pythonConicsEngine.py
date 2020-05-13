@@ -186,7 +186,7 @@ def antiTransformForView( position ,viewpointObjectPosition, zoom, resolution): 
 	# ((t-o)/z) = p-v
 	# ((t-o)/z)+v = p
 
-	transformedPosition = [(position[0] - resolution_half[0]) / zoom, (-position[1] - resolution_half[1]) / zoom]
+	transformedPosition = [(position[0] - resolution_half[0]) / zoom, (position[1] - resolution_half[1]) / zoom]
 	transformedPosition[0] += viewpointObjectPosition[0]
 	transformedPosition[1] += viewpointObjectPosition[1]
 	# transformedPosition[0] = int(position[0] - resolution_half[0]) # add half the width of the screen, to get to the middle. 0,0 is naturally on the corner.
