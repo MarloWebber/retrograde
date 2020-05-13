@@ -1077,15 +1077,22 @@ class World():
 
 			# work backwards to figure out what coordinates in the game world correspond to being offscreen in the view.
 			
-			lastPointInside = False
+			lastPointInside = True
 			pointInside = True
+
+			transformedPoint = transformForView(actor.points[0]+ actor.body.position,self.viewpointObject.body.position, self.zoom, self.resolution) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
+			lastPoint =	 [int(transformedPoint[0]), int(transformedPoint[1])]
+			
 			for index, point in enumerate(actor.points):
 
 				transformedPoint = point + actor.body.position
 				
+				# lastPointInside = pointInside
+				lastPoint = point
 				lastPointInside = pointInside
 
 				# if a point is outside
+				pointInside = True
 				if transformedPoint[0] > topLimit[0]:
 					# transformedPoint[0] = topLimit[0]
 					pointInside = False
@@ -1103,21 +1110,36 @@ class World():
 					pointInside = False
 
 				if pointInside and not lastPointInside:
-					pass
+
+					# transformedPoints.append(lastPoint)
+					# lastPoint = transformedPoint
+					# transformedPoint = transformForView(lastPoint,self.viewpointObject.body.position, self.zoom, self.resolution) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
+					# transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
+
+					transformedPoint = transformForView(transformedPoint,self.viewpointObject.body.position, self.zoom, self.resolution) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
+					transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
+					# pass
 					# add the last point as well
 
-				if lastPointInside and not pointInside:
-					pass
+				elif lastPointInside: #and not pointInside:
+					# transformedPoints.append(lastPoint)
+					# lastPoint = transformedPoint
+					transformedPoint = transformForView(transformedPoint,self.viewpointObject.body.position, self.zoom, self.resolution) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
+					transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
+
+
 					# add the point as well
 
-				if not pointInside and not lastPointInside:
+				elif not pointInside and not lastPointInside:
 					pass
+
+				
 					# degenerate the point onto one of the edges of the screen
 
 					# discard the point if it is in a straight line or coincident with other degenerate points
 
-				transformedPoint = transformForView(transformedPoint,self.viewpointObject.body.position, self.zoom, self.resolution) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
-				transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
+				# transformedPoint = transformForView(transformedPoint,self.viewpointObject.body.position, self.zoom, self.resolution) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
+				# transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
 			
 			renderAConvexPolygon(main_batch, transformedPoints,self.viewpointObject.body.position, self.zoom, self.resolution,  actor.color, actor.outlineColor)	
 
