@@ -142,49 +142,14 @@ def transformPolygonForLines(polygon):
 
 		firstPoint = polygon[0]
 		lastPoint = firstPoint
-		# points.extend([ int(firstPoint[0]) , int(firstPoint[1])])
-		# n +=1 
+		points.extend([ int(firstPoint[0]) , int(firstPoint[1])])
+		n +=1 
 		
-		lastPointInside = False
-		pointInside = False
-
 		for index, point in enumerate(polygon):
-
-
-			lastPointInside = pointInside
-			if point[0] > resolution[0] or point[1] > resolution[1] or point[0] < 0 or point[1] < 0:
-				pointInside = False
-			else:
-				pointInside = True
-
-
-			if n == 0:
-				#repeat start
-				firstPoint = point
-				points.extend([ int(firstPoint[0]) , int(firstPoint[1])])
-				n +=1 
-
-			if pointInside and not lastPointInside:
-				points.extend([ int(polygon[index-1][0]) , int(polygon[index-1][1])])
-				points.extend([ int(polygon[index-1][0]) , int(polygon[index-1][1])])
-				n +=2
-
-			if pointInside:
-				points.extend([ int(point[0]) , int(point[1])])
-				points.extend([ int(point[0]) , int(point[1])])
-				n +=2
-
-			if not pointInside and lastPointInside:
-				points.extend([ int(point[0]) , int(point[1])])
-				points.extend([ int(point[0]) , int(point[1])])
-				n +=2
-
-			
-
-			# points.extend([ int(point[0]) , int(point[1])])
-			# points.extend([ int(point[0]) , int(point[1])])
+			points.extend([ int(point[0]) , int(point[1])])
+			points.extend([ int(point[0]) , int(point[1])])
 			lastPoint = point
-			# n +=2
+			n +=2
 
 		# make a segment joining the first one to the last one and then do a repeat to close it off.
 		points.extend([ int(firstPoint[0]) , int(firstPoint[1])])
@@ -278,15 +243,9 @@ def transformPolygonForTriangleFan(polygon):
 	transformedPoints.append(polygon[0][1])
 	n+= 1
 
-
-
 	# take every first and second point, and make a triangle between them and the centroid.
 	closeTriangle = False
 	for point in polygon:
-
-		# if point[0] > resolution[0] or point[1] > resolution[1] or point[0] < 0 or point[1] < 0:
-		# 	continue
-
 		n+= 1
 		transformedPoints.append(point[0])
 		transformedPoints.append(point[1])
