@@ -392,12 +392,34 @@ class Atmosphere():
 
 		self.mass = ( (self.bottomDensity + self.topDensity) / 2 ) * area_of_annulus(radius+self.height, radius)
 
+class Illuminator():
+	def __init__(self, offset, radius, color):
+		self.radius = 1000
+		self.color = color
+		self.intensity = 1
+		self.offset = offset #(100, -320030)
+		self.position = offset # the offset is the illuminators position relative to the parent module. the 'position' field is just computed once per turn, so you don't have to do it once per point.
+		self.transformedPosition = [0,0]
+		self.isItLightingThisPoint = False
+
 class ModuleEffect(): # a ModuleEffect is just a polygon that is visually displayed when a module is active.
-	def __init__(self, position=[0,0]):
+	def __init__(self, effectType, position=[0,0]):
 		self.position = position
-		self.radius = 3
-		self.points = [[-self.radius, -self.radius], [-self.radius, self.radius], [self.radius,self.radius], [self.radius, -self.radius]]
-		self.color = [255,255,100,255]
+		# self.radius = 3
+		# self.points = [[-self.radius, -self.radius], [-self.radius, self.radius], [0,2*self.radius]]
+		# self.color = [255,255,100,255]
+
+		if effectType == 'engine 10 flame':
+			self.radius = 3
+			self.points = [[-self.radius, -self.radius], [self.radius, -self.radius], [0,2*self.radius]]
+			self.color = [0,250,255,255]
+			self.illuminator = Illuminator(position, 1500, self.color)
+
+		if effectType == 'cannon 10 flash':
+			self.radius = 1
+			self.points = [[-self.radius, self.radius], [self.radius, self.radius], [0,-2*self.radius]]
+			self.color = [245,250,255,255]
+			self.illuminator = Illuminator(position, 5000, self.color)
 
 class Module():
 	def __init__(self, moduleType, offset=[0,0], angle=0):
@@ -428,7 +450,7 @@ class Module():
 			self.color = [75,10,10,255]
 			self.outlineColor = [200,70,70,255]
 
-		elif self.moduleType is 'engine':
+		elif self.moduleType is 'engine 10':
 			self.mass = 1
 			self.resources = {
 				'thrust': 100,
@@ -443,9 +465,9 @@ class Module():
 			self.color = [50,50,50,255]
 			self.outlineColor = [100,100,100,255]
 
-			self.illuminatorOffset = [0,10]
+			# self.illuminatorOffset = [0,10]
 
-			self.effect = ModuleEffect([0,size*2])
+			self.effect = ModuleEffect('engine 10 flame', [0,size*3])
 
 		elif self.moduleType is 'RCS':
 			self.mass = 0.2
@@ -555,8 +577,10 @@ class Module():
 			self.cooldownTime = 100
 			self.cooldownValue = 0
 
-dinghy = [Module('generator',[0,0]), Module('engine',[0,8]), Module('RCS',[0,-10]) ]
-lothar = [Module('generator',[0,0]), Module('engine',[-13,8], 0.6/math.pi), Module('engine',[13,8],-0.6/math.pi), Module('RCS',[-13,-10]), Module('RCS',[13,-10]) , Module('cannon 10',[0,-10]) ]
+			self.effect = ModuleEffect('cannon 10 flash', [0,-self.radius])
+
+dinghy = [Module('generator',[0,0]), Module('engine 10',[0,8]), Module('RCS',[0,-10]) ]
+lothar = [Module('generator',[0,0]), Module('engine 10',[-13,8], 0.6/math.pi), Module('engine 10',[13,8],-0.6/math.pi), Module('RCS',[-13,-10]), Module('RCS',[13,-10]) , Module('cannon 10',[0,-10]) ]
 boldang = [Module('spar 10',[0,-100], (0.5* math.pi)), Module('box 10',[0,0])]
 bigmolly = [Module('box 100',[0,0]), Module('spar 100',[1000,0], 0.5 * math.pi),Module('box 100',[-1000,0]),Module('box 100',[2000,0]), Module('box 100',[-2000,0]),  Module('box 100',[3000,0])]
 
@@ -607,7 +631,8 @@ class Actor():
 			'up': False,
 			'down': False,
 			'left': False,
-			'right': False
+			'right': False,
+			'Fire': False
 		}
 		self.orbiting = None
 		self.stepsToFreefall = 1
@@ -650,7 +675,7 @@ class Actor():
 						module.enabled = False
 			if module.moduleType == 'RCS':
 				module.active = self.keyStates['left'] or self.keyStates['right']
-			elif module.moduleType == 'engine':
+			elif module.moduleType == 'engine 10':
 				module.active = self.keyStates['up']
 
 		# - consume and produce resources
@@ -740,14 +765,7 @@ class buildMenuItem():
 		self.quantity = 1
 		self.boundingRectangle = boundingRectangle
 
-class Illuminator():
-	def __init__(self, position):
-		self.radius = 1000
-		self.color = [255,255,0]
-		self.intensity = 1
-		self.position = position #(100, -320030)
-		self.transformedPosition = [0,0]
-		self.isItLightingThisPoint = False
+
 
 class World():
 	def __init__(self):
@@ -930,19 +948,36 @@ class World():
 			if strongestAttractor is not actor.orbiting or actor.orbiting is None:
 				actor.leaveFreefall(0)
 				actor.orbiting = strongestAttractor
-				
+
+			# shoot the guns
+			for module in actor.modules:
+				if module.moduleType == 'cannon 10':
+					if actor.keyStates['Fire']:
+						module.active= True
+						actor.keyStates['Fire'] = False
+					else:
+						module.active = False
+					
+					if module.active:
+						Nirn.shootABullet(module, Nirn.player)
+	
 			# figure out if the actor is freefalling by seeing if any engines or collisions have moved it.
 			if actor.doModuleEffects(actor.keyStates, self.timestepSize):
 				actor.leaveFreefall(0)
-				for module in actor.modules:
-					if module.enabled:					
-						if module.active:
-							for giveResource, giveQuantity in list(module.resources.items()): #module.produces.items():
-								if giveResource == 'thrust':
-									if actor.keyStates['up']:
-										position = actor.body.position + module.offset + module.illuminatorOffset
-										position = rotate_point(position, actor.body.angle, actor.body.position)
-										self.illuminators.append(Illuminator(position))
+
+			# draw the module effects like gun flashes and engine flames
+			for module in actor.modules:
+				if module.enabled:			
+					if module.active:
+						if module.effect is not None and module.effect.illuminator is not None:
+							position = actor.body.position + module.offset + module.effect.illuminator.offset
+							position = rotate_point(position, actor.body.angle, actor.body.position)
+							module.effect.illuminator.position = position
+							self.illuminators.append(module.effect.illuminator)
+
+				# turn the gun off until it has done a cooldown.
+				if module.moduleType == 'cannon 10':
+					module.active = False
 
 			# if it is freefalling, move it along the orbital track.
 			if actor.freefalling and actor.orbit is not None:
@@ -1039,15 +1074,13 @@ class World():
 		renderAConvexPolygon(main_batch, transformedPoints, self.viewpointObject.body.position, self.zoom, self.resolution, module.color, module.outlineColor)
 
 	def drawModuleEffects(self, main_batch, module, actor):
-		rotatedPoints = rotate_polygon(module.effect.points, module.angle+actor.body.angle)
+		rotatedPoints = rotate_polygon(module.effect.points, module.angle+actor.body.angle, [ -module.offset[0]-module.effect.position[0], -module.offset[1]-module.effect.position[1]] )
 		transformedPoints = []
-		for index, rotatedPoint in enumerate(module.effect.points):
+		for index, rotatedPoint in enumerate(rotatedPoints):
 			transformedPoint = transformForView(rotatedPoint + actor.body.position + module.offset + module.effect.position,self.viewpointObject.body.position, self.zoom, self.resolution ) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
 			transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
 		
 		renderAConvexPolygon(main_batch, transformedPoints, self.viewpointObject.body.position, self.zoom, self.resolution,  module.effect.color, None, None)
-
-		pass
 
 	def drawModule(self, actor, module, main_batch): # draw the outline of the module.
 		rotatedPoints = module.points
@@ -1062,7 +1095,8 @@ class World():
 		renderAConvexPolygon(main_batch, transformedPoints, self.viewpointObject.body.position, self.zoom, self.resolution,  module.color, module.outlineColor, self.illuminators)
 
 		if module.effect is not None:
-			self.drawModuleEffects(main_batch, module, actor)
+			if module.enabled and module.active:
+				self.drawModuleEffects(main_batch, module, actor)
 
 	def drawScreenFill(self, main_batch):
 		fillTriangles = [0,0, 0,0, 0,resolution[1], resolution[0],resolution[1], resolution[0],0, 0,0, 0,0 ]
@@ -1386,15 +1420,18 @@ class World():
 			main_batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i', transformedPoints[1]), ('c4B',[50,50,50,255]*(transformedPoints[0])))
 
 	def shootABullet(self, gunModule, actor):
-		if gunModule.moduleType is 'cannon 10':
-			#(self, name, modulesList, position, velocity, angle, isPlayer=False):
-			bulletPosition = [actor.body.position[0] + gunModule.offset[0] + gunModule.barrelHole[0], actor.body.position[1] + gunModule.offset[1] + gunModule.barrelHole[1]]
-			bulletPosition = rotate_point(bulletPosition, gunModule.angle, actor.body.position + gunModule.offset )
-			bulletPosition = rotate_point(bulletPosition, actor.body.angle, actor.body.position )
-			bulletVelocity = [gunModule.muzzleVelocity * math.cos(gunModule.angle + actor.body.angle - 0.5*math.pi) , gunModule.muzzleVelocity * math.sin(gunModule.angle + actor.body.angle- 0.5*math.pi)]
-			bullet = Actor('cannonshell 10', [Module('cannonshell 10', (0,0))], bulletPosition ,bulletVelocity,0 ,False)
-			self.add(bullet)
-			self.illuminators.append(Illuminator(bulletPosition))
+		if gunModule.enabled:
+			if gunModule.moduleType is 'cannon 10':
+				#(self, name, modulesList, position, velocity, angle, isPlayer=False):
+				bulletPosition = [actor.body.position[0] + gunModule.offset[0] + gunModule.barrelHole[0], actor.body.position[1] + gunModule.offset[1] + gunModule.barrelHole[1]]
+				bulletPosition = rotate_point(bulletPosition, gunModule.angle, actor.body.position + gunModule.offset )
+				bulletPosition = rotate_point(bulletPosition, actor.body.angle, actor.body.position )
+				bulletVelocity = [gunModule.muzzleVelocity * math.cos(gunModule.angle + actor.body.angle - 0.5*math.pi) , gunModule.muzzleVelocity * math.sin(gunModule.angle + actor.body.angle- 0.5*math.pi)]
+				bullet = Actor('cannonshell 10', [Module('cannonshell 10', (0,0))], bulletPosition ,bulletVelocity,0 ,False)
+				self.add(bullet)
+				# gunModule.active = True
+				# self.illuminators.append(gunModule.effect.illuminator)
+			# self.drawModuleEffects(main_batch, gunModule, actor)
 
 	def loadShipIntoBuildMenu(self, actor):
 		self.modulesInUse = []
@@ -1578,9 +1615,10 @@ def on_key_press(symbol, modifiers):
 			Nirn.viewpointObjectIndex = len(Nirn.actors)-1
 		Nirn.viewpointObject = Nirn.actors[Nirn.viewpointObjectIndex]
 	elif symbol == key.SPACE:
-		for module in Nirn.player.modules:
-			if module.moduleType == 'cannon 10':
-				Nirn.shootABullet(module, Nirn.player)
+		# for module in Nirn.player.modules:
+		# 	if module.moduleType == 'cannon 10':
+		# 		Nirn.shootABullet(module, Nirn.player)
+		Nirn.player.keyStates['Fire'] = True
 
 @window.event
 def on_key_release(symbol, modifiers):
