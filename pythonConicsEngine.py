@@ -930,7 +930,7 @@ class World():
 			if actor.doModuleEffects(actor.keyStates, self.timestepSize):
 				actor.leaveFreefall(0)
 				for module in actor.modules:
-					if module.enabled:
+					if module.enabled:					
 						if module.active:
 							for giveResource, giveQuantity in list(module.resources.items()): #module.produces.items():
 								if giveResource == 'thrust':
@@ -1077,9 +1077,6 @@ class World():
 
 			# work backwards to figure out what coordinates in the game world correspond to being offscreen in the view.
 			
-			print(topLimit)
-			print(bottomLimit)
-
 			lastPointInside = False
 			pointInside = True
 			for index, point in enumerate(actor.points):
