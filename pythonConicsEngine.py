@@ -29,6 +29,7 @@ window = pyglet.window.Window(width=1280, height=780)
 label = pyglet.text.Label('Abc', x=5, y=5)
 
 white = [255]*4
+# resultColor = [color[0],color[1],color[2],255]
 
 def mag(x):
 	return numpy.sqrt(x.dot(x))
@@ -240,29 +241,35 @@ def antiTransformForView( position ,viewpointObjectPosition, zoom, resolution):
 
 
 def isPointIlluminated(point, color, illuminators,viewpointObjectPosition, zoom, resolution):
-	resultColor = [color[0],color[1],color[2],255]
+	isItTho = False
 	for illuminator in illuminators:
 		# transformedPosition = transformForView( illuminator.position ,viewpointObjectPosition, zoom, resolution)
-		distance =numpy.array([point[0] - illuminator.transformedPosition[0],point[1] - illuminator.transformedPosition[1]])
+		distance = [point[0] - illuminator.transformedPosition[0],point[1] - illuminator.transformedPosition[1]]
 		
-
-		if distance[0] < illuminator.radius and distance[1] < illuminator.radius :
+		magnitude = (distance[0] ** 2 + distance[1] ** 2) ** 0.5
+		if magnitude < illuminator.radius :
+			isItTho = True
 			
-			magnitude = mag(distance )
-			magnitude = magnitude/zoom
+			 # mag(distance)#(distance[0] + distance[1]) / 2
+			dangitude = magnitude/zoom
 			# print(magnitude)
-			if magnitude == 0:
+			if dangitude == 0:
 				dispersion = 1
 			else:
-				dispersion = 1/magnitude
+				dispersion = 1/dangitude
 			# print(dispersion)
+			resultColor = copy.copy(color) #[0,0,0,255]
 			resultColor[0] += int(dispersion * illuminator.color[0])
 			if resultColor[0] > 255: resultColor[0] = 255
 			resultColor[1] += int(dispersion * illuminator.color[1])
 			if resultColor[1] > 255: resultColor[1] = 255
 			resultColor[2] += int(dispersion * illuminator.color[2])
 			if resultColor[2] > 255: resultColor[2] = 255
-	return resultColor
+
+	if isItTho:
+		return resultColor #[resultColor[0, resultColor[1], resultColor[2], resultColor]]
+	else:
+		return color
 
 
 
