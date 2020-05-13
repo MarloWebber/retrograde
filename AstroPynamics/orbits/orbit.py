@@ -271,9 +271,15 @@ class Orbit(OrbitalElements):
         i = self.i
         r = self.getRadius(tAn)
 
-        x = r * ( np.cos(lAn)*np.cos(aPe+tAn) - np.sin(lAn)*np.sin(aPe+tAn)*np.cos(i))
-        y = r * ( np.sin(lAn)*np.cos(aPe+tAn) + np.cos(lAn)*np.sin(aPe+tAn)*np.cos(i))
-        z = r * ( np.sin(i)*np.sin(aPe+tAn))
+        cos_aPe_tAn = np.cos(aPe+tAn)
+        sin_aPe_tAn = np.sin(aPe+tAn)
+        cos_i = np.cos(i)
+        cos_lAn = np.cos(lAn)
+        sin_lAn = np.sin(lAn)
+
+        x = r * ( cos_lAn*cos_aPe_tAn - sin_lAn*sin_aPe_tAn*cos_i)
+        y = r * ( sin_lAn*cos_aPe_tAn + cos_lAn*sin_aPe_tAn*cos_i)
+        z = r * ( np.sin(i)*sin_aPe_tAn)
 
         return x,y,z
 
