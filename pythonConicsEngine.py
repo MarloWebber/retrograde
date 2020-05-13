@@ -199,31 +199,39 @@ def antiTransformForView( position ,viewpointObjectPosition, zoom, resolution): 
 	return transformedPosition #[transformedPosition[0], transformedPosition[1]]
 
 def isPointIlluminated(point, color, illuminators,viewpointObjectPosition, zoom, resolution):
-	isItTho = False
+	thePointIsIlluminated = False
 	for illuminator in illuminators:
-		distance = [point[0] - illuminator.transformedPosition[0],point[1] - illuminator.transformedPosition[1]]
+		illuminator.isItLightingThisPoint = False
+		distanceVector = [point[0] - illuminator.transformedPosition[0],point[1] - illuminator.transformedPosition[1]]
 		
-		magnitude = (distance[0] ** 2 + distance[1] ** 2) ** 0.5
-		if magnitude < illuminator.radius :
-			isItTho = True
-			
-			dangitude = magnitude/zoom
-			if dangitude == 0:
-				dispersion = 1
-			else:
-				dispersion = 1/dangitude
-			resultColor = copy.copy(color) #[0,0,0,255]
-			resultColor[0] += int(dispersion * illuminator.color[0])
-			if resultColor[0] > 255: resultColor[0] = 255
-			resultColor[1] += int(dispersion * illuminator.color[1])
-			if resultColor[1] > 255: resultColor[1] = 255
-			resultColor[2] += int(dispersion * illuminator.color[2])
-			if resultColor[2] > 255: resultColor[2] = 255
+		distanceScalar = (distanceVector[0] ** 2 + distanceVector[1] ** 2) ** 0.5
+		if distanceScalar < illuminator.radius :
+			illuminator.isItLightingThisPoint = True
+			thePointIsIlluminated = True
 
-	if isItTho:
-		return resultColor 
+	if thePointIsIlluminated:
+		resultColor = [color[0], color[1], color[2], color[3]]
 	else:
 		return color
+
+	for illuminator in illuminators:
+		if illuminator.isItLightingThisPoint:
+			scaledDistance = distanceScalar/zoom
+			if scaledDistance == 0:
+				amountOfLight = 1
+			else:
+				amountOfLight = 1/scaledDistance
+			
+			resultColor[0] += int(amountOfLight * illuminator.color[0])
+			if resultColor[0] > 255: resultColor[0] = 255
+			resultColor[1] += int(amountOfLight * illuminator.color[1])
+			if resultColor[1] > 255: resultColor[1] = 255
+			resultColor[2] += int(amountOfLight * illuminator.color[2])
+			if resultColor[2] > 255: resultColor[2] = 255
+	return resultColor
+
+
+		
 
 def transformPolygonForLinesWithIlluminators(polygon, color, illuminators, viewpointObjectPosition, zoom, resolution):
 		n = 0
@@ -737,6 +745,7 @@ class Illuminator():
 		self.intensity = 1
 		self.position = position #(100, -320030)
 		self.transformedPosition = [0,0]
+		self.isItLightingThisPoint = False
 
 class World():
 	def __init__(self):
@@ -1071,22 +1080,44 @@ class World():
 			print(topLimit)
 			print(bottomLimit)
 
-			for point in actor.points:
+			lastPointInside = False
+			pointInside = True
+			for index, point in enumerate(actor.points):
 
 				transformedPoint = point + actor.body.position
+				
+				lastPointInside = pointInside
 
 				# if a point is outside
 				if transformedPoint[0] > topLimit[0]:
-					transformedPoint[0] = topLimit[0]
+					# transformedPoint[0] = topLimit[0]
+					pointInside = False
 
 				if transformedPoint[1] > topLimit[1]:
-					transformedPoint[1] = topLimit[1]
+					# transformedPoint[1] = topLimit[1]
+					pointInside = False
 
 				if transformedPoint[0] < bottomLimit[0]:
-					transformedPoint[0] = bottomLimit[0]
+					# transformedPoint[0] = bottomLimit[0]
+					pointInside = False
 
 				if transformedPoint[1] < bottomLimit[1]:
-					transformedPoint[1] = bottomLimit[1]
+					# transformedPoint[1] = bottomLimit[1]
+					pointInside = False
+
+				if pointInside and not lastPointInside:
+					pass
+					# add the last point as well
+
+				if lastPointInside and not pointInside:
+					pass
+					# add the point as well
+
+				if not pointInside and not lastPointInside:
+					pass
+					# degenerate the point onto one of the edges of the screen
+
+					# discard the point if it is in a straight line or coincident with other degenerate points
 
 				transformedPoint = transformForView(transformedPoint,self.viewpointObject.body.position, self.zoom, self.resolution) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
 				transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
@@ -1335,6 +1366,8 @@ class World():
 		bottomLimit = antiTransformForView( [0,0] ,self.viewpointObject.body.position, self.zoom, resolution)
 		# print(topLimit)
 		# print(bottomLimit)
+
+		# if self.showHUD:
 
 		for illuminator in self.illuminators:
 			illuminator.transformedPosition = transformForView( illuminator.position ,self.viewpointObject.body.position, self.zoom, resolution)
