@@ -231,8 +231,8 @@ def antiTransformForView( position ,viewpointObjectPosition, zoom, resolution):
 	# the inverse of transformForView
 	# print(position)
 	transformedPosition = [0,0]
-	transformedPosition[0] = int(position[0] - 0.5 * resolution[0]) # add half the width of the screen, to get to the middle. 0,0 is naturally on the corner.
-	transformedPosition[1] = int(-position[1] - 0.5 * resolution[1]) # add half the height. and invert it so that it's the right way up in opengl.
+	transformedPosition[0] = int(position[0] - resolution_half[0]) # add half the width of the screen, to get to the middle. 0,0 is naturally on the corner.
+	transformedPosition[1] = int(-position[1] - resolution_half[1]) # add half the height. and invert it so that it's the right way up in opengl.
 	transformedPosition = [transformedPosition[0] / zoom, transformedPosition[1] / zoom,]  # shrink or expand everything around the 0,0 point
 	transformedPosition = position + viewpointObjectPosition # offset everything by the position of the viewpointObject, so the viewpoint is at 0,0
 	
@@ -242,8 +242,8 @@ def antiTransformForView( position ,viewpointObjectPosition, zoom, resolution):
 def isPointIlluminated(point, color, illuminators,viewpointObjectPosition, zoom, resolution):
 	resultColor = [color[0],color[1],color[2],255]
 	for illuminator in illuminators:
-		transformedPosition = transformForView( illuminator.position ,viewpointObjectPosition, zoom, resolution)
-		distance =numpy.array([point[0] - transformedPosition[0],point[1] - transformedPosition[1]])
+		# transformedPosition = transformForView( illuminator.position ,viewpointObjectPosition, zoom, resolution)
+		distance =numpy.array([point[0] - illuminator.transformedPosition[0],point[1] - illuminator.transformedPosition[1]])
 		
 
 		if distance[0] < illuminator.radius and distance[1] < illuminator.radius :
@@ -805,6 +805,7 @@ class Illuminator():
 		self.color = [255,255,0]
 		self.intensity = 1
 		self.position = position #(100, -320030)
+		self.transformedPosition = [0,0]
 
 class World():
 	def __init__(self):
@@ -1252,7 +1253,7 @@ class World():
 			main_batch.add(rendering[0], pyglet.gl.GL_TRIANGLE_STRIP, None, ('v2i',rendering[1]), ('c4B',rendering[2]))
 		
 		if actor.__class__ is Attractor:
-			transformedPoints = numpy.array([])
+			transformedPoints = []
 			for point in actor.points:
 				transformedPoint = transformForView(point + actor.body.position,self.viewpointObject.body.position, self.zoom, self.resolution) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
 				transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
@@ -1330,14 +1331,15 @@ class World():
 		
 
 		# speed optimization: figure out what points are outside of the viewpoint very early on, and discard them.
-		topLimit = antiTransformForView( resolution  ,self.viewpointObject.body.position, self.zoom, resolution)
+		topLimit = antiTransformForView( [resolution[0], resolution[1]]  ,self.viewpointObject.body.position, self.zoom, resolution)
 		bottomLimit = antiTransformForView( [0,0] ,self.viewpointObject.body.position, self.zoom, resolution)
 		# print(topLimit)
 		# print(bottomLimit)
 
 		# second speed optimization: only compute the points when the orbit is changed, and leave it sitting after that. the computation is expensive
 
-
+		print(transformForView(topLimit,self.viewpointObject.body.position, self.zoom, resolution))
+		print(transformForView(bottomLimit,self.viewpointObject.body.position, self.zoom, resolution))
 		# for i in range(0,n_points):
 		# 	temp_vec3d = orbit.cartesianCoordinates(i *sliceSize)
 		# 	point = (temp_vec3d[0] + attractor.body.position[0], temp_vec3d[1] + attractor.body.position[1])
@@ -1350,6 +1352,17 @@ class World():
 			# print(topLimit)
 			# if pointInRect(point, [bottomLimit, topLimit]):
 			transformedPoint = transformForView(point,self.viewpointObject.body.position, self.zoom, resolution)
+
+			# if transformedPoint[0] < topLimit[0] and transformedPoint[0] > bottomLimit[0]:
+			# 	print('O')
+			# else:
+			# 	print('.')
+
+			# if transformedPoint[1] < topLimit[1] and transformedPoint[1] > bottomLimit[1]:
+			# 
+			# else:
+			# 
+
 			points.append(transformedPoint)
 
 		transformedPoints = transformPolygonForLines(points)
@@ -1526,6 +1539,11 @@ class World():
 
 		main_batch = pyglet.graphics.Batch()
 		pyglet.gl.glLineWidth(2)
+
+
+		for illuminator in self.illuminators:
+			illuminator.transformedPosition = transformForView( illuminator.position ,self.viewpointObject.body.position, self.zoom, resolution)
+		
 
 		for attractor in self.attractors:
 			if attractor.atmosphere != None:
