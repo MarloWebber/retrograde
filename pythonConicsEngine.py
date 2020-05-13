@@ -1077,19 +1077,22 @@ class World():
 
 			# work backwards to figure out what coordinates in the game world correspond to being offscreen in the view.
 			
-			lastPointInside = True
+			prevPointInside = True
 			pointInside = True
 
-			transformedPoint = transformForView(actor.points[0]+ actor.body.position,self.viewpointObject.body.position, self.zoom, self.resolution) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
-			lastPoint =	 [int(transformedPoint[0]), int(transformedPoint[1])]
+			firstPoint = actor.points[0]+ actor.body.position # transformForView does operations like zooming and mapping 0 to the center of the screen. 
+			prevPoint =	 firstPoint
+			currentPoint = prevPoint
 			
+			onTheVeryLastPoint = len(actor.points) - 1
+
 			for index, point in enumerate(actor.points):
 
 				transformedPoint = point + actor.body.position
 				
 				# lastPointInside = pointInside
-				lastPoint = point
-				lastPointInside = pointInside
+				# lastPoint = point
+				# lastPointInside = pointInside
 
 				# if a point is outside
 				pointInside = True
@@ -1109,29 +1112,65 @@ class World():
 					# transformedPoint[1] = bottomLimit[1]
 					pointInside = False
 
-				if pointInside and not lastPointInside:
+				if (pointInside and not prevPointInside) or (prevPointInside and not pointInside):
+					prevPoint = currentPoint
+					currentPoint = transformedPoint
+					prevPointInside = pointInside
 
-					# transformedPoints.append(lastPoint)
-					# lastPoint = transformedPoint
-					# transformedPoint = transformForView(lastPoint,self.viewpointObject.body.position, self.zoom, self.resolution) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
-					# transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
-
-					transformedPoint = transformForView(transformedPoint,self.viewpointObject.body.position, self.zoom, self.resolution) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
+					transformedPoint = transformForView(prevPoint,self.viewpointObject.body.position, self.zoom, self.resolution) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
 					transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
-					# pass
+					transformedPoint = transformForView(currentPoint,self.viewpointObject.body.position, self.zoom, self.resolution) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
+					transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
+
+					if index == onTheVeryLastPoint:
+						transformedPoint = transformForView(firstPoint,self.viewpointObject.body.position, self.zoom, self.resolution) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
+						transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
+
+				elif pointInside and prevPointInside:
+					prevPoint = currentPoint
+					currentPoint = transformedPoint
+					prevPointInside = pointInside
+
+					transformedPoint = transformForView(currentPoint,self.viewpointObject.body.position, self.zoom, self.resolution) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
+					transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
+
+					if index == onTheVeryLastPoint:
+						transformedPoint = transformForView(firstPoint,self.viewpointObject.body.position, self.zoom, self.resolution) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
+						transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
+
+
+
+
+
+
+
+
+# #0------
+# 				if lastPointInside: #and not pointInside:
+# 					# transformedPoints.append(lastPoint)
+# 					# lastPoint = transformedPoint
+# 					transformedPoint = transformForView(transformedPoint,self.viewpointObject.body.position, self.zoom, self.resolution) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
+# 					transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
+
+
+# 				if pointInside:
+
+# 					# transformedPoints.append(lastPoint)
+# 					# lastPoint = transformedPoint
+# 					# transformedPoint = transformForView(lastPoint,self.viewpointObject.body.position, self.zoom, self.resolution) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
+# 					# transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
+
+# 					transformedPoint = transformForView(transformedPoint,self.viewpointObject.body.position, self.zoom, self.resolution) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
+# 					transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
+# 					# pass
 					# add the last point as well
 
-				elif lastPointInside: #and not pointInside:
-					# transformedPoints.append(lastPoint)
-					# lastPoint = transformedPoint
-					transformedPoint = transformForView(transformedPoint,self.viewpointObject.body.position, self.zoom, self.resolution) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
-					transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
-
+			
 
 					# add the point as well
 
-				elif not pointInside and not lastPointInside:
-					pass
+				# elif not pointInside and not lastPointInside:
+				# 	pass
 
 				
 					# degenerate the point onto one of the edges of the screen
