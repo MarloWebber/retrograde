@@ -375,13 +375,26 @@ def renderAConvexPolygon(batch, polygon, viewpointObjectPosition, zoom, resoluti
 				batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i',transformedPoints[1]), ('c4B',outlineColor*transformedPoints[0]))
 
 class Atmosphere():
-	def __init__(self,radius, planetPosition):
-		self.height = 15000
-		self.bottomDensity = 1
-		self.topDensity = 0
-		self.color = [70,145,220,255]
-		self.outerColor = [0,0,0,255]
-		self.outlineColor = [50,125,200,255]
+	def __init__(self, radius, planetPosition, atmosphereType):
+
+		if atmosphereType is "earthAtmosphere":
+
+			self.height = 15000
+			self.bottomDensity = 1
+			self.topDensity = 0
+			self.color = [70,145,220,255]
+			self.outerColor = [0,0,0,255]
+			self.outlineColor = [50,125,200,255]
+
+		if atmosphereType is "marsAtmosphere":
+
+			self.height = 10000
+			self.bottomDensity = 0.1
+			self.topDensity = 0
+			self.color = [50,50,50,255]
+			self.outerColor = [0,0,0,255]
+			self.outlineColor = [50,125,200,255]
+
 
 		# each atmosphere layer is an annulus.
 		# it is rendered as a triangle strip with a gradient between the inner and outer edges.
@@ -580,10 +593,15 @@ class Module():
 
 			self.effect = ModuleEffect('cannon 10 flash', [0,-self.radius])
 
-dinghy = [Module('generator',[0,0]), Module('engine 10',[0,8]), Module('RCS',[0,-10]) ]
+dinghy = [Module('generator',[0,0]), Module('engine 10',[0,15]), Module('RCS',[0,-10]) ]
 lothar = [Module('generator',[0,0]), Module('engine 10',[-13,8], 0.6/math.pi), Module('engine 10',[13,8],-0.6/math.pi), Module('RCS',[-13,-10]), Module('RCS',[13,-10]) , Module('cannon 10',[0,-10]) ]
 boldang = [Module('spar 10',[0,-100], (0.5* math.pi)), Module('box 10',[0,0])]
 bigmolly = [Module('box 100',[0,0]), Module('spar 100',[1000,0], 0.5 * math.pi),Module('box 100',[-1000,0]),Module('box 100',[2000,0]), Module('box 100',[-2000,0]),  Module('box 100',[3000,0])]
+
+class Maneuver():
+	# description of an AI behaviour item.
+	def __init__(self):
+		self.no = 0
 
 class Actor():
 	def __init__(self, name, modulesList, position, velocity, angle, isPlayer=False):
@@ -644,6 +662,9 @@ class Actor():
 		self.orbitPoints = []
 
 		self.setPoint = 0
+
+		self.behaviorQueue = []
+		self.combatantType = 'defender' # defenders will shoot at you while still doing what they're doing. attackers will pursue you. missiles will pursue you with the intent to ram.
 
 	def leaveFreefall(self, stepsToFreefall=1):
 		self.stepsToFreefall = stepsToFreefall
@@ -748,6 +769,10 @@ class Actor():
 
 		return ifThrustHasBeenApplied
 
+	def flightComputer():
+		# this function describes the AI flight behaviour and player autopilot
+		pass
+
 class Attractor():
 	def __init__(self, planetType, position, gravitationalConstant):
 		self.planetName = planetType # just set the planetName to something easy for now. # the name of the individual instance of this planet type.
@@ -758,7 +783,7 @@ class Attractor():
 			self.friction = 0.9
 			self.color = [180,170,145,255]
 			self.outlineColor = [200,190,155,255]
-			self.atmosphere = Atmosphere(self.radius, position)
+			self.atmosphere = Atmosphere(self.radius, position, "earthAtmosphere")
 
 		elif planetType == 'moon':
 			self.radius = 80000
@@ -767,6 +792,15 @@ class Attractor():
 			self.color = [45,45,45,255]
 			self.outlineColor = [145,145,145,255]
 			self.atmosphere = None #Atmosphere(self)
+
+		elif planetType == 'mars':
+			self.radius = 280000
+			self.density = 0.8
+			self.friction = 0.9
+			self.color = [125,45,25,255]
+			self.outlineColor = [155,75,55,255]
+			self.atmosphere = Atmosphere(self.radius, position, "marsAtmosphere")
+
 
 		# create pymunk physical body and shape
 		self.mass = mass_of_a_sphere(self.density, self.radius)
@@ -787,6 +821,50 @@ class buildMenuItem():
 		self.module = module
 		self.quantity = 1
 		self.boundingRectangle = boundingRectangle
+
+
+class SolarSystem():
+	# fills the world with a variety of preset planets and characters.
+	def __init__(self, solarSystemName, gravitationalConstant):
+
+		self.contents = []
+
+		if solarSystemName == "Sol III":
+
+			
+
+			planet_erf = Attractor('earth', [1,1], gravitationalConstant)
+			planet_moon = Attractor('moon',[1000000,-1000000], gravitationalConstant)
+			self.contents.append(planet_erf)
+			self.contents.append(planet_moon)
+			dinghy_instance = Actor('NPC dinghy', dinghy,(1000000, -1080100), [20000,0], 0)
+			lothar_instance = Actor('NPC lothar', lothar,(10000, -345050), [45000,0], 0.6 * math.pi, True)
+			lothar_instance2 = Actor('player Lothar', lothar,(100, -320030), [0,0], 0)
+			boldang_instance = Actor('NPC boldang', boldang,(-100, -320050), [0,0],0)
+			bigmolly_instance = Actor('NPC molly', bigmolly,(100, -350050), [45000,0],0)
+			self.contents.append(dinghy_instance)
+			self.contents.append(lothar_instance)
+			self.contents.append(lothar_instance2)
+			self.contents.append(bigmolly_instance)
+
+		if solarSystemName == "Sol IV":
+
+
+			planet_murs = Attractor('mars', [1,1], gravitationalConstant)
+
+			# planet_erf = Attractor('earth', [1,1], gravitationalConstant)
+			# planet_moon = Attractor('moon',[1000000,-1000000], gravitationalConstant)
+			self.contents.append(planet_murs)
+			# self.contents.append(planet_moon)
+			dinghy_instance = Actor('NPC dinghy', dinghy,(200000, -200000), [10000,0], 0, True)
+			# lothar_instance = Actor('NPC lothar', lothar,(10000, -345050), [45000,0], 0.6 * math.pi, True)
+			# lothar_instance2 = Actor('player Lothar', lothar,(100, -320030), [0,0], 0)
+			# boldang_instance = Actor('NPC boldang', boldang,(-100, -320050), [0,0],0)
+			# bigmolly_instance = Actor('NPC molly', bigmolly,(100, -350050), [45000,0],0)
+			self.contents.append(dinghy_instance)
+			# self.contents.append(lothar_instance)
+			# self.contents.append(lothar_instance2)
+			# self.contents.append(bigmolly_instance)
 
 
 
@@ -1591,21 +1669,12 @@ class World():
 	def setup(self):
 		self.createHUDNavCircle()
 
-		planet_erf = Attractor('earth', [1,1], self.gravitationalConstant)
-		planet_moon = Attractor('moon',[1000000,-1000000], self.gravitationalConstant)
-		self.add(planet_erf)
-		self.add(planet_moon)
-		dinghy_instance = Actor('NPC dinghy', dinghy,(1000000, -1080100), [20000,0], 0)
-		lothar_instance = Actor('NPC lothar', lothar,(10000, -345050), [45000,0], 0.6 * math.pi, True)
-		lothar_instance2 = Actor('player Lothar', lothar,(100, -320030), [0,0], 0)
-		boldang_instance = Actor('NPC boldang', boldang,(-100, -320050), [0,0],0)
-		bigmolly_instance = Actor('NPC molly', bigmolly,(100, -350050), [45000,0],0)
-		self.add(dinghy_instance)
-		self.add(lothar_instance)
-		self.add(lothar_instance2)
-		self.add(bigmolly_instance)
 		for module in lothar:
 			self.availableModules.append(copy.deepcopy(module))
+
+		system = SolarSystem("Sol IV", self.gravitationalConstant)
+		for thing in system.contents:
+			self.add(thing)
 
 	def start(self):
 		self.setup()		
