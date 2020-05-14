@@ -362,16 +362,17 @@ def unwrapAtmosphereForGradient(n, inside_verts, outside_verts, inside_color, ou
 		return [nn, bitstream, colorstream]
 
 def renderAConvexPolygon(batch, polygon, viewpointObjectPosition, zoom, resolution, color, outlineColor=None, illuminators=None):
-	transformedPoints = transformPolygonForTriangleFan(polygon)
-	batch.add(transformedPoints[0], pyglet.gl.GL_TRIANGLE_STRIP, None, ('v2i',transformedPoints[1]), ('c4B',color*transformedPoints[0]))
+	if len(polygon) > 0:
+		transformedPoints = transformPolygonForTriangleFan(polygon)
+		batch.add(transformedPoints[0], pyglet.gl.GL_TRIANGLE_STRIP, None, ('v2i',transformedPoints[1]), ('c4B',color*transformedPoints[0]))
 
-	if outlineColor is not None:
-		if illuminators is not None:
-			transformedPoints = transformPolygonForLinesWithIlluminators(polygon, outlineColor, illuminators, viewpointObjectPosition, zoom, resolution)
-			batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i',transformedPoints[1]), ('c4B',transformedPoints[2]))
-		else:
-			transformedPoints = transformPolygonForLines(polygon)
-			batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i',transformedPoints[1]), ('c4B',outlineColor*transformedPoints[0]))
+		if outlineColor is not None:
+			if illuminators is not None:
+				transformedPoints = transformPolygonForLinesWithIlluminators(polygon, outlineColor, illuminators, viewpointObjectPosition, zoom, resolution)
+				batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i',transformedPoints[1]), ('c4B',transformedPoints[2]))
+			else:
+				transformedPoints = transformPolygonForLines(polygon)
+				batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i',transformedPoints[1]), ('c4B',outlineColor*transformedPoints[0]))
 
 class Atmosphere():
 	def __init__(self,radius, planetPosition):
@@ -538,7 +539,7 @@ class Module():
 			self.momentArm = self.radius
 
 		elif self.moduleType is 'cannonshell 10':
-			self.mass = 1
+			self.mass = 0.1
 			self.active = True
 			self.resources = {}
 			self.stores = {
@@ -555,7 +556,7 @@ class Module():
 			self.lifetime = 100 # the shell lasts for 1000 somethings and then explodes.
 
 		elif self.moduleType is 'cannon 10':
-			self.mass = 1
+			self.mass = 2
 			self.active = False
 			self.resources = {
 				# 'cannonshell 10': 1
@@ -573,7 +574,7 @@ class Module():
 			self.outlineColor = [100,100,30,255]
 
 			self.barrelHole = [0,-self.radius + 1.5]
-			self.muzzleVelocity = 500000
+			self.muzzleVelocity = 250000
 			self.cooldownTime = 100
 			self.cooldownValue = 0
 
@@ -708,29 +709,42 @@ class Actor():
 		ifThrustHasBeenApplied = False
 		for module in self.modules:
 			if module.enabled:
-				if module.active:
-					for giveResource, giveQuantity in list(module.resources.items()): #module.produces.items():
-						if giveResource == 'thrust':
-							if keyStates['up']:
-								force = [(giveQuantity * timestepSize * 500 * math.cos(addRadians(module.angle, math.pi * 0.5))), -giveQuantity * timestepSize * 500 * math.sin(addRadians(module.angle, math.pi * 0.5) )]
-								self.body.apply_impulse_at_local_point(force, (0,0))
-								ifThrustHasBeenApplied = True
+				# if module.active:
+				for giveResource, giveQuantity in list(module.resources.items()): #module.produces.items():
+					if giveResource == 'thrust':
+						if keyStates['up']:
+							force = [(giveQuantity * timestepSize * 500 * math.cos(addRadians(module.angle, math.pi * 0.5))), -giveQuantity * timestepSize * 500 * math.sin(addRadians(module.angle, math.pi * 0.5) )]
+							self.body.apply_impulse_at_local_point(force, (0,0))
+							ifThrustHasBeenApplied = True
 
-						elif giveResource == 'torque':
-							# if keyStates['left']:
-								# apply two impulses, pushing in opposite directions, an equal distance from the center to create torque
+					elif giveResource == 'torque':
+						# if keyStates['left']:
+							
 
-								correctionDirection = self.setPoint - self.body.angle
+							self.setPoint = self.setPoint % (2*math.pi)
+							self.body.angle = self.body.angle % (2*math.pi)
 
-								if correctionDirection > 0.001:
+							correctionDirection = self.setPoint - self.body.angle
 
-									sign = correctionDirection / abs(correctionDirection)
+							# if abs(correctionDirection) > 0.0001:
 
-									self.body.apply_impulse_at_local_point([-giveQuantity * sign,0], [0,-module.momentArm])
-									self.body.apply_impulse_at_local_point([giveQuantity * sign,0], [0,module.momentArm])
-							# elif keyStates['right']:
-								# self.body.apply_impulse_at_local_point([giveQuantity,0], [0,-module.momentArm])
-								# self.body.apply_impulse_at_local_point([-giveQuantity,0], [0,module.momentArm])
+							if correctionDirection > math.pi or correctionDirection < -math.pi:
+								correctionDirection = -correctionDirection
+
+							
+							if correctionDirection == 0:
+								sign = -1
+							else:
+								sign = -correctionDirection / abs(correctionDirection)
+							
+							# if self.isPlayer:
+								# print(sign)
+
+							torqueAmount = sign * giveQuantity
+
+							# apply two impulses, pushing in opposite directions, an equal distance from the center to create torque
+							self.body.apply_impulse_at_local_point([-torqueAmount,0], [0,-module.momentArm])
+							self.body.apply_impulse_at_local_point([torqueAmount,0], [0,module.momentArm])
 
 		return ifThrustHasBeenApplied
 
@@ -881,6 +895,7 @@ class World():
 
 				# create the module on it's own as a new actor
 				fragmentPosition = [actor.body.position[0] + (module.offset[0] * math.cos(actor.body.angle)), actor.body.position[1] +  (module.offset[1] * math.sin(actor.body.angle))]
+				module.offset = [0,0]
 
 				if actor.isPlayer and index == listLength-1:
 					self.add(Actor(actor.name + ' fragment', [module], fragmentPosition, actor.body.velocity, True))
@@ -973,16 +988,16 @@ class World():
 			# figure out the angle to steer the ship.
 			if actor.isPlayer:
 				if actor.keyStates['left']:
-					actor.setPoint += 0.01
+					actor.setPoint -= 0.03
 				if actor.keyStates['right']:
-					actor.setPoint -= 0.01
+					actor.setPoint += 0.03
 
 			angleDifference = actor.setPoint - actor.body.angle
 
 			# all rotating actors experience a slight drag which slows their rotation. (it's more fun that way).
 			if actor.body.angular_velocity != 0:
-				correctionForce = actor.body.angular_velocity * 10 * actor.body.mass * self.timestepSize
-				print(correctionForce)
+				correctionForce = actor.body.angular_velocity * 100 * actor.body.mass * self.timestepSize
+				# print(correctionForce)
 				actor.body.apply_impulse_at_local_point([-correctionForce,0], [0,-10]) # 10 is the moment arm, in reality it should be equal to the actor's radius.
 				actor.body.apply_impulse_at_local_point([correctionForce,0], [0,10])
 				if abs(actor.body.angular_velocity) < 1/100000:
@@ -1116,9 +1131,13 @@ class World():
 		transformedPoints = []
 
 		for index, rotatedPoint in enumerate(rotatedPoints):
-			transformedPoint = transformForView(rotatedPoint + actor.body.position + module.offset,self.viewpointObject.body.position, self.zoom, self.resolution ) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
-			transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
-		
+			try:
+				transformedPoint = transformForView(rotatedPoint + actor.body.position + module.offset,self.viewpointObject.body.position, self.zoom, self.resolution ) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
+				transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
+			except:
+				pass
+			# if not math.isnan(transformedPoint[0]) and not math.isnan(transformedPoint[1]):
+			
 		renderAConvexPolygon(main_batch, transformedPoints, self.viewpointObject.body.position, self.zoom, self.resolution,  module.color, module.outlineColor, self.illuminators)
 
 		if module.effect is not None:
@@ -1334,44 +1353,46 @@ class World():
 	def drawAPOrbit(self, main_batch, actor, orbit, attractor, color):
 		if actor.orbit is None:
 			return
+		if len(actor.orbitPoints) > 0:
 
-		# speed optimization: figure out what points are outside of the viewpoint very early on, and discard them.
-		
-		# print(topLimit)
-		# print(bottomLimit)
-
-		# second speed optimization: only compute the points when the orbit is changed, and leave it sitting after that. the computation is expensive
-
-		# print(transformForView(topLimit,self.viewpointObject.body.position, self.zoom, resolution))
-		# print(transformForView(bottomLimit,self.viewpointObject.body.position, self.zoom, resolution))
-		# for i in range(0,n_points):
-		# 	temp_vec3d = orbit.cartesianCoordinates(i *sliceSize)
-		# 	point = (temp_vec3d[0] + attractor.body.position[0], temp_vec3d[1] + attractor.body.position[1])
-		points = []
-		# print(actor.orbitPoints)
-		for point in actor.orbitPoints:
-			# if point[0] > topLimit[0] or point[1] > topLimit[1]:
-			# print(point)
-			# print(bottomLimit)
+			# speed optimization: figure out what points are outside of the viewpoint very early on, and discard them.
+			
 			# print(topLimit)
-			# if pointInRect(point, [bottomLimit, topLimit]):
-			transformedPoint = transformForView(point,self.viewpointObject.body.position, self.zoom, resolution)
+			# print(bottomLimit)
 
-			# if transformedPoint[0] < topLimit[0] and transformedPoint[0] > bottomLimit[0]:
-			# 	print('O')
-			# else:
-			# 	print('.')
+			# second speed optimization: only compute the points when the orbit is changed, and leave it sitting after that. the computation is expensive
 
-			# if transformedPoint[1] < topLimit[1] and transformedPoint[1] > bottomLimit[1]:
-			# 
-			# else:
-			# 
+			# print(transformForView(topLimit,self.viewpointObject.body.position, self.zoom, resolution))
+			# print(transformForView(bottomLimit,self.viewpointObject.body.position, self.zoom, resolution))
+			# for i in range(0,n_points):
+			# 	temp_vec3d = orbit.cartesianCoordinates(i *sliceSize)
+			# 	point = (temp_vec3d[0] + attractor.body.position[0], temp_vec3d[1] + attractor.body.position[1])
+			points = []
+			# print(actor.orbitPoints)
+			for point in actor.orbitPoints:
+				# if point[0] > topLimit[0] or point[1] > topLimit[1]:
+				# print(point)
+				# print(bottomLimit)
+				# print(topLimit)
+				# if pointInRect(point, [bottomLimit, topLimit]):
+				if not math.isnan(point[0]) and not math.isnan(point[1]):
+					transformedPoint = transformForView(point,self.viewpointObject.body.position, self.zoom, resolution)
 
-			points.append(transformedPoint)
+				# if transformedPoint[0] < topLimit[0] and transformedPoint[0] > bottomLimit[0]:
+				# 	print('O')
+				# else:
+				# 	print('.')
 
-		transformedPoints = transformPolygonForLines(points)
-		if transformedPoints is not None:
-			main_batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i', transformedPoints[1]), ('c4B',[100,100,100,255]*(transformedPoints[0])))
+				# if transformedPoint[1] < topLimit[1] and transformedPoint[1] > bottomLimit[1]:
+				# 
+				# else:
+				# 
+
+					points.append(transformedPoint)
+
+			transformedPoints = transformPolygonForLines(points)
+			if transformedPoints is not None:
+				main_batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i', transformedPoints[1]), ('c4B',[100,100,100,255]*(transformedPoints[0])))
 
 	def drawModuleListItem(self, main_batch, listItem, index):
 		# draw one of the modules in the list in the build menu.
@@ -1476,7 +1497,7 @@ class World():
 
 	def dropModuleIntoBuildArea(self, module, position):
 		module.offset = self.antiTransformForBuild(position)
-		print(self.antiTransformForBuild(position))
+		# print(self.antiTransformForBuild(position))
 		self.modulesInUse.append(module)
 
 	def buildMenuGraphics(self, main_batch):
@@ -1575,8 +1596,8 @@ class World():
 		self.add(planet_erf)
 		self.add(planet_moon)
 		dinghy_instance = Actor('NPC dinghy', dinghy,(1000000, -1080100), [20000,0], 0)
-		lothar_instance = Actor('NPC lothar', lothar,(10000, -345050), [45000,0], 0.6 * math.pi)
-		lothar_instance2 = Actor('player Lothar', lothar,(100, -320030), [0,0], 0, True)
+		lothar_instance = Actor('NPC lothar', lothar,(10000, -345050), [45000,0], 0.6 * math.pi, True)
+		lothar_instance2 = Actor('player Lothar', lothar,(100, -320030), [0,0], 0)
 		boldang_instance = Actor('NPC boldang', boldang,(-100, -320050), [0,0],0)
 		bigmolly_instance = Actor('NPC molly', bigmolly,(100, -350050), [45000,0],0)
 		self.add(dinghy_instance)
