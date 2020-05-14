@@ -651,7 +651,8 @@ class Actor():
 			'down': False,
 			'left': False,
 			'right': False,
-			'Fire': False
+			'Fire': False,
+			'face direction': None
 		}
 		self.orbiting = None
 		self.stepsToFreefall = 1
@@ -662,6 +663,10 @@ class Actor():
 		self.orbitPoints = []
 
 		self.setPoint = 0
+		self.prograde = 0
+		self.retrograde = 0
+		self.nadir = 0
+		self.zenith = 0
 
 		self.behaviorQueue = []
 		self.combatantType = 'defender' # defenders will shoot at you while still doing what they're doing. attackers will pursue you. missiles will pursue you with the intent to ram.
@@ -769,9 +774,16 @@ class Actor():
 
 		return ifThrustHasBeenApplied
 
-	def flightComputer():
+	def flightComputer(self):
 		# this function describes the AI flight behaviour and player autopilot
-		pass
+		# pass
+
+		if self.keyStates['face direction'] is not None:
+			if self.keyStates['face direction'] == 'retrograde': self.setPoint = self.retrograde + 0.5 * math.pi
+			if self.keyStates['face direction'] == 'prograde': self.setPoint = self.prograde +  0.5 * math.pi
+			if self.keyStates['face direction'] == 'nadir': self.setPoint = self.nadir +  0.5 * math.pi
+			if self.keyStates['face direction'] == 'zenith': self.setPoint = self.zenith +  0.5 * math.pi
+			if str.isnumeric(self.keyStates['face direction']): self.setpoint = float(self.keyStates['face direction'])
 
 class Attractor():
 	def __init__(self, planetType, position, gravitationalConstant):
@@ -1070,6 +1082,9 @@ class World():
 				if actor.keyStates['right']:
 					actor.setPoint += 0.03
 
+			# let the ai drive the ship.
+			actor.flightComputer()
+
 			angleDifference = actor.setPoint - actor.body.angle
 
 			# all rotating actors experience a slight drag which slows their rotation. (it's more fun that way).
@@ -1100,46 +1115,73 @@ class World():
 					module.active = False
 
 			# if it is freefalling, move it along the orbital track.
-			if actor.freefalling and actor.orbit is not None:
-				actor.orbit.updTime(self.timestepSize)
-				cartesian = actor.orbit.cartesianCoordinates(actor.orbit.tAn)
-				actor.body.position =  [cartesian[0] + actor.orbiting.body.position[0] ,cartesian[1] + actor.orbiting.body.position[1]]
+			actor.nadir = math.atan2( actor.orbiting.body.position[1] - actor.body.position[1], actor.orbiting.body.position[0] - actor.body.position[0] )
+			actor.zenith = actor.nadir + math.pi
+			# if actor.orbit is not None:
+			# 	futureSteptAn = actor.orbit.tAnAtTime(self.timestepSize)
+			# 	futureStepCoordinates = actor.orbit.cartesianCoordinates(futureSteptAn)
+			# 	adjustedFutureStep = [futureStepCoordinates[0] + actor.orbiting.body.position[0] , futureStepCoordinates[1] + actor.orbiting.body.position[1]]
+			# 	actor.prograde = math.atan2( adjustedFutureStep[1] - actor.body.position[1], adjustedFutureStep[0] - actor.body.position[0] )
+			# 	actor.retrograde = actor.prograde + math.pi
 
-				# you also must update the actor's velocity, or else when it leaves the track it will have the same velocity it entered with, leading to weird jumps.
-				trackSpeed = actor.orbit.getSpeed(actor.orbit.tAn)
-
-				# there is almost definitely a way to figure this out from the ellipse's properties. You would need to find tangent to the ellipse. But I figured it out by computing the position one step into the future, and then finding the angle between positions.
-				futureSteptAn = actor.orbit.tAnAtTime(self.timestepSize)
-				futureStepCoordinates = actor.orbit.cartesianCoordinates(futureSteptAn)
-				adjustedFutureStep = [futureStepCoordinates[0] + actor.orbiting.body.position[0] , futureStepCoordinates[1] + actor.orbiting.body.position[1]]
-				angle = math.atan2( adjustedFutureStep[1] - actor.body.position[1], adjustedFutureStep[0] - actor.body.position[0] )
-
-				actor.body.velocity = [trackSpeed * math.cos(angle), trackSpeed * math.sin(angle)]
-
-			else:
+			if not actor.freefalling:
 				# if it is not freefalling, add some gravity to it so that it moves naturally, and try to recalculate the orbit.
 				if not actor.exemptFromGravity:
 					self.gravitate(actor, strongestForce)
+
+
 				if actor.stepsToFreefall > 0:
 					actor.stepsToFreefall -= 1
 				else:
 					actor.freefalling = True
 					actor.exemptFromGravity = False
-					try:
-						actor.orbit = Orbit.fromStateVector(numpy.array([actor.body.position[0] - actor.orbiting.body.position[0] ,actor.body.position[1] - actor.orbiting.body.position[1],1]), numpy.array([actor.body.velocity[0] ,actor.body.velocity[1] ,1]), actor.orbiting.APBody, Time('2000-01-01 00:00:00'), actor.name + " orbit around " + actor.orbiting.planetName)
-					except:
-						actor.orbit = None
+			
 
-					# generate the orbit points once only.
+				try:
+					actor.orbit = Orbit.fromStateVector(numpy.array([actor.body.position[0] - actor.orbiting.body.position[0] ,actor.body.position[1] - actor.orbiting.body.position[1],1]), numpy.array([actor.body.velocity[0] ,actor.body.velocity[1] ,1]), actor.orbiting.APBody, Time('2000-01-01 00:00:00'), actor.name + " orbit around " + actor.orbiting.planetName)
+						# generate the orbit points once only.
 					if actor.orbit is not None:
 						actor.orbitPoints = []
-						# print('peenus')
 						n_points = 100
 						sliceSize =  (2 * math.pi / n_points)
 						for i in range(0,100):
 							temp_vec3d = actor.orbit.cartesianCoordinates(i *sliceSize)
 							actor.orbitPoints.append((temp_vec3d[0] + actor.orbiting.body.position[0], temp_vec3d[1] + actor.orbiting.body.position[1]))
+				except:
+					actor.orbit = None
 
+				if actor.orbit is not None:
+					futureSteptAn = actor.orbit.tAnAtTime(self.timestepSize)
+					futureStepCoordinates = actor.orbit.cartesianCoordinates(futureSteptAn)
+					adjustedFutureStep = [futureStepCoordinates[0] + actor.orbiting.body.position[0] , futureStepCoordinates[1] + actor.orbiting.body.position[1]]
+					actor.prograde = math.atan2( adjustedFutureStep[1] - actor.body.position[1], adjustedFutureStep[0] - actor.body.position[0] )
+					actor.retrograde = actor.prograde + math.pi
+
+			else:
+				if actor.orbit is not None:
+					actor.orbit.updTime(self.timestepSize)
+					cartesian = actor.orbit.cartesianCoordinates(actor.orbit.tAn)
+					actor.body.position =  [cartesian[0] + actor.orbiting.body.position[0] ,cartesian[1] + actor.orbiting.body.position[1]]
+
+					
+					# you also must update the actor's velocity, or else when it leaves the track it will have the same velocity it entered with, leading to weird jumps.
+					trackSpeed = actor.orbit.getSpeed(actor.orbit.tAn)
+
+					# there is almost definitely a way to figure this out from the ellipse's properties. You would need to find tangent to the ellipse. But I figured it out by computing the position one step into the future, and then finding the angle between positions.
+					futureSteptAn = actor.orbit.tAnAtTime(self.timestepSize)
+					futureStepCoordinates = actor.orbit.cartesianCoordinates(futureSteptAn)
+					adjustedFutureStep = [futureStepCoordinates[0] + actor.orbiting.body.position[0] , futureStepCoordinates[1] + actor.orbiting.body.position[1]]
+					actor.prograde = math.atan2( adjustedFutureStep[1] - actor.body.position[1], adjustedFutureStep[0] - actor.body.position[0] )
+					actor.retrograde = actor.prograde + math.pi
+
+					# actor.nadir = math.atan2( actor.orbiting.body.position[1] - actor.body.position[1], actor.orbiting.body.position[0] - actor.body.position[0] )
+					# actor.zenith = actor.nadir + math.pi
+					actor.body.velocity = [trackSpeed * math.cos(actor.prograde), trackSpeed * math.sin(actor.prograde)]
+
+
+					
+
+					
 
 	def rotatePolygon(self, points, angle):
 		return Rotate2D(points,(0,0),angle)
@@ -1627,20 +1669,58 @@ class World():
 			self.drawActor(actor, main_batch)
 
 		if self.showHUD:
+
+			# blip for actual orientation
 			blipLength = (self.navcircleInnerRadius-self.navcircleLinesLength)
 			angle = self.viewpointObject.body.angle - 0.5 * math.pi
 			start = ((blipLength * math.cos(angle)) + (self.resolution[0]*0.5) , -(blipLength* math.sin(angle)) +( self.resolution[1] * 0.5) )
 			end = ((self.navcircleInnerRadius) * math.cos(angle)+ (self.resolution[0]*0.5),- (self.navcircleInnerRadius) * math.sin(angle)+ (self.resolution[1]*0.5))
 			transformedPoints = transformPolygonForLines([start,end])
-			main_batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i', transformedPoints[1]), ('c4B',[200,0,0,255]*(transformedPoints[0])))
+			main_batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i', transformedPoints[1]), ('c4B',[200,40,0,255]*(transformedPoints[0])))
 
-
+			# blip for setpoint
 			blipLength = (self.navcircleInnerRadius-self.navcircleLinesLength)
 			angle = self.viewpointObject.setPoint - 0.5 * math.pi
 			start = ((blipLength * math.cos(angle)) + (self.resolution[0]*0.5) , -(blipLength* math.sin(angle)) +( self.resolution[1] * 0.5) )
 			end = ((self.navcircleInnerRadius) * math.cos(angle)+ (self.resolution[0]*0.5),- (self.navcircleInnerRadius) * math.sin(angle)+ (self.resolution[1]*0.5))
 			transformedPoints = transformPolygonForLines([start,end])
-			main_batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i', transformedPoints[1]), ('c4B',[200,0,0,255]*(transformedPoints[0])))
+			main_batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i', transformedPoints[1]), ('c4B',[100,20,0,255]*(transformedPoints[0])))
+
+			if self.viewpointObject.freefalling and self.viewpointObject.orbit is not None:
+				# blip for prograde
+				blipLength = (self.navcircleInnerRadius-self.navcircleLinesLength)
+				angle = self.viewpointObject.prograde
+				start = ((blipLength * math.cos(angle)) + (self.resolution[0]*0.5) , -(blipLength* math.sin(angle)) +( self.resolution[1] * 0.5) )
+				end = ((self.navcircleInnerRadius) * math.cos(angle)+ (self.resolution[0]*0.5),- (self.navcircleInnerRadius) * math.sin(angle)+ (self.resolution[1]*0.5))
+				transformedPoints = transformPolygonForLines([start,end])
+				main_batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i', transformedPoints[1]), ('c4B',[0,200,20,255]*(transformedPoints[0])))
+
+				# blip for retrograde
+				blipLength = (self.navcircleInnerRadius-self.navcircleLinesLength)
+				angle = self.viewpointObject.retrograde
+				start = ((blipLength * math.cos(angle)) + (self.resolution[0]*0.5) , -(blipLength* math.sin(angle)) +( self.resolution[1] * 0.5) )
+				end = ((self.navcircleInnerRadius) * math.cos(angle)+ (self.resolution[0]*0.5),- (self.navcircleInnerRadius) * math.sin(angle)+ (self.resolution[1]*0.5))
+				transformedPoints = transformPolygonForLines([start,end])
+				main_batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i', transformedPoints[1]), ('c4B',[0,100,10,255]*(transformedPoints[0])))
+
+
+			# blip for nadir
+			blipLength = (self.navcircleInnerRadius-self.navcircleLinesLength)
+			angle = self.viewpointObject.nadir
+			start = ((blipLength * math.cos(angle)) + (self.resolution[0]*0.5) , -(blipLength* math.sin(angle)) +( self.resolution[1] * 0.5) )
+			end = ((self.navcircleInnerRadius) * math.cos(angle)+ (self.resolution[0]*0.5),- (self.navcircleInnerRadius) * math.sin(angle)+ (self.resolution[1]*0.5))
+			transformedPoints = transformPolygonForLines([start,end])
+			main_batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i', transformedPoints[1]), ('c4B',[0,100,200,255]*(transformedPoints[0])))
+
+			# blip for zenith
+			blipLength = (self.navcircleInnerRadius-self.navcircleLinesLength)
+			angle = self.viewpointObject.zenith
+			start = ((blipLength * math.cos(angle)) + (self.resolution[0]*0.5) , -(blipLength* math.sin(angle)) +( self.resolution[1] * 0.5) )
+			end = ((self.navcircleInnerRadius) * math.cos(angle)+ (self.resolution[0]*0.5),- (self.navcircleInnerRadius) * math.sin(angle)+ (self.resolution[1]*0.5))
+			transformedPoints = transformPolygonForLines([start,end])
+			main_batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i', transformedPoints[1]), ('c4B',[0,50,100,255]*(transformedPoints[0])))
+
+
 
 		main_batch.draw()
 		second_batch = pyglet.graphics.Batch()
@@ -1672,7 +1752,7 @@ class World():
 		for module in lothar:
 			self.availableModules.append(copy.deepcopy(module))
 
-		system = SolarSystem("Sol IV", self.gravitationalConstant)
+		system = SolarSystem("Sol III", self.gravitationalConstant)
 		for thing in system.contents:
 			self.add(thing)
 
@@ -1687,8 +1767,10 @@ def on_key_press(symbol, modifiers):
 		exit()
 	elif symbol == key.LEFT:
 		Nirn.player.keyStates['left'] = True
+		Nirn.player.keyStates['face direction'] = None
 	elif symbol == key.RIGHT:
 		Nirn.player.keyStates['right'] = True
+		Nirn.player.keyStates['face direction'] = None
 	elif symbol == key.UP:
 		Nirn.player.keyStates['up'] = True
 	elif symbol == key.P:
@@ -1721,6 +1803,9 @@ def on_key_press(symbol, modifiers):
 				Nirn.availableModuleListItems.append(buildMenuItem(Nirn.buildDraggingModule))
 				Nirn.availableModules.append(Nirn.buildDraggingModule)
 				Nirn.buildDraggingModule = None
+		else:
+			pass
+			
 	elif symbol == key.E:
 		if Nirn.buildMenu:
 			if Nirn.buildDraggingModule is not None:
@@ -1744,6 +1829,15 @@ def on_key_press(symbol, modifiers):
 		# 	if module.moduleType == 'cannon 10':
 		# 		Nirn.shootABullet(module, Nirn.player)
 		Nirn.player.keyStates['Fire'] = True
+	elif symbol == key.S:
+		Nirn.player.keyStates['face direction'] = 'retrograde'
+	elif symbol == key.W:
+		Nirn.player.keyStates['face direction'] = 'prograde'
+	elif symbol == key.D:
+		Nirn.player.keyStates['face direction'] = 'zenith'
+	elif symbol == key.A:
+		Nirn.player.keyStates['face direction'] = 'nadir'
+
 
 @window.event
 def on_key_release(symbol, modifiers):
