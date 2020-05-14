@@ -642,6 +642,8 @@ class Actor():
 		self.body.angle = angle
 		self.orbitPoints = []
 
+		self.setPoint = 0
+
 	def leaveFreefall(self, stepsToFreefall=1):
 		self.stepsToFreefall = stepsToFreefall
 		self.freefalling = False
@@ -715,13 +717,20 @@ class Actor():
 								ifThrustHasBeenApplied = True
 
 						elif giveResource == 'torque':
-							if keyStates['left']:
+							# if keyStates['left']:
 								# apply two impulses, pushing in opposite directions, an equal distance from the center to create torque
-								self.body.apply_impulse_at_local_point([-giveQuantity,0], [0,-module.momentArm])
-								self.body.apply_impulse_at_local_point([giveQuantity,0], [0,module.momentArm])
-							elif keyStates['right']:
-								self.body.apply_impulse_at_local_point([giveQuantity,0], [0,-module.momentArm])
-								self.body.apply_impulse_at_local_point([-giveQuantity,0], [0,module.momentArm])
+
+								correctionDirection = self.setPoint - self.body.angle
+
+								if correctionDirection > 0.001:
+
+									sign = correctionDirection / abs(correctionDirection)
+
+									self.body.apply_impulse_at_local_point([-giveQuantity * sign,0], [0,-module.momentArm])
+									self.body.apply_impulse_at_local_point([giveQuantity * sign,0], [0,module.momentArm])
+							# elif keyStates['right']:
+								# self.body.apply_impulse_at_local_point([giveQuantity,0], [0,-module.momentArm])
+								# self.body.apply_impulse_at_local_point([-giveQuantity,0], [0,module.momentArm])
 
 		return ifThrustHasBeenApplied
 
@@ -960,6 +969,24 @@ class World():
 					
 					if module.active:
 						Nirn.shootABullet(module, Nirn.player)
+
+			# figure out the angle to steer the ship.
+			if actor.isPlayer:
+				if actor.keyStates['left']:
+					actor.setPoint += 0.01
+				if actor.keyStates['right']:
+					actor.setPoint -= 0.01
+
+			angleDifference = actor.setPoint - actor.body.angle
+
+			# all rotating actors experience a slight drag which slows their rotation. (it's more fun that way).
+			if actor.body.angular_velocity != 0:
+				correctionForce = actor.body.angular_velocity * 10 * actor.body.mass * self.timestepSize
+				print(correctionForce)
+				actor.body.apply_impulse_at_local_point([-correctionForce,0], [0,-10]) # 10 is the moment arm, in reality it should be equal to the actor's radius.
+				actor.body.apply_impulse_at_local_point([correctionForce,0], [0,10])
+				if abs(actor.body.angular_velocity) < 1/100000:
+					actor.body.angular_velocity = 0
 	
 			# figure out if the actor is freefalling by seeing if any engines or collisions have moved it.
 			if actor.doModuleEffects(actor.keyStates, self.timestepSize):
@@ -1508,6 +1535,14 @@ class World():
 			transformedPoints = transformPolygonForLines([start,end])
 			main_batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i', transformedPoints[1]), ('c4B',[200,0,0,255]*(transformedPoints[0])))
 
+
+			blipLength = (self.navcircleInnerRadius-self.navcircleLinesLength)
+			angle = self.viewpointObject.setPoint - 0.5 * math.pi
+			start = ((blipLength * math.cos(angle)) + (self.resolution[0]*0.5) , -(blipLength* math.sin(angle)) +( self.resolution[1] * 0.5) )
+			end = ((self.navcircleInnerRadius) * math.cos(angle)+ (self.resolution[0]*0.5),- (self.navcircleInnerRadius) * math.sin(angle)+ (self.resolution[1]*0.5))
+			transformedPoints = transformPolygonForLines([start,end])
+			main_batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i', transformedPoints[1]), ('c4B',[200,0,0,255]*(transformedPoints[0])))
+
 		main_batch.draw()
 		second_batch = pyglet.graphics.Batch()
 		pyglet.gl.glLineWidth(1)
@@ -1659,20 +1694,20 @@ def on_draw():
 def hello():
 	Nirn.start()
 
-	testArea = [resolution[0], resolution[1]]
-	print(testArea)
-	#transformForView( position ,viewpointObjectPosition, zoom, resolution):
-	testArea = transformForView(testArea, Nirn.viewpointObject.body.position, Nirn.zoom, resolution)
-	print(testArea)
-	testArea = antiTransformForView(testArea, Nirn.viewpointObject.body.position, Nirn.zoom, resolution)
-	print(testArea)
-	testArea = [0,0]
-	print(testArea)
-	#transformForView( position ,viewpointObjectPosition, zoom, resolution):
-	testArea = transformForView(testArea, Nirn.viewpointObject.body.position, Nirn.zoom, resolution)
-	print(testArea)
-	testArea = antiTransformForView(testArea, Nirn.viewpointObject.body.position, Nirn.zoom, resolution)
-	print(testArea)
+	# testArea = [resolution[0], resolution[1]]
+	# print(testArea)
+	# #transformForView( position ,viewpointObjectPosition, zoom, resolution):
+	# testArea = transformForView(testArea, Nirn.viewpointObject.body.position, Nirn.zoom, resolution)
+	# print(testArea)
+	# testArea = antiTransformForView(testArea, Nirn.viewpointObject.body.position, Nirn.zoom, resolution)
+	# print(testArea)
+	# testArea = [0,0]
+	# print(testArea)
+	# #transformForView( position ,viewpointObjectPosition, zoom, resolution):
+	# testArea = transformForView(testArea, Nirn.viewpointObject.body.position, Nirn.zoom, resolution)
+	# print(testArea)
+	# testArea = antiTransformForView(testArea, Nirn.viewpointObject.body.position, Nirn.zoom, resolution)
+	# print(testArea)
 
 
 
