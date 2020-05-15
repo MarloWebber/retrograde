@@ -598,10 +598,64 @@ lothar = [Module('generator',[0,0]), Module('engine 10',[-13,8], 0.6/math.pi), M
 boldang = [Module('spar 10',[0,-100], (0.5* math.pi)), Module('box 10',[0,0])]
 bigmolly = [Module('box 100',[0,0]), Module('spar 100',[1000,0], 0.5 * math.pi),Module('box 100',[-1000,0]),Module('box 100',[2000,0]), Module('box 100',[-2000,0]),  Module('box 100',[3000,0])]
 
+# Maneuver('takeoff', 20000)
+
 class Maneuver():
 	# description of an AI behaviour item.
-	def __init__(self):
-		self.no = 0
+	def __init__(self, maneuverType, parameter1, parameter2):
+		self.maneuverType = maneuverType
+		self.parameter1 = parameter1
+		self.parameter2 = parameter2
+
+	def perform(self, actor):
+		if self.maneuverType == 'takeoff':
+
+			actorHeightFromAttractorCenter = mag(actor.body.position - self.parameter2.body.position)
+			naturalDepth = 1 - ((actorHeightFromAttractorCenter - self.parameter2.radius) / self.parameter1) # this is a number between 0 and 1 which is signifies the actors depth into this atmosphere layer.
+
+			# print(naturalDepth)
+
+			# angle should be straight away from the planet when it is at the surface and horizontal some distance above the atmosphere.
+			# actor.setPoint = actor.zenith #- (naturalDepth * math.pi)
+
+			
+			# if naturalDepth < 0.1:
+			# 	actor.setPoint = (actor.nadir + 0.5 * math.pi) - 0.5 * math.pi
+			if naturalDepth < 0.5:
+
+				gravityTurnFraction = 1-naturalDepth
+				# print(gravityTurnFraction)
+				gravityTurnSetPoint = (actor.zenith + 0.5 * math.pi) +( gravityTurnFraction * 0.5 * math.pi )
+				actor.setPoint = gravityTurnSetPoint
+				if actor.orbit is not None:
+					if actor.orbit.getPeriapsis() < self.parameter1:
+						pass
+
+
+			else:
+				actor.setPoint = actor.zenith + 0.5 * math.pi
+				
+
+			if actor.orbit is not None:
+				if actor.orbit.getPeriapsis() < self.parameter1:
+					if abs(actor.setPoint) - abs(actor.body.angle) < 0.1:
+						actor.keyStates['up'] = True
+					else:
+						actor.keyStates['up'] = False
+				else:
+					if mag(actor.body.position - self.parameter2.body.position) > self.parameter2.radius + self.parameter2.atmosphere.height: # if the actor is out of the atmosphere
+						print(actor.nadir)
+						print(actor.orbit.aPe)
+						if actor.nadir - actor.orbit.aPe > 0.6 * math.pi:
+							actor.keyStates['up'] = False
+			else:
+				# if abs(actor.setPoint) - abs(actor.body.angle) < 0.1:
+				actor.keyStates['up'] = True
+				# else:
+				# 	actor.keyStates['up'] = False
+
+
+
 
 class Actor():
 	def __init__(self, name, modulesList, position, velocity, angle, isPlayer=False):
@@ -668,8 +722,9 @@ class Actor():
 		self.nadir = 0
 		self.zenith = 0
 
-		self.behaviorQueue = []
+		self.maneuverQueue = []
 		self.combatantType = 'defender' # defenders will shoot at you while still doing what they're doing. attackers will pursue you. missiles will pursue you with the intent to ram.
+		self.autoPilotActive = False
 
 	def leaveFreefall(self, stepsToFreefall=1):
 		self.stepsToFreefall = stepsToFreefall
@@ -785,6 +840,10 @@ class Actor():
 			if self.keyStates['face direction'] == 'zenith': self.setPoint = self.zenith +  0.5 * math.pi
 			if str.isnumeric(self.keyStates['face direction']): self.setpoint = float(self.keyStates['face direction'])
 
+		if self.autoPilotActive:
+			if len(self.maneuverQueue) > 0:
+				self.maneuverQueue[0].perform(self)
+
 class Attractor():
 	def __init__(self, planetType, position, gravitationalConstant):
 		self.planetName = planetType # just set the planetName to something easy for now. # the name of the individual instance of this planet type.
@@ -850,10 +909,13 @@ class SolarSystem():
 			self.contents.append(planet_erf)
 			self.contents.append(planet_moon)
 			dinghy_instance = Actor('NPC dinghy', dinghy,(1000000, -1080100), [20000,0], 0)
-			lothar_instance = Actor('NPC lothar', lothar,(10000, -345050), [45000,0], 0.6 * math.pi, True)
-			lothar_instance2 = Actor('player Lothar', lothar,(100, -320030), [0,0], 0)
+			lothar_instance = Actor('NPC lothar', lothar,(10000, -345050), [45000,0], 0.6 * math.pi)
+			lothar_instance2 = Actor('player Lothar', lothar,(100, -320030), [0,0], 0, True)
 			boldang_instance = Actor('NPC boldang', boldang,(-100, -320050), [0,0],0)
 			bigmolly_instance = Actor('NPC molly', bigmolly,(100, -350050), [45000,0],0)
+
+			lothar_instance2.maneuverQueue.append(Maneuver('takeoff',30000,planet_erf))
+
 			self.contents.append(dinghy_instance)
 			self.contents.append(lothar_instance)
 			self.contents.append(lothar_instance2)
@@ -1687,21 +1749,22 @@ class World():
 			main_batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i', transformedPoints[1]), ('c4B',[100,20,0,255]*(transformedPoints[0])))
 
 			if self.viewpointObject.freefalling and self.viewpointObject.orbit is not None:
-				# blip for prograde
-				blipLength = (self.navcircleInnerRadius-self.navcircleLinesLength)
-				angle = self.viewpointObject.prograde
-				start = ((blipLength * math.cos(angle)) + (self.resolution[0]*0.5) , -(blipLength* math.sin(angle)) +( self.resolution[1] * 0.5) )
-				end = ((self.navcircleInnerRadius) * math.cos(angle)+ (self.resolution[0]*0.5),- (self.navcircleInnerRadius) * math.sin(angle)+ (self.resolution[1]*0.5))
-				transformedPoints = transformPolygonForLines([start,end])
-				main_batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i', transformedPoints[1]), ('c4B',[0,200,20,255]*(transformedPoints[0])))
+				if not math.isnan( self.viewpointObject.prograde):
+					# blip for prograde
+					blipLength = (self.navcircleInnerRadius-self.navcircleLinesLength)
+					angle = self.viewpointObject.prograde
+					start = ((blipLength * math.cos(angle)) + (self.resolution[0]*0.5) , -(blipLength* math.sin(angle)) +( self.resolution[1] * 0.5) )
+					end = ((self.navcircleInnerRadius) * math.cos(angle)+ (self.resolution[0]*0.5),- (self.navcircleInnerRadius) * math.sin(angle)+ (self.resolution[1]*0.5))
+					transformedPoints = transformPolygonForLines([start,end])
+					main_batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i', transformedPoints[1]), ('c4B',[0,200,20,255]*(transformedPoints[0])))
 
-				# blip for retrograde
-				blipLength = (self.navcircleInnerRadius-self.navcircleLinesLength)
-				angle = self.viewpointObject.retrograde
-				start = ((blipLength * math.cos(angle)) + (self.resolution[0]*0.5) , -(blipLength* math.sin(angle)) +( self.resolution[1] * 0.5) )
-				end = ((self.navcircleInnerRadius) * math.cos(angle)+ (self.resolution[0]*0.5),- (self.navcircleInnerRadius) * math.sin(angle)+ (self.resolution[1]*0.5))
-				transformedPoints = transformPolygonForLines([start,end])
-				main_batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i', transformedPoints[1]), ('c4B',[0,100,10,255]*(transformedPoints[0])))
+					# blip for retrograde
+					blipLength = (self.navcircleInnerRadius-self.navcircleLinesLength)
+					angle = self.viewpointObject.retrograde
+					start = ((blipLength * math.cos(angle)) + (self.resolution[0]*0.5) , -(blipLength* math.sin(angle)) +( self.resolution[1] * 0.5) )
+					end = ((self.navcircleInnerRadius) * math.cos(angle)+ (self.resolution[0]*0.5),- (self.navcircleInnerRadius) * math.sin(angle)+ (self.resolution[1]*0.5))
+					transformedPoints = transformPolygonForLines([start,end])
+					main_batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i', transformedPoints[1]), ('c4B',[0,100,10,255]*(transformedPoints[0])))
 
 
 			# blip for nadir
@@ -1804,7 +1867,7 @@ def on_key_press(symbol, modifiers):
 				Nirn.availableModules.append(Nirn.buildDraggingModule)
 				Nirn.buildDraggingModule = None
 		else:
-			pass
+			Nirn.player.keyStates['face direction'] = 'zenith'
 			
 	elif symbol == key.E:
 		if Nirn.buildMenu:
@@ -1833,10 +1896,12 @@ def on_key_press(symbol, modifiers):
 		Nirn.player.keyStates['face direction'] = 'retrograde'
 	elif symbol == key.W:
 		Nirn.player.keyStates['face direction'] = 'prograde'
-	elif symbol == key.D:
-		Nirn.player.keyStates['face direction'] = 'zenith'
+	# elif symbol == key.D:
+	# 	Nirn.player.keyStates['face direction'] = 'zenith'
 	elif symbol == key.A:
 		Nirn.player.keyStates['face direction'] = 'nadir'
+	elif symbol == key.T:
+		Nirn.player.autoPilotActive = not Nirn.player.autoPilotActive
 
 
 @window.event
