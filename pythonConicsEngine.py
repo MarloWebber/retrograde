@@ -1677,7 +1677,7 @@ class World():
 		# print(self.antiTransformForBuild(position))
 		self.modulesInUse.append(module)
 
-	def buildMenuGraphics(self, main_batch):
+	def buildMenuGraphics(self):
 		window.clear()
 
 		main_batch = pyglet.graphics.Batch()
