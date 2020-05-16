@@ -2,7 +2,6 @@ import math, sys, random
 
 import pymunk
 from pymunk import Vec2d
-# import pymunk.pygame_util
 import numpy
 import time
 
@@ -23,14 +22,15 @@ import copy
 
 import cProfile
 
+import pickle
+import dill
+
 resolution = (1280,780)
 resolution_half = (1280/2,780/2)
-topLimit = [0,0]#antiTransformForView( [resolution[0], resolution[1]]  ,self.viewpointObject.body.position, self.zoom, resolution)
-bottomLimit = [0,0]#antiTransformForView( [0,0] ,self.viewpointObject.body.position, self.zoom, resolution)
+topLimit = [0,0]
+bottomLimit = [0,0]
 window = pyglet.window.Window(width=1280, height=780)
 label = pyglet.text.Label('Abc', x=5, y=5)
-
-# antiTransformTest = resolution
 
 white = [255]*4 
 
@@ -180,21 +180,13 @@ def transformForView( position ,viewpointObjectPosition, zoom, resolution):
 def antiTransformForView( position ,viewpointObjectPosition, zoom, resolution): # the inverse of transformForView
 
 	# t = ((p - v) * z) + o
-
 	# t - o = ((p - v) * z)
-
 	# ((t-o)/z) = p-v
 	# ((t-o)/z)+v = p
 
 	transformedPosition = [(position[0] - resolution_half[0]) / zoom, (-1 * position[1] + resolution_half[1]) / zoom]
 	transformedPosition[0] += viewpointObjectPosition[0]
 	transformedPosition[1] += viewpointObjectPosition[1]
-	# transformedPosition[0] = int(position[0] - resolution_half[0]) # add half the width of the screen, to get to the middle. 0,0 is naturally on the corner.
-	# transformedPosition[1] = int(-position[1] - resolution_half[1]) # add half the height. and invert it so that it's the right way up in opengl.
-	# transformedPosition = [transformedPosition[0] / zoom, transformedPosition[1] / zoom]  # shrink or expand everything around the 0,0 point
-	# transformedPosition = position + viewpointObjectPosition # offset everything by the position of the viewpointObject, so the viewpoint is at 0,0
-	
-
 
 	return transformedPosition #[transformedPosition[0], transformedPosition[1]]
 
@@ -229,9 +221,6 @@ def isPointIlluminated(point, color, illuminators,viewpointObjectPosition, zoom,
 			resultColor[2] += int(amountOfLight * illuminator.color[2])
 			if resultColor[2] > 255: resultColor[2] = 255
 	return resultColor
-
-
-		
 
 def transformPolygonForLinesWithIlluminators(polygon, color, illuminators, viewpointObjectPosition, zoom, resolution):
 		n = 0
@@ -419,9 +408,6 @@ class Illuminator():
 class ModuleEffect(): # a ModuleEffect is just a polygon that is visually displayed when a module is active.
 	def __init__(self, effectType, position=[0,0]):
 		self.position = position
-		# self.radius = 3
-		# self.points = [[-self.radius, -self.radius], [-self.radius, self.radius], [0,2*self.radius]]
-		# self.color = [255,255,100,255]
 
 		if effectType == 'engine 10 flame':
 			self.radius = 3
@@ -593,12 +579,32 @@ class Module():
 
 			self.effect = ModuleEffect('cannon 10 flash', [0,-self.radius])
 
+		elif self.moduleType is 'hyperdrive 10':
+			self.mass = 5
+			self.resources = {
+				'electricity':1,
+				'warp energy':-1
+			}
+			self.stores = {
+				'warp energy':100
+			}
+			self.initialStores = {
+				'warp energy':0
+			}
+			self.radius = 5
+			size = self.radius
+			self.points = [[-size*1.5, -size*2], [-size*1.5, size*2], [size*1.5,size*2], [size*1.5, -size*2]]
+			self.color = [50,50,50,255]
+			self.outlineColor = [100,100,100,255]
+
+			self.momentArm = self.radius
+
 dinghy = [Module('generator',[0,0]), Module('engine 10',[0,15]), Module('RCS',[0,-10]) ]
 lothar = [Module('generator',[0,0]), Module('engine 10',[-13,8], 0.6/math.pi), Module('engine 10',[13,8],-0.6/math.pi), Module('RCS',[-13,-10]), Module('RCS',[13,-10]) , Module('cannon 10',[0,-10]) ]
 boldang = [Module('spar 10',[0,-100], (0.5* math.pi)), Module('box 10',[0,0])]
 bigmolly = [Module('box 100',[0,0]), Module('spar 100',[1000,0], 0.5 * math.pi),Module('box 100',[-1000,0]),Module('box 100',[2000,0]), Module('box 100',[-2000,0]),  Module('box 100',[3000,0])]
 
-# Maneuver('takeoff', 20000)
+derelict_hyperunit = [Module('hyperdrive 10',[0,0])]
 
 class Maneuver():
 	# description of an AI behaviour item.
@@ -903,18 +909,26 @@ class SolarSystem():
 			planet_moon = Attractor('moon',[1000000,-1000000], gravitationalConstant)
 			self.contents.append(planet_erf)
 			self.contents.append(planet_moon)
-			dinghy_instance = Actor('NPC dinghy', dinghy,(1000000, -1080100), [20000,0], 0)
+			dinghy_instance = Actor('NPC dinghy', dinghy,(1000000, -1080100), [10000,0], 0)
 			lothar_instance = Actor('NPC lothar', lothar,(10000, -345050), [45000,0], 0.6 * math.pi)
-			lothar_instance2 = Actor('player Lothar', lothar,(100, -320030), [0,0], 0, True)
+			lothar_instance2 = Actor('player Lothar', dinghy,(100, -320030), [0,0], 0, True)
 			boldang_instance = Actor('NPC boldang', boldang,(-100, -320050), [0,0],0)
 			bigmolly_instance = Actor('NPC molly', bigmolly,(100, -350050), [45000,0],0)
 
-			lothar_instance2.maneuverQueue.append(Maneuver('takeoff',30000,planet_erf))
+			derelict_instance = Actor('derelict hyperunit', derelict_hyperunit,(1000200, -1080100), [10000,0], 0)
+
+			# lothar_instance2.maneuverQueue.append(Maneuver('takeoff',30000,planet_erf))
 
 			self.contents.append(dinghy_instance)
 			self.contents.append(lothar_instance)
 			self.contents.append(lothar_instance2)
 			self.contents.append(bigmolly_instance)
+			self.contents.append(derelict_instance)
+			self.position = [0,0]
+			self.color = [10,50,200,255]
+
+			self.links = ['Sol IV']
+
 
 		if solarSystemName == "Sol IV":
 
@@ -934,6 +948,11 @@ class SolarSystem():
 			# self.contents.append(lothar_instance)
 			# self.contents.append(lothar_instance2)
 			# self.contents.append(bigmolly_instance)
+
+			self.position = [150,100]
+			self.color = [200,100,50,255]	
+
+			self.links = ['Sol III']		
 
 
 
@@ -975,6 +994,8 @@ class World():
 
 		self.topLimit = antiTransformForView( resolution  ,[0,0], self.zoom, resolution)
 		self.bottomLimit = antiTransformForView( [0,0] ,[0,0], self.zoom, resolution)
+
+		self.mapView = False
 
 	def gravityForce(self, actorPosition, attractorPosition, attractorMass):
 		distance = attractorPosition - actorPosition # scalar distance between two bodies
@@ -1064,6 +1085,7 @@ class World():
 
 		for actor in self.actors:
 
+			# explode all the projectiles
 			destroyed = False
 			for module in actor.modules:
 				if module.moduleType == "cannonshell 10":
@@ -1178,59 +1200,60 @@ class World():
 			# 	actor.prograde = math.atan2( adjustedFutureStep[1] - actor.body.position[1], adjustedFutureStep[0] - actor.body.position[0] )
 			# 	actor.retrograde = actor.prograde + math.pi
 
-			if not actor.freefalling:
-				# if it is not freefalling, add some gravity to it so that it moves naturally, and try to recalculate the orbit.
-				if not actor.exemptFromGravity:
-					self.gravitate(actor, strongestForce)
+			if not actor.exemptFromGravity:
+				if not actor.freefalling:
+					# if it is not freefalling, add some gravity to it so that it moves naturally, and try to recalculate the orbit.
+					if not actor.exemptFromGravity:
+						self.gravitate(actor, strongestForce)
 
 
-				if actor.stepsToFreefall > 0:
-					actor.stepsToFreefall -= 1
-				else:
-					actor.freefalling = True
-					actor.exemptFromGravity = False
-			
+					if actor.stepsToFreefall > 0:
+						actor.stepsToFreefall -= 1
+					else:
+						actor.freefalling = True
+						actor.exemptFromGravity = False
+				
 
-				try:
-					actor.orbit = Orbit.fromStateVector(numpy.array([actor.body.position[0] - actor.orbiting.body.position[0] ,actor.body.position[1] - actor.orbiting.body.position[1],1]), numpy.array([actor.body.velocity[0] ,actor.body.velocity[1] ,1]), actor.orbiting.APBody, Time('2000-01-01 00:00:00'), actor.name + " orbit around " + actor.orbiting.planetName)
-						# generate the orbit points once only.
+					try:
+						actor.orbit = Orbit.fromStateVector(numpy.array([actor.body.position[0] - actor.orbiting.body.position[0] ,actor.body.position[1] - actor.orbiting.body.position[1],1]), numpy.array([actor.body.velocity[0] ,actor.body.velocity[1] ,1]), actor.orbiting.APBody, Time('2000-01-01 00:00:00'), actor.name + " orbit around " + actor.orbiting.planetName)
+							# generate the orbit points once only.
+						if actor.orbit is not None:
+							actor.orbitPoints = []
+							n_points = 100
+							sliceSize =  (2 * math.pi / n_points)
+							for i in range(0,100):
+								temp_vec3d = actor.orbit.cartesianCoordinates(i *sliceSize)
+								actor.orbitPoints.append((temp_vec3d[0] + actor.orbiting.body.position[0], temp_vec3d[1] + actor.orbiting.body.position[1]))
+					except:
+						actor.orbit = None
+
 					if actor.orbit is not None:
-						actor.orbitPoints = []
-						n_points = 100
-						sliceSize =  (2 * math.pi / n_points)
-						for i in range(0,100):
-							temp_vec3d = actor.orbit.cartesianCoordinates(i *sliceSize)
-							actor.orbitPoints.append((temp_vec3d[0] + actor.orbiting.body.position[0], temp_vec3d[1] + actor.orbiting.body.position[1]))
-				except:
-					actor.orbit = None
+						futureSteptAn = actor.orbit.tAnAtTime(self.timestepSize)
+						futureStepCoordinates = actor.orbit.cartesianCoordinates(futureSteptAn)
+						adjustedFutureStep = [futureStepCoordinates[0] + actor.orbiting.body.position[0] , futureStepCoordinates[1] + actor.orbiting.body.position[1]]
+						actor.prograde = math.atan2( adjustedFutureStep[1] - actor.body.position[1], adjustedFutureStep[0] - actor.body.position[0] )
+						actor.retrograde = actor.prograde + math.pi
 
-				if actor.orbit is not None:
-					futureSteptAn = actor.orbit.tAnAtTime(self.timestepSize)
-					futureStepCoordinates = actor.orbit.cartesianCoordinates(futureSteptAn)
-					adjustedFutureStep = [futureStepCoordinates[0] + actor.orbiting.body.position[0] , futureStepCoordinates[1] + actor.orbiting.body.position[1]]
-					actor.prograde = math.atan2( adjustedFutureStep[1] - actor.body.position[1], adjustedFutureStep[0] - actor.body.position[0] )
-					actor.retrograde = actor.prograde + math.pi
+				else:
+					if actor.orbit is not None:
+						actor.orbit.updTime(self.timestepSize)
+						cartesian = actor.orbit.cartesianCoordinates(actor.orbit.tAn)
+						actor.body.position =  [cartesian[0] + actor.orbiting.body.position[0] ,cartesian[1] + actor.orbiting.body.position[1]]
 
-			else:
-				if actor.orbit is not None:
-					actor.orbit.updTime(self.timestepSize)
-					cartesian = actor.orbit.cartesianCoordinates(actor.orbit.tAn)
-					actor.body.position =  [cartesian[0] + actor.orbiting.body.position[0] ,cartesian[1] + actor.orbiting.body.position[1]]
+						
+						# you also must update the actor's velocity, or else when it leaves the track it will have the same velocity it entered with, leading to weird jumps.
+						trackSpeed = actor.orbit.getSpeed(actor.orbit.tAn)
 
-					
-					# you also must update the actor's velocity, or else when it leaves the track it will have the same velocity it entered with, leading to weird jumps.
-					trackSpeed = actor.orbit.getSpeed(actor.orbit.tAn)
+						# there is almost definitely a way to figure this out from the ellipse's properties. You would need to find tangent to the ellipse. But I figured it out by computing the position one step into the future, and then finding the angle between positions.
+						futureSteptAn = actor.orbit.tAnAtTime(self.timestepSize)
+						futureStepCoordinates = actor.orbit.cartesianCoordinates(futureSteptAn)
+						adjustedFutureStep = [futureStepCoordinates[0] + actor.orbiting.body.position[0] , futureStepCoordinates[1] + actor.orbiting.body.position[1]]
+						actor.prograde = math.atan2( adjustedFutureStep[1] - actor.body.position[1], adjustedFutureStep[0] - actor.body.position[0] )
+						actor.retrograde = actor.prograde + math.pi
 
-					# there is almost definitely a way to figure this out from the ellipse's properties. You would need to find tangent to the ellipse. But I figured it out by computing the position one step into the future, and then finding the angle between positions.
-					futureSteptAn = actor.orbit.tAnAtTime(self.timestepSize)
-					futureStepCoordinates = actor.orbit.cartesianCoordinates(futureSteptAn)
-					adjustedFutureStep = [futureStepCoordinates[0] + actor.orbiting.body.position[0] , futureStepCoordinates[1] + actor.orbiting.body.position[1]]
-					actor.prograde = math.atan2( adjustedFutureStep[1] - actor.body.position[1], adjustedFutureStep[0] - actor.body.position[0] )
-					actor.retrograde = actor.prograde + math.pi
-
-					# actor.nadir = math.atan2( actor.orbiting.body.position[1] - actor.body.position[1], actor.orbiting.body.position[0] - actor.body.position[0] )
-					# actor.zenith = actor.nadir + math.pi
-					actor.body.velocity = [trackSpeed * math.cos(actor.prograde), trackSpeed * math.sin(actor.prograde)]
+						# actor.nadir = math.atan2( actor.orbiting.body.position[1] - actor.body.position[1], actor.orbiting.body.position[0] - actor.body.position[0] )
+						# actor.zenith = actor.nadir + math.pi
+						actor.body.velocity = [trackSpeed * math.cos(actor.prograde), trackSpeed * math.sin(actor.prograde)]
 
 
 			# let the ai drive the ship. this comes after orbit calculation because it needs valid orbits
@@ -1486,6 +1509,17 @@ class World():
 		bodyB = shapes[1]._get_body()
 		actorB = self.getActorFromBody(bodyB)
 
+		if actorA is not None and actorB is not None:
+			if (actorA.isPlayer and len(actorB.modules) == 1):
+				self.availableModules.append(actorB.modules[0])
+				self.destroyActor(actorB)
+				return
+
+			if (actorB.isPlayer and len(actorA.modules) == 1):
+				self.availableModules.append(actorA.modules[0])
+				self.destroyActor(actorA)
+				return
+
 		#handle collisions between a planet and a ship differently than collisions between two ships
 		attractorCollision = False
 		if actorA is None:
@@ -1702,18 +1736,27 @@ class World():
 
 		main_batch.draw()
 
-	def graphics(self):
+	def drawSolarSystemInMapView(self, solar_system, main_batch):
+		pass
+
+
+	def mapViewGraphics(self):
 		window.clear()
 
 		main_batch = pyglet.graphics.Batch()
 		pyglet.gl.glLineWidth(2)
 
-		# self.topLimit = antiTransformForView( resolution  ,self.viewpointObject.body.position, self.zoom, resolution)
-		# self.bottomLimit = antiTransformForView( [0,0] ,self.viewpointObject.body.position, self.zoom, resolution)
-		# print(topLimit)
-		# print(bottomLimit)
+		for solar_system in self.galaxy:
+			self.drawSolarSystemInMapView(solar_system, main_batch)
 
-		# if self.showHUD:
+		main_batch.draw()
+
+
+	def graphics(self):
+		window.clear()
+
+		main_batch = pyglet.graphics.Batch()
+		pyglet.gl.glLineWidth(2)
 
 		for illuminator in self.illuminators:
 			illuminator.transformedPosition = transformForView( illuminator.position ,self.viewpointObject.body.position, self.zoom, resolution)
@@ -1793,6 +1836,9 @@ class World():
 
 		second_batch.draw()
 
+	def hyperspaceJump() :
+		pass
+
 	def step(self):
 		if not self.buildMenu:
 			self.player = self._getPlayer()
@@ -1815,7 +1861,20 @@ class World():
 			self.add(thing)
 
 	def start(self):
-		self.setup()		
+		self.setup()
+
+
+
+
+def save():
+	dill.dump(Nirn,open('save', 'wb'))
+
+
+def load():
+	Nirn=dill.load(open('save', 'rb'))
+
+
+
 
 Nirn = World()
 
@@ -1888,7 +1947,10 @@ def on_key_press(symbol, modifiers):
 		# 		Nirn.shootABullet(module, Nirn.player)
 		Nirn.player.keyStates['Fire'] = True
 	elif symbol == key.S:
-		Nirn.player.keyStates['face direction'] = 'retrograde'
+		if modifiers & key.MOD_CTRL:
+			save()
+		else:
+			Nirn.player.keyStates['face direction'] = 'retrograde'
 	elif symbol == key.W:
 		Nirn.player.keyStates['face direction'] = 'prograde'
 	# elif symbol == key.D:
@@ -1897,6 +1959,15 @@ def on_key_press(symbol, modifiers):
 		Nirn.player.keyStates['face direction'] = 'nadir'
 	elif symbol == key.T:
 		Nirn.player.autoPilotActive = not Nirn.player.autoPilotActive
+	elif symbol == key.L:
+		load()
+	elif symbol == key.J:
+		Nirn.hyperspaceJump()
+	elif symbol == key.M:
+		Nirn.mapView = not Nirn.mapView
+
+
+
 
 
 @window.event
