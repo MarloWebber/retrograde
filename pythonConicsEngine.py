@@ -606,53 +606,81 @@ class Maneuver():
 		self.maneuverType = maneuverType
 		self.parameter1 = parameter1
 		self.parameter2 = parameter2
+		self.completed = False
+		self.event1 = False
+		self.event2 = False
 
 	def perform(self, actor):
-		if self.maneuverType == 'takeoff':
+		if not self.completed:
+			if self.maneuverType == 'takeoff':
 
-			actorHeightFromAttractorCenter = mag(actor.body.position - self.parameter2.body.position)
-			naturalDepth = 1 - ((actorHeightFromAttractorCenter - self.parameter2.radius) / self.parameter1) # this is a number between 0 and 1 which is signifies the actors depth into this atmosphere layer.
-
-			# print(naturalDepth)
-
-			# angle should be straight away from the planet when it is at the surface and horizontal some distance above the atmosphere.
-			# actor.setPoint = actor.zenith #- (naturalDepth * math.pi)
-
-			
-			# if naturalDepth < 0.1:
-			# 	actor.setPoint = (actor.nadir + 0.5 * math.pi) - 0.5 * math.pi
-			if naturalDepth < 0.5:
-
-				gravityTurnFraction = 1-naturalDepth
-				# print(gravityTurnFraction)
-				gravityTurnSetPoint = (actor.zenith + 0.5 * math.pi) +( gravityTurnFraction * 0.5 * math.pi )
-				actor.setPoint = gravityTurnSetPoint
-				if actor.orbit is not None:
-					if actor.orbit.getPeriapsis() < self.parameter1:
-						pass
-
-
-			else:
-				actor.setPoint = actor.zenith + 0.5 * math.pi
+				actorHeightFromAttractorCenter = mag(actor.body.position - self.parameter2.body.position)
+				naturalHeight = ((actorHeightFromAttractorCenter - self.parameter2.radius) / self.parameter1) # this is a number between 0 and 1 which is signifies the actors depth into this atmosphere layer.
 				
+				# Go straight up at the start, and turn sideways once you get up a bit.
+				if not self.event1:
 
-			if actor.orbit is not None:
-				if actor.orbit.getPeriapsis() < self.parameter1:
-					if abs(actor.setPoint) - abs(actor.body.angle) < 0.1:
+					# if actor.orbiting.atmosphere is not None:
+
+
+
+					# else:
+
+					if naturalHeight < 0.5:
+						actor.setPoint = actor.zenith + 0.5 * math.pi
 						actor.keyStates['up'] = True
+					# elif naturalHeight > 1:
+					# 	actor.keyStates['up'] = False
 					else:
-						actor.keyStates['up'] = False
-				else:
-					if mag(actor.body.position - self.parameter2.body.position) > self.parameter2.radius + self.parameter2.atmosphere.height: # if the actor is out of the atmosphere
-						print(actor.nadir)
-						print(actor.orbit.aPe)
-						if actor.nadir - actor.orbit.aPe > 0.6 * math.pi:
+						actor.setPoint = (actor.zenith + 0.5 * math.pi) +( naturalHeight * 0.5 * math.pi )
+						actor.keyStates['up'] = True
+
+					if actor.orbit is not None:
+						print(actor.orbit.getPeriapsis())
+						print(actor.orbit.getApoapsis())
+						print(self.parameter1 + self.parameter2.radius)
+
+
+						if actor.orbit.getPeriapsis() > self.parameter1 + self.parameter2.radius:
+							print('the apoapsis is high enough')
+							self.event1 = True
 							actor.keyStates['up'] = False
-			else:
-				# if abs(actor.setPoint) - abs(actor.body.angle) < 0.1:
-				actor.keyStates['up'] = True
-				# else:
-				# 	actor.keyStates['up'] = False
+					
+					
+				else:
+					if actor.orbit is not None:
+						# first, focus on raising the apoapsis.
+						
+							actor.setPoint = actor.prograde + 0.5* math.pi #- 0.5* math.pi # why the heck is it off by so much. literally should just be prograde.
+							# print(actor.orbit.tAn)
+							# print(actor.orbit.aPe)
+							# print(actor.setPoint)
+							# print(actor.body.angle)
+
+							# if actor.orbit.getApoapsis() < self.parameter1 + self.parameter2.radius :
+							# # if abs(actor.setPoint) - abs(actor.body.angle) < 0.1: # only fire engines if the ship is pointing vaguely in the right direction
+							# # 	actor.setPoint = (actor.zenith + 0.5 * math.pi) +( naturalHeight * 0.5 * math.pi )
+							# 	actor.keyStates['up'] = True
+							# # else:
+							# # 	actor.keyStates['up'] = False
+
+							if self.event2:
+								if actor.orbit.getPeriapsis() > self.parameter1  + self.parameter2.radius and actor.orbit.getApoapsis()  > self.parameter1 + self.parameter2.radius:
+									# print(actor.orbit.getPeriapsis())
+									# print(actor.orbit.getApoapsis())
+									# print(self.parameter1)
+									actor.keyStates['up'] = False
+									self.completed = True
+									print('maneuver completed')
+							else:
+								# print('borfsefsp')
+								if( actor.orbit.tAn < actor.orbit.aPe + 0.1 and actor.orbit.tAn > actor.orbit.aPe - 0.1 )or self.event2:
+									print('reached the periapsis, ready to circularize')
+									self.event2 = True
+									if abs(actor.setPoint) - abs(actor.body.angle) < 0.1: # only fire engines if the ship is pointing vaguely in the right direction
+										actor.keyStates['up'] = True
+									else:
+										actor.keyStates['up'] = False
 
 
 
@@ -1144,9 +1172,6 @@ class World():
 				if actor.keyStates['right']:
 					actor.setPoint += 0.03
 
-			# let the ai drive the ship.
-			actor.flightComputer()
-
 			angleDifference = actor.setPoint - actor.body.angle
 
 			# all rotating actors experience a slight drag which slows their rotation. (it's more fun that way).
@@ -1240,6 +1265,9 @@ class World():
 					# actor.zenith = actor.nadir + math.pi
 					actor.body.velocity = [trackSpeed * math.cos(actor.prograde), trackSpeed * math.sin(actor.prograde)]
 
+
+			# let the ai drive the ship. this comes after orbit calculation because it needs valid orbits
+			actor.flightComputer()
 
 					
 
