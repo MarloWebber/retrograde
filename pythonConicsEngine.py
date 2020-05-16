@@ -620,67 +620,30 @@ class Maneuver():
 				
 				# Go straight up at the start, and turn sideways once you get up a bit.
 				if not self.event1:
-
-					# if actor.orbiting.atmosphere is not None:
-
-
-
-					# else:
-
 					if naturalHeight < 0.5:
 						actor.setPoint = actor.zenith + 0.5 * math.pi
 						actor.keyStates['up'] = True
-					# elif naturalHeight > 1:
-					# 	actor.keyStates['up'] = False
 					else:
 						actor.setPoint = (actor.zenith + 0.5 * math.pi) +( naturalHeight * 0.5 * math.pi )
 						actor.keyStates['up'] = True
 
 					if actor.orbit is not None:
-						# print(actor.orbit.getPeriapsis())
-						# print(actor.orbit.getApoapsis())
-						# print(self.parameter1 + self.parameter2.radius)
-
-
 						if actor.orbit.getPeriapsis() > self.parameter1 + self.parameter2.radius:
 							print('the apoapsis is high enough')
-							# self.parameter3 = actor.orbit.getPeriapsis()
 							self.event1 = True
 							actor.keyStates['up'] = False
 					
-					
 				else:
 					if actor.orbit is not None:
-						# first, focus on raising the apoapsis.
-						
+
+						# first, focus on raising the apoapsis
 							actor.setPoint = actor.prograde + 0.5* math.pi #- 0.5* math.pi # why the heck is it off by so much. literally should just be prograde.
-							# print(actor.orbit.tAn)
-							# print(actor.orbit.aPe)
-							# if( actor.orbit.tAn < actor.orbit.aPe + 0.1 and actor.orbit.tAn > actor.orbit.aPe - 0.1 ):
-							# 	print('topppp')
-							# print(actor.setPoint)
-							# print(actor.body.angle)
-
-							# if actor.orbit.getApoapsis() < self.parameter1 + self.parameter2.radius :
-							# # if abs(actor.setPoint) - abs(actor.body.angle) < 0.1: # only fire engines if the ship is pointing vaguely in the right direction
-							# # 	actor.setPoint = (actor.zenith + 0.5 * math.pi) +( naturalHeight * 0.5 * math.pi )
-							# 	actor.keyStates['up'] = True
-							# # else:
-							# # 	actor.keyStates['up'] = False
-
 							if self.event2:
-								# print(actor.orbit.getApoapsis() )
-								# print(actor.orbit.getPeriapsis() )
-								# if actor.orbit.getPeriapsis() > (self.parameter1  + self.parameter2.radius) and actor.orbit.getApoapsis()  > (self.parameter1 + self.parameter2.radius):
 								if actor.orbit.tAn < 0.2 and actor.orbit.getPeriapsis() > (self.parameter1  + self.parameter2.radius) and actor.orbit.getApoapsis()  > (self.parameter1 + self.parameter2.radius):
-									# print(actor.orbit.getPeriapsis())
-									# print(actor.orbit.getApoapsis())
-									# print(self.parameter1)
 									actor.keyStates['up'] = False
 									self.completed = True
 									print('maneuver completed')
 							else:
-								# print('borfsefsp')
 								if( actor.orbit.tAn < math.pi + 0.05 and actor.orbit.tAn > math.pi - 0.05 )or self.event2:
 									print('reached the periapsis, ready to circularize')
 									self.event2 = True
@@ -688,9 +651,6 @@ class Maneuver():
 										actor.keyStates['up'] = True
 									else:
 										actor.keyStates['up'] = False
-
-
-
 
 class Actor():
 	def __init__(self, name, modulesList, position, velocity, angle, isPlayer=False):
