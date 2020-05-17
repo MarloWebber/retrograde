@@ -610,7 +610,7 @@ class Maneuver():
 	# description of an AI behaviour item.
 	def __init__(self, maneuverType, parameter1, parameter2=0, parameter3=0):
 		self.maneuverType = maneuverType
-		self.parameter1 = parameter1
+		self.parameter1 = parameter1 # parameters can be used to mean different things depending on what kind of manuever it is.
 		self.parameter2 = parameter2
 		self.parameter3 = parameter3
 		self.completed = False
@@ -619,7 +619,70 @@ class Maneuver():
 
 	def perform(self, actor):
 		if not self.completed:
+
+			#http://www.braeunig.us/space/orbmech.htm orbital mechanics
+
+			if self.maneuverType == 'attack target':
+				pass 
+
+			if self.maneuverType == 'change periapsis':
+				# pass
+				actor.setPoint = actor.prograde + 0.5 * math.pi
+
+				if actor.orbit.tAn > 0 and actor.orbit.tAn < 0.1: # the ship is near the apoapsis
+					if abs(actor.setPoint) - abs(actor.body.angle) < 0.1: # only fire engines if the ship is pointing vaguely in the right direction
+						actor.keyStates['up'] = True
+					else:
+						actor.keyStates['up'] = False
+
+				if actor.orbit.getPeriapsis() > self.parameter1 + self.parameter2.radius:
+					actor.keyStates['up'] = False
+					self.completed = True
+
+
+			if self.maneuverType == 'change apoapsis':
+				# pass
+				actor.setPoint = actor.retrograde + 0.5 * math.pi
+
+				if actor.orbit.tAn > math.pi - 0.05 and actor.orbit.tAn <  math.pi + 0.05: # the ship is near the periapsis
+					if abs(actor.setPoint) - abs(actor.body.angle) < 0.1: # only fire engines if the ship is pointing vaguely in the right direction
+						actor.keyStates['up'] = True
+					else:
+						actor.keyStates['up'] = False
+
+				if actor.orbit.getApoapsis() < self.parameter1 + self.parameter2.radius:
+					actor.keyStates['up'] = False
+					self.completed = True
+
+
+			if self.maneuverType == 'change aPe':
+				pass
+
+			if self.maneuverType == 'transfer':
+				pass
+
+			if self.maneuverType == 'circularize':
+				pass
+
+			if self.maneuverType == 'match velocity':
+				pass
+
+			if self.maneuverType == 'intercept':
+				pass
+				# the ship guides itself to a target which is orbiting the same attractor.
+				# it is safer to always phase the target by going upwards, because then you never have to worry about hitting the planet.
+
+				# figure out the time discrepancy between you and your target.
+
+				if not self.event1:
+					pass
+				elif not self.event2:
+
+
 			if self.maneuverType == 'takeoff':
+				''' In takeoff, parameter1 is the orbit height to achieve, and parameter2 is the attractor you are taking off from.
+					event1 is placing the periapsis high enough, and event2 is reaching the periapsis and being ready to circularize.
+				''' 
 
 				actorHeightFromAttractorCenter = mag(actor.body.position - self.parameter2.body.position)
 				naturalHeight = ((actorHeightFromAttractorCenter - self.parameter2.radius) / self.parameter1) # this is a number between 0 and 1 which is signifies the actors depth into this atmosphere layer.
@@ -1193,19 +1256,12 @@ class World():
 			# if it is freefalling, move it along the orbital track.
 			actor.nadir = math.atan2( actor.orbiting.body.position[1] - actor.body.position[1], actor.orbiting.body.position[0] - actor.body.position[0] )
 			actor.zenith = actor.nadir + math.pi
-			# if actor.orbit is not None:
-			# 	futureSteptAn = actor.orbit.tAnAtTime(self.timestepSize)
-			# 	futureStepCoordinates = actor.orbit.cartesianCoordinates(futureSteptAn)
-			# 	adjustedFutureStep = [futureStepCoordinates[0] + actor.orbiting.body.position[0] , futureStepCoordinates[1] + actor.orbiting.body.position[1]]
-			# 	actor.prograde = math.atan2( adjustedFutureStep[1] - actor.body.position[1], adjustedFutureStep[0] - actor.body.position[0] )
-			# 	actor.retrograde = actor.prograde + math.pi
-
+			
 			if not actor.exemptFromGravity:
 				if not actor.freefalling:
 					# if it is not freefalling, add some gravity to it so that it moves naturally, and try to recalculate the orbit.
 					if not actor.exemptFromGravity:
 						self.gravitate(actor, strongestForce)
-
 
 					if actor.stepsToFreefall > 0:
 						actor.stepsToFreefall -= 1
@@ -1213,10 +1269,9 @@ class World():
 						actor.freefalling = True
 						actor.exemptFromGravity = False
 				
-
 					try:
 						actor.orbit = Orbit.fromStateVector(numpy.array([actor.body.position[0] - actor.orbiting.body.position[0] ,actor.body.position[1] - actor.orbiting.body.position[1],1]), numpy.array([actor.body.velocity[0] ,actor.body.velocity[1] ,1]), actor.orbiting.APBody, Time('2000-01-01 00:00:00'), actor.name + " orbit around " + actor.orbiting.planetName)
-							# generate the orbit points once only.
+						# generate the orbit points once only.
 						if actor.orbit is not None:
 							actor.orbitPoints = []
 							n_points = 100
@@ -1240,7 +1295,6 @@ class World():
 						cartesian = actor.orbit.cartesianCoordinates(actor.orbit.tAn)
 						actor.body.position =  [cartesian[0] + actor.orbiting.body.position[0] ,cartesian[1] + actor.orbiting.body.position[1]]
 
-						
 						# you also must update the actor's velocity, or else when it leaves the track it will have the same velocity it entered with, leading to weird jumps.
 						trackSpeed = actor.orbit.getSpeed(actor.orbit.tAn)
 
@@ -1250,19 +1304,12 @@ class World():
 						adjustedFutureStep = [futureStepCoordinates[0] + actor.orbiting.body.position[0] , futureStepCoordinates[1] + actor.orbiting.body.position[1]]
 						actor.prograde = math.atan2( adjustedFutureStep[1] - actor.body.position[1], adjustedFutureStep[0] - actor.body.position[0] )
 						actor.retrograde = actor.prograde + math.pi
-
-						# actor.nadir = math.atan2( actor.orbiting.body.position[1] - actor.body.position[1], actor.orbiting.body.position[0] - actor.body.position[0] )
-						# actor.zenith = actor.nadir + math.pi
 						actor.body.velocity = [trackSpeed * math.cos(actor.prograde), trackSpeed * math.sin(actor.prograde)]
-
 
 			# let the ai drive the ship. this comes after orbit calculation because it needs valid orbits
 			actor.flightComputer()
 
-					
-
-					
-
+				
 	def rotatePolygon(self, points, angle):
 		return Rotate2D(points,(0,0),angle)
 
@@ -1336,7 +1383,6 @@ class World():
 				transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
 			except:
 				pass
-			# if not math.isnan(transformedPoint[0]) and not math.isnan(transformedPoint[1]):
 			
 		renderAConvexPolygon(main_batch, transformedPoints, self.viewpointObject.body.position, self.zoom, self.resolution,  module.color, module.outlineColor, self.illuminators)
 
@@ -1375,116 +1421,50 @@ class World():
 
 			prevPointInside = True
 			pointInside = True
-
-			firstPoint = actor.points[0]+ actor.body.position # transformForView does operations like zooming and mapping 0 to the center of the screen. 
+			firstPoint = actor.points[0]+ actor.body.position 
 			prevPoint =	 firstPoint
 			currentPoint = prevPoint
 			
+			# figure out the index at the end of the array.
 			onTheVeryLastPoint = len(actor.points) - 1
 
 			for index, point in enumerate(actor.points):
-
+				# update the information for the current and previous points.
 				prevPoint = currentPoint
 				transformedPoint = point + actor.body.position
 				currentPoint = transformedPoint
-				
-				# lastPointInside = pointInside
-				# lastPoint = point
-				# lastPointInside = pointInside
-
-				# print(self.topLimit)
-				# print(self.bottomLimit)
-				# print(transformedPoint)
-
-				# if a point is outside
 				prevPointInside = pointInside
 				pointInside = False
 
+				# figure out if the point is inside the view field.
 				if transformedPoint[0] > self.bottomLimit[0] and transformedPoint[0] < self.topLimit[0]:
-					# transformedPoint[0] = topLimit[0]
 					pointInside = True
 
 				if  transformedPoint[1] > self.bottomLimit[1] and transformedPoint[1] < self.topLimit[1]:
-					# transformedPoint[1] = topLimit[1]
 					pointInside = True
 
-				# if :
-				# 	# transformedPoint[0] = bottomLimit[0]
-				# 	pointInside = False
-
-				# if
-				# 	# transformedPoint[1] = bottomLimit[1]
-				# 	pointInside = False
-
-				drawn = False
-
-				
-				
-
+				# if one of the points is outside the view field, and one is inside, you want to draw it, so that the line leaving the screen looks correct.
 				if (pointInside and not prevPointInside) or (prevPointInside and not pointInside):
-					
-					transformedPoint = transformForView(prevPoint,self.viewpointObject.body.position, self.zoom, self.resolution) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
+					transformedPoint = transformForView(prevPoint,self.viewpointObject.body.position, self.zoom, self.resolution) 
 					transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
-					transformedPoint = transformForView(currentPoint,self.viewpointObject.body.position, self.zoom, self.resolution) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
+					transformedPoint = transformForView(currentPoint,self.viewpointObject.body.position, self.zoom, self.resolution) 
 					transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
-					drawn = True
 
+					# on the last point, you want to make a connection between the first and last point in the polygon. It should be treated the same as the other lines.
 					if index == onTheVeryLastPoint:
-						transformedPoint = transformForView(firstPoint,self.viewpointObject.body.position, self.zoom, self.resolution) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
+						transformedPoint = transformForView(firstPoint,self.viewpointObject.body.position, self.zoom, self.resolution) 
 						transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
 
+				# if both points are inside, you want to draw both. But you've already drawn lastPoint, so you only need to add the current point.
 				elif pointInside and prevPointInside:
-					
-
-					transformedPoint = transformForView(currentPoint,self.viewpointObject.body.position, self.zoom, self.resolution) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
+					transformedPoint = transformForView(currentPoint,self.viewpointObject.body.position, self.zoom, self.resolution) 
 					transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
-					drawn = True
 
 					if index == onTheVeryLastPoint:
-						transformedPoint = transformForView(firstPoint,self.viewpointObject.body.position, self.zoom, self.resolution) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
+						transformedPoint = transformForView(firstPoint,self.viewpointObject.body.position, self.zoom, self.resolution) 
 						transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
 
-
-				# print( str(pointInside ) + ' ' + str(drawn))
-
-
-
-
-
-# #0------
-# 				if lastPointInside: #and not pointInside:
-# 					# transformedPoints.append(lastPoint)
-# 					# lastPoint = transformedPoint
-# 					transformedPoint = transformForView(transformedPoint,self.viewpointObject.body.position, self.zoom, self.resolution) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
-# 					transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
-
-
-# 				if pointInside:
-
-# 					# transformedPoints.append(lastPoint)
-# 					# lastPoint = transformedPoint
-# 					# transformedPoint = transformForView(lastPoint,self.viewpointObject.body.position, self.zoom, self.resolution) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
-# 					# transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
-
-# 					transformedPoint = transformForView(transformedPoint,self.viewpointObject.body.position, self.zoom, self.resolution) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
-# 					transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
-# 					# pass
-					# add the last point as well
-
-			
-
-					# add the point as well
-
-				# elif not pointInside and not lastPointInside:
-				# 	pass
-
-				
-					# degenerate the point onto one of the edges of the screen
-
-					# discard the point if it is in a straight line or coincident with other degenerate points
-
-				# transformedPoint = transformForView(transformedPoint,self.viewpointObject.body.position, self.zoom, self.resolution) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
-				# transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
+			# if the polygon was completely offscreen, the length of the array will be 0, and you can skip it.
 			if len(transformedPoints) > 0:
 				renderAConvexPolygon(main_batch, transformedPoints,self.viewpointObject.body.position, self.zoom, self.resolution,  actor.color, actor.outlineColor)	
 
@@ -1542,7 +1522,6 @@ class World():
 				self.decomposeActor(actorB, actorB.modules)
 
 		if attractorCollision:
-			# print('attractorCollision')
 			if actorA is not None:
 				actorA.exemptFromGravity = True
 
@@ -1565,40 +1544,10 @@ class World():
 		if actor.orbit is None:
 			return
 		if len(actor.orbitPoints) > 0:
-
-			# speed optimization: figure out what points are outside of the viewpoint very early on, and discard them.
-			
-			# print(topLimit)
-			# print(bottomLimit)
-
-			# second speed optimization: only compute the points when the orbit is changed, and leave it sitting after that. the computation is expensive
-
-			# print(transformForView(topLimit,self.viewpointObject.body.position, self.zoom, resolution))
-			# print(transformForView(bottomLimit,self.viewpointObject.body.position, self.zoom, resolution))
-			# for i in range(0,n_points):
-			# 	temp_vec3d = orbit.cartesianCoordinates(i *sliceSize)
-			# 	point = (temp_vec3d[0] + attractor.body.position[0], temp_vec3d[1] + attractor.body.position[1])
 			points = []
-			# print(actor.orbitPoints)
 			for point in actor.orbitPoints:
-				# if point[0] > topLimit[0] or point[1] > topLimit[1]:
-				# print(point)
-				# print(bottomLimit)
-				# print(topLimit)
-				# if pointInRect(point, [bottomLimit, topLimit]):
 				if not math.isnan(point[0]) and not math.isnan(point[1]):
 					transformedPoint = transformForView(point,self.viewpointObject.body.position, self.zoom, resolution)
-
-				# if transformedPoint[0] < topLimit[0] and transformedPoint[0] > bottomLimit[0]:
-				# 	print('O')
-				# else:
-				# 	print('.')
-
-				# if transformedPoint[1] < topLimit[1] and transformedPoint[1] > bottomLimit[1]:
-				# 
-				# else:
-				# 
-
 					points.append(transformedPoint)
 
 			transformedPoints = transformPolygonForLines(points)
@@ -1624,10 +1573,13 @@ class World():
 		listXPosition = 30
 
 		if quantity is None:
-			# textsurface = self.font.render(string, False, (255, 255, 255))
 			pass
 		else:
-			# textsurface = self.font.render(string + str(quantity), False, (255, 255, 255))
+			# label = pyglet.text.Label('Hello, world',
+   #                        font_name='Times New Roman',
+   #                        font_size=36,
+   #                        x=window.width//2, y=window.height//2,
+   #                        anchor_x='center', anchor_y='center')
 			pass
 
 		return index + 1
@@ -1681,16 +1633,12 @@ class World():
 	def shootABullet(self, gunModule, actor):
 		if gunModule.enabled:
 			if gunModule.moduleType is 'cannon 10':
-				#(self, name, modulesList, position, velocity, angle, isPlayer=False):
 				bulletPosition = [actor.body.position[0] + gunModule.offset[0] + gunModule.barrelHole[0], actor.body.position[1] + gunModule.offset[1] + gunModule.barrelHole[1]]
 				bulletPosition = rotate_point(bulletPosition, gunModule.angle, actor.body.position + gunModule.offset )
 				bulletPosition = rotate_point(bulletPosition, actor.body.angle, actor.body.position )
 				bulletVelocity = [gunModule.muzzleVelocity * math.cos(gunModule.angle + actor.body.angle - 0.5*math.pi) , gunModule.muzzleVelocity * math.sin(gunModule.angle + actor.body.angle- 0.5*math.pi)]
 				bullet = Actor('cannonshell 10', [Module('cannonshell 10', (0,0))], bulletPosition ,bulletVelocity,0 ,False)
 				self.add(bullet)
-				# gunModule.active = True
-				# self.illuminators.append(gunModule.effect.illuminator)
-			# self.drawModuleEffects(main_batch, gunModule, actor)
 
 	def loadShipIntoBuildMenu(self, actor):
 		self.modulesInUse = []
@@ -1708,7 +1656,6 @@ class World():
 
 	def dropModuleIntoBuildArea(self, module, position):
 		module.offset = self.antiTransformForBuild(position)
-		# print(self.antiTransformForBuild(position))
 		self.modulesInUse.append(module)
 
 	def buildMenuGraphics(self):
@@ -1739,7 +1686,6 @@ class World():
 	def drawSolarSystemInMapView(self, solar_system, main_batch):
 		pass
 
-
 	def mapViewGraphics(self):
 		window.clear()
 
@@ -1750,7 +1696,6 @@ class World():
 			self.drawSolarSystemInMapView(solar_system, main_batch)
 
 		main_batch.draw()
-
 
 	def graphics(self):
 		window.clear()
@@ -1820,8 +1765,6 @@ class World():
 			end = ((self.navcircleInnerRadius) * math.cos(angle)+ (self.resolution[0]*0.5),- (self.navcircleInnerRadius) * math.sin(angle)+ (self.resolution[1]*0.5))
 			transformedPoints = transformPolygonForLines([start,end])
 			main_batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i', transformedPoints[1]), ('c4B',[0,50,100,255]*(transformedPoints[0])))
-
-
 
 		main_batch.draw()
 		second_batch = pyglet.graphics.Batch()
@@ -1942,9 +1885,6 @@ def on_key_press(symbol, modifiers):
 			Nirn.viewpointObjectIndex = len(Nirn.actors)-1
 		Nirn.viewpointObject = Nirn.actors[Nirn.viewpointObjectIndex]
 	elif symbol == key.SPACE:
-		# for module in Nirn.player.modules:
-		# 	if module.moduleType == 'cannon 10':
-		# 		Nirn.shootABullet(module, Nirn.player)
 		Nirn.player.keyStates['Fire'] = True
 	elif symbol == key.S:
 		if modifiers & key.MOD_CTRL:
@@ -1953,8 +1893,6 @@ def on_key_press(symbol, modifiers):
 			Nirn.player.keyStates['face direction'] = 'retrograde'
 	elif symbol == key.W:
 		Nirn.player.keyStates['face direction'] = 'prograde'
-	# elif symbol == key.D:
-	# 	Nirn.player.keyStates['face direction'] = 'zenith'
 	elif symbol == key.A:
 		Nirn.player.keyStates['face direction'] = 'nadir'
 	elif symbol == key.T:
@@ -1965,10 +1903,6 @@ def on_key_press(symbol, modifiers):
 		Nirn.hyperspaceJump()
 	elif symbol == key.M:
 		Nirn.mapView = not Nirn.mapView
-
-
-
-
 
 @window.event
 def on_key_release(symbol, modifiers):
@@ -2008,24 +1942,6 @@ def on_draw():
 
 def hello():
 	Nirn.start()
-
-	# testArea = [resolution[0], resolution[1]]
-	# print(testArea)
-	# #transformForView( position ,viewpointObjectPosition, zoom, resolution):
-	# testArea = transformForView(testArea, Nirn.viewpointObject.body.position, Nirn.zoom, resolution)
-	# print(testArea)
-	# testArea = antiTransformForView(testArea, Nirn.viewpointObject.body.position, Nirn.zoom, resolution)
-	# print(testArea)
-	# testArea = [0,0]
-	# print(testArea)
-	# #transformForView( position ,viewpointObjectPosition, zoom, resolution):
-	# testArea = transformForView(testArea, Nirn.viewpointObject.body.position, Nirn.zoom, resolution)
-	# print(testArea)
-	# testArea = antiTransformForView(testArea, Nirn.viewpointObject.body.position, Nirn.zoom, resolution)
-	# print(testArea)
-
-
-
 	pyglet.clock.schedule_interval(stepWithBatch, 0.01)
 	pyglet.app.run()
 
