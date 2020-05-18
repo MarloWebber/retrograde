@@ -642,7 +642,7 @@ derelict_hyperunit = [Module('hyperdrive 10',[0,0])]
 
 class Maneuver():
 	# description of an AI behaviour item.
-	def __init__(self, maneuverType, parameter1, parameter2=0, parameter3=0):
+	def __init__(self, maneuverType, parameter1=None, parameter2=None, parameter3=None):
 		self.maneuverType = maneuverType
 		self.parameter1 = parameter1 # parameters can be used to mean different things depending on what kind of manuever it is.
 		self.parameter2 = parameter2
@@ -661,68 +661,93 @@ class Maneuver():
 			if self.maneuverType == 'attack target':
 				pass 
 
+			if self.maneuverType == 'fast intercept':
+				# point at the target, fly half way there at full speed. turn around at the halfway point and decelerate the rest of the way.
+				pass 
+
+
+			if self.maneuverType == 'add speed':
+				# points the ship in a direction and accelerates until it is comoving with the vector parameter1.
+				if not self.event1:
+					print('add speed')
+					self.event1 = True
+					if self.parameter2 is None:
+						self.parameter2 = mag(self.parameter1) * 0.1
+
+				speedDifference = self.parameter1 - actor.body.velocity
+				resultAngle = math.atan2(speedDifference[1], speedDifference[0])
+
+				actor.setPoint = resultAngle
+				if (angleDifference < 0.1 and angleDifference > 0) or angleDifference > (2*math.pi - 0.1): # only fire engines if the ship is pointing vaguely in the right direction
+							actor.keyStates['up'] = True
+						else:
+							actor.keyStates['up'] = False
+
+				if mag(speedDifference) < self.parameter2:
+						actor.keyStates['up'] = False
+						self.completed = True
+
+
 			if self.maneuverType == 'change periapsis':
 				# event1 prints 'change periapsis'
-				# event2 is reaching the apoapsis and circularizing
-				
+				# event2 is reaching the apoapsis and starting the burn
+				# parameter1 is the new periapsis
 
 				if not self.event1:
 					print('change periapsis')
 					self.event1 = True
 
+					if parameter2 is None: # if the angle for the new periapsis was passed in as none, you should burn from the apoapsis.
+						parameter2 = 0
+
 				actor.setPoint = actor.prograde + 0.5 * math.pi
-
 				if actor.orbit is not None:
-				
-					if actor.orbit.tAn > 0 and actor.orbit.tAn < 0.1: # the ship is near the apoapsis
+					if actor.orbit.tAn > parameter2 - 0.1 and actor.orbit.tAn < parameter2 + 0.1: # the ship is near the apoapsis
 						self.event2 = True
-
 					if self.event2:
 						angleDifference = actor.setPoint - actor.body.angle
 						if (angleDifference < 0.1 and angleDifference > 0) or angleDifference > (2*math.pi - 0.1): # only fire engines if the ship is pointing vaguely in the right direction
 							actor.keyStates['up'] = True
 						else:
 							actor.keyStates['up'] = False
-
-					print(self.parameter1)
-					print(actor.orbit.getApoapsis())
 					if actor.orbit.getApoapsis() > self.parameter1:
 						actor.keyStates['up'] = False
 						self.completed = True
 
-
 			if self.maneuverType == 'change apoapsis':
-				# event1 prints 'change apoapsis'
-				# event2 is reaching the periapsis and circularizing
-				
-
 				if not self.event1:
 					print('change apoapsis')
 					self.event1 = True
-
 				actor.setPoint = actor.retrograde + 0.5 * math.pi
-
 				if actor.orbit is not None:
-				
 					if actor.orbit.tAn > 0 and actor.orbit.tAn < 0.1: # the ship is near the apoapsis
 						self.event2 = True
-
 					if self.event2:
 						angleDifference = actor.setPoint - actor.body.angle
 						if (angleDifference < 0.1 and angleDifference > 0) or angleDifference > (2*math.pi - 0.1): # only fire engines if the ship is pointing vaguely in the right direction
 							actor.keyStates['up'] = True
 						else:
 							actor.keyStates['up'] = False
-
-					print(self.parameter1)
-					print(actor.orbit.getApoapsis())
 					if actor.orbit.getApoapsis() < self.parameter1:
 						actor.keyStates['up'] = False
 						self.completed = True
 
-
-			if self.maneuverType == 'change aPe':
-				pass
+			##### deprecated by just introducing an angle element to change periapsis.
+			# if self.maneuverType == 'change aPe':
+			# 	# take a relatively circular orbit and make it slightly elliptical to a particular angle
+			# 	if not self.event1:
+			# 		print('change argument of periapsis')
+			# 		self.event1 = True
+			# 	actor.setPoint = actor.nadir + 0.5 * math.pi
+			# 	if actor.orbit is not None:
+			# 		if actor.orbit.tAn > addRadians(self.parameter1, - 0.1) and actor.orbit.tAn < addRadians(self.parameter1, 0.1):
+			# 			self.event2 = True
+			# 		if self.event2:
+			# 			angleDifference = actor.setPoint - actor.body.angle
+			# 			if (angleDifference < 0.1 and angleDifference > 0) or angleDifference > (2*math.pi - 0.1): # only fire engines if the ship is pointing vaguely in the right direction
+			# 				actor.keyStates['up'] = True
+			# 			else:
+			# 				actor.keyStates['up'] = False
 
 			if self.maneuverType == 'transfer':
 				pass
@@ -1100,13 +1125,13 @@ class SolarSystem():
 			self.contents.append(yhivi)
 
 			lothar_instance = Actor('NPC lothar', lothar,(1, 121000), [17000,0], 0.6 * math.pi, True)
-			lothar_instance2 = Actor('player Lothar', lothar,(1, -121000), [-17000,0], 0)
+			lothar_instance2 = Actor('player Lothar', lothar,(1, -121000), [-18000,0], 0)
 			self.contents.append(lothar_instance)
 			self.contents.append(lothar_instance2)
 			# self.contents.append(bigmolly_instance)
 			# self.contents.append(derelict_instance)
 
-			lothar_instance.maneuverQueue.append(Maneuver('change apoapsis',100000,yhivi))
+			lothar_instance.maneuverQueue.append(Maneuver('change aPe',0.3 * math.pi,yhivi))
 
 			self.position = [250,450]
 			self.color = [10,200,50,255]
