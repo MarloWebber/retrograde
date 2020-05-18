@@ -91,12 +91,12 @@ def rotate_polygon(polygon, angle, center_point=(0, 0)):
 def area_of_annulus(inner, outer):
 	return math.pi * ((inner**2) - (outer**2))
 
-def make_circle(radius, points):
+def make_circle(radius, points, noise):
 	# returns a list of points defining a circle.
 	circle = []
 	angleStep = 2*math.pi / points
 	for i in range(0,points):
-		circle.append([radius * math.cos(i * angleStep),radius * math.sin(i * angleStep) ])
+		circle.append([(radius * math.cos(i * angleStep) + random.randint(0,noise)),(radius * math.sin(i * angleStep) ) + random.randint(0,noise) ])
 	return circle
 
 def mass_of_a_sphere(density, radius):
@@ -338,8 +338,18 @@ def unwrapAtmosphereForGradient(n, inside_verts, outside_verts, inside_color, ou
 			colorstream.append(outside_color[2])
 			colorstream.append(outside_color[3])
 
-		bitstream.append(outside_verts[index][0])
-		bitstream.append(outside_verts[index][1])
+		bitstream.append(inside_verts[0][0])
+		bitstream.append(inside_verts[0][1])
+		
+		colorstream.append(inside_color[0])
+		colorstream.append(inside_color[1])
+		colorstream.append(inside_color[2])
+		colorstream.append(inside_color[3])
+
+		nn += 1
+
+		bitstream.append(outside_verts[0][0])
+		bitstream.append(outside_verts[0][1])
 		
 		colorstream.append(outside_color[0])
 		colorstream.append(outside_color[1])
@@ -347,6 +357,21 @@ def unwrapAtmosphereForGradient(n, inside_verts, outside_verts, inside_color, ou
 		colorstream.append(outside_color[3])
 
 		nn += 1
+
+		
+
+		bitstream.append(outside_verts[0][0])
+		bitstream.append(outside_verts[0][1])
+		
+		colorstream.append(outside_color[0])
+		colorstream.append(outside_color[1])
+		colorstream.append(outside_color[2])
+		colorstream.append(outside_color[3])
+
+		nn += 1
+
+
+
 
 		return [nn, bitstream, colorstream]
 
@@ -384,12 +409,21 @@ class Atmosphere():
 			self.outerColor = [0,0,0,255]
 			self.outlineColor = [50,125,200,255]
 
+		if atmosphereType is "yhiviAtmosphere":
+
+			self.height = 20000
+			self.bottomDensity = 0.5
+			self.topDensity = 0
+			self.color = [210,255,120,255]
+			self.outerColor = [0,0,0,255]
+			self.outlineColor = [210,255,120,255]
+
 
 		# each atmosphere layer is an annulus.
 		# it is rendered as a triangle strip with a gradient between the inner and outer edges.
 		self.n_points = 100
-		self.innerPoints = make_circle(radius, 100)
-		self.outerPoints = make_circle(radius+self.height, 100)
+		self.innerPoints = make_circle(radius, self.n_points, 0)
+		self.outerPoints = make_circle(radius+self.height, self.n_points, 0)
 
 		# self.rendering = unwrapForGradient(n_points, self.innerPoints, self.outerPoints, self.color, self.outerColor)
 
@@ -599,11 +633,11 @@ class Module():
 
 			self.momentArm = self.radius
 
+# shipyard
 dinghy = [Module('generator',[0,0]), Module('engine 10',[0,15]), Module('RCS',[0,-10]) ]
 lothar = [Module('generator',[0,0]), Module('engine 10',[-13,8], 0.6/math.pi), Module('engine 10',[13,8],-0.6/math.pi), Module('RCS',[-13,-10]), Module('RCS',[13,-10]) , Module('cannon 10',[0,-10]) ]
 boldang = [Module('spar 10',[0,-100], (0.5* math.pi)), Module('box 10',[0,0])]
 bigmolly = [Module('box 100',[0,0]), Module('spar 100',[1000,0], 0.5 * math.pi),Module('box 100',[-1000,0]),Module('box 100',[2000,0]), Module('box 100',[-2000,0]),  Module('box 100',[3000,0])]
-
 derelict_hyperunit = [Module('hyperdrive 10',[0,0])]
 
 class Maneuver():
@@ -677,12 +711,13 @@ class Maneuver():
 				if not self.event1:
 					pass
 				elif not self.event2:
+					pass
 
 
 			if self.maneuverType == 'takeoff':
-				''' In takeoff, parameter1 is the orbit height to achieve, and parameter2 is the attractor you are taking off from.
-					event1 is placing the periapsis high enough, and event2 is reaching the periapsis and being ready to circularize.
-				''' 
+				#In takeoff, parameter1 is the orbit height to achieve, and parameter2 is the attractor you are taking off from.
+					#event1 is placing the periapsis high enough, and event2 is reaching the periapsis and being ready to circularize.
+				
 
 				actorHeightFromAttractorCenter = mag(actor.body.position - self.parameter2.body.position)
 				naturalHeight = ((actorHeightFromAttractorCenter - self.parameter2.radius) / self.parameter1) # this is a number between 0 and 1 which is signifies the actors depth into this atmosphere layer.
@@ -913,7 +948,7 @@ class Attractor():
 		self.planetName = planetType # just set the planetName to something easy for now. # the name of the individual instance of this planet type.
 		
 		if planetType == 'earth':
-			self.radius = 320000
+			self.radius = 640000
 			self.density = 1
 			self.friction = 0.9
 			self.color = [180,170,145,255]
@@ -921,7 +956,7 @@ class Attractor():
 			self.atmosphere = Atmosphere(self.radius, position, "earthAtmosphere")
 
 		elif planetType == 'moon':
-			self.radius = 80000
+			self.radius = 160000
 			self.density = 1
 			self.friction = 0.9
 			self.color = [45,45,45,255]
@@ -929,18 +964,26 @@ class Attractor():
 			self.atmosphere = None #Atmosphere(self)
 
 		elif planetType == 'mars':
-			self.radius = 280000
+			self.radius = 560000
 			self.density = 0.8
 			self.friction = 0.9
 			self.color = [125,45,25,255]
 			self.outlineColor = [155,75,55,255]
 			self.atmosphere = Atmosphere(self.radius, position, "marsAtmosphere")
 
+		elif planetType == 'yhivi':
+			self.radius = 100000
+			self.density = 5
+			self.friction = 0.9
+			self.color = [130,220,120,255]
+			self.outlineColor = [220,255,180,255]
+			self.atmosphere = Atmosphere(self.radius, position, "yhiviAtmosphere")
+
 
 		# create pymunk physical body and shape
 		self.mass = mass_of_a_sphere(self.density, self.radius)
 		size = self.radius
-		self.points = make_circle(self.radius, 120)
+		self.points = make_circle(self.radius, 120, 0)
 		inertia = pymunk.moment_for_poly(self.mass, self.points, (0,0))
 		self.body = pymunk.Body(self.mass, inertia)
 		self.body.position = position
@@ -969,20 +1012,20 @@ class SolarSystem():
 			
 
 			planet_erf = Attractor('earth', [1,1], gravitationalConstant)
-			planet_moon = Attractor('moon',[1000000,-1000000], gravitationalConstant)
+			planet_moon = Attractor('moon',[3000000,-3000000], gravitationalConstant)
 			self.contents.append(planet_erf)
 			self.contents.append(planet_moon)
-			dinghy_instance = Actor('NPC dinghy', dinghy,(1000000, -1080100), [10000,0], 0)
-			lothar_instance = Actor('NPC lothar', lothar,(10000, -345050), [45000,0], 0.6 * math.pi)
-			lothar_instance2 = Actor('player Lothar', dinghy,(100, -320030), [0,0], 0, True)
-			boldang_instance = Actor('NPC boldang', boldang,(-100, -320050), [0,0],0)
-			bigmolly_instance = Actor('NPC molly', bigmolly,(100, -350050), [45000,0],0)
+			# dinghy_instance = Actor('NPC dinghy', dinghy,(3000000, -3080100), [10000,0], 0)
+			lothar_instance = Actor('NPC lothar', lothar,(10000, -645050), [100000,0], 0.6 * math.pi)
+			lothar_instance2 = Actor('player Lothar', dinghy,(100, -640030), [0,0], 0, True)
+			boldang_instance = Actor('NPC boldang', boldang,(-100, -640050), [0,0],0)
+			bigmolly_instance = Actor('NPC molly', bigmolly,(100, -700050), [52000,0],0)
 
 			derelict_instance = Actor('derelict hyperunit', derelict_hyperunit,(1000200, -1080100), [10000,0], 0)
 
 			# lothar_instance2.maneuverQueue.append(Maneuver('takeoff',30000,planet_erf))
 
-			self.contents.append(dinghy_instance)
+			# self.contents.append(dinghy_instance)
 			self.contents.append(lothar_instance)
 			self.contents.append(lothar_instance2)
 			self.contents.append(bigmolly_instance)
@@ -1015,7 +1058,25 @@ class SolarSystem():
 			self.position = [150,100]
 			self.color = [200,100,50,255]	
 
-			self.links = ['Sol III']		
+			self.links = ['Sol III']
+
+		if solarSystemName == "Mooi":
+
+			
+			self.contents.append(Attractor('yhivi', [1,1], gravitationalConstant))
+
+			lothar_instance = Actor('NPC lothar', lothar,(1, 121000), [17000,0], 0.6 * math.pi, True)
+			lothar_instance2 = Actor('player Lothar', lothar,(1, -121000), [-17000,0], 0)
+			self.contents.append(lothar_instance)
+			self.contents.append(lothar_instance2)
+			# self.contents.append(bigmolly_instance)
+			# self.contents.append(derelict_instance)
+			self.position = [250,450]
+			self.color = [10,200,50,255]
+
+			self.links = ['Sol IV']
+
+		
 
 
 
@@ -1024,7 +1085,7 @@ class World():
 		self.time = 0 # the number of timesteps that have passed in-universe. used for physics and orbital calculations.
 		self.space = pymunk.Space()
 		self.space.gravity = (0.0, 0.0)
-		self.gravitationalConstant = 0.03
+		self.gravitationalConstant = 0.01
 		self.dragCoefficient = 0.005 # atmospheric drag
 		self.actors = []
 		self.attractors = []
@@ -1799,7 +1860,7 @@ class World():
 		for module in lothar:
 			self.availableModules.append(copy.deepcopy(module))
 
-		system = SolarSystem("Sol III", self.gravitationalConstant)
+		system = SolarSystem("Mooi", self.gravitationalConstant)
 		for thing in system.contents:
 			self.add(thing)
 
