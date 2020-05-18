@@ -650,6 +650,8 @@ class Maneuver():
 		self.completed = False
 		self.event1 = False
 		self.event2 = False
+		self.event3 = False
+		self.event4 = False
 
 	def perform(self, actor):
 		if not self.completed:
@@ -660,33 +662,63 @@ class Maneuver():
 				pass 
 
 			if self.maneuverType == 'change periapsis':
-				# pass
+				# event1 prints 'change periapsis'
+				# event2 is reaching the apoapsis and circularizing
+				
+
+				if not self.event1:
+					print('change periapsis')
+					self.event1 = True
+
 				actor.setPoint = actor.prograde + 0.5 * math.pi
 
-				if actor.orbit.tAn > 0 and actor.orbit.tAn < 0.1: # the ship is near the apoapsis
-					if abs(actor.setPoint) - abs(actor.body.angle) < 0.1: # only fire engines if the ship is pointing vaguely in the right direction
-						actor.keyStates['up'] = True
-					else:
-						actor.keyStates['up'] = False
+				if actor.orbit is not None:
+				
+					if actor.orbit.tAn > 0 and actor.orbit.tAn < 0.1: # the ship is near the apoapsis
+						self.event2 = True
 
-				if actor.orbit.getPeriapsis() > self.parameter1 + self.parameter2.radius:
-					actor.keyStates['up'] = False
-					self.completed = True
+					if self.event2:
+						angleDifference = actor.setPoint - actor.body.angle
+						if (angleDifference < 0.1 and angleDifference > 0) or angleDifference > (2*math.pi - 0.1): # only fire engines if the ship is pointing vaguely in the right direction
+							actor.keyStates['up'] = True
+						else:
+							actor.keyStates['up'] = False
+
+					print(self.parameter1)
+					print(actor.orbit.getApoapsis())
+					if actor.orbit.getApoapsis() > self.parameter1:
+						actor.keyStates['up'] = False
+						self.completed = True
 
 
 			if self.maneuverType == 'change apoapsis':
-				# pass
+				# event1 prints 'change apoapsis'
+				# event2 is reaching the periapsis and circularizing
+				
+
+				if not self.event1:
+					print('change apoapsis')
+					self.event1 = True
+
 				actor.setPoint = actor.retrograde + 0.5 * math.pi
 
-				if actor.orbit.tAn > math.pi - 0.05 and actor.orbit.tAn <  math.pi + 0.05: # the ship is near the periapsis
-					if abs(actor.setPoint) - abs(actor.body.angle) < 0.1: # only fire engines if the ship is pointing vaguely in the right direction
-						actor.keyStates['up'] = True
-					else:
-						actor.keyStates['up'] = False
+				if actor.orbit is not None:
+				
+					if actor.orbit.tAn > 0 and actor.orbit.tAn < 0.1: # the ship is near the apoapsis
+						self.event2 = True
 
-				if actor.orbit.getApoapsis() < self.parameter1 + self.parameter2.radius:
-					actor.keyStates['up'] = False
-					self.completed = True
+					if self.event2:
+						angleDifference = actor.setPoint - actor.body.angle
+						if (angleDifference < 0.1 and angleDifference > 0) or angleDifference > (2*math.pi - 0.1): # only fire engines if the ship is pointing vaguely in the right direction
+							actor.keyStates['up'] = True
+						else:
+							actor.keyStates['up'] = False
+
+					print(self.parameter1)
+					print(actor.orbit.getApoapsis())
+					if actor.orbit.getApoapsis() < self.parameter1:
+						actor.keyStates['up'] = False
+						self.completed = True
 
 
 			if self.maneuverType == 'change aPe':
@@ -701,7 +733,7 @@ class Maneuver():
 			if self.maneuverType == 'match velocity':
 				pass
 
-			if self.maneuverType == 'intercept':
+			if self.maneuverType == 'rendezvous':
 				pass
 				# the ship guides itself to a target which is orbiting the same attractor.
 				# it is safer to always phase the target by going upwards, because then you never have to worry about hitting the planet.
@@ -1062,8 +1094,10 @@ class SolarSystem():
 
 		if solarSystemName == "Mooi":
 
+
+			yhivi = Attractor('yhivi', [1,1], gravitationalConstant)
 			
-			self.contents.append(Attractor('yhivi', [1,1], gravitationalConstant))
+			self.contents.append(yhivi)
 
 			lothar_instance = Actor('NPC lothar', lothar,(1, 121000), [17000,0], 0.6 * math.pi, True)
 			lothar_instance2 = Actor('player Lothar', lothar,(1, -121000), [-17000,0], 0)
@@ -1071,12 +1105,15 @@ class SolarSystem():
 			self.contents.append(lothar_instance2)
 			# self.contents.append(bigmolly_instance)
 			# self.contents.append(derelict_instance)
+
+			lothar_instance.maneuverQueue.append(Maneuver('change apoapsis',100000,yhivi))
+
 			self.position = [250,450]
 			self.color = [10,200,50,255]
 
 			self.links = ['Sol IV']
 
-		
+			
 
 
 
