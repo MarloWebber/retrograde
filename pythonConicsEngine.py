@@ -679,9 +679,9 @@ class Maneuver():
 
 				actor.setPoint = resultAngle
 				if (angleDifference < 0.1 and angleDifference > 0) or angleDifference > (2*math.pi - 0.1): # only fire engines if the ship is pointing vaguely in the right direction
-							actor.keyStates['up'] = True
-						else:
-							actor.keyStates['up'] = False
+					actor.keyStates['up'] = True
+				else:
+					actor.keyStates['up'] = False
 
 				if mag(speedDifference) < self.parameter2:
 						actor.keyStates['up'] = False
@@ -694,18 +694,22 @@ class Maneuver():
 				# parameter1 is the new periapsis
 
 				if not self.event1:
-					print('change periapsis')
+					print('change periapsis...')
 					self.event1 = True
 
-					if parameter2 is None: # if the angle for the new periapsis was passed in as none, you should burn from the apoapsis.
-						parameter2 = 0
+					if self.parameter2 is None: # if the angle for the new periapsis was passed in as none, you should burn from the apoapsis.
+						self.parameter2 = 0
 
 				actor.setPoint = actor.prograde + 0.5 * math.pi
 				if actor.orbit is not None:
-					if actor.orbit.tAn > parameter2 - 0.1 and actor.orbit.tAn < parameter2 + 0.1: # the ship is near the apoapsis
+					print(actor.orbit.tAn)
+					print(self.parameter2)
+					if actor.orbit.tAn >  self.parameter2 - 0.1 and actor.orbit.tAn <  self.parameter2 + 0.1: # the ship is near the apoapsis
 						self.event2 = True
+						print('change periapsis - mark')
+
 					if self.event2:
-						angleDifference = actor.setPoint - actor.body.angle
+						angleDifference = addRadians(  actor.setPoint, - actor.body.angle)
 						if (angleDifference < 0.1 and angleDifference > 0) or angleDifference > (2*math.pi - 0.1): # only fire engines if the ship is pointing vaguely in the right direction
 							actor.keyStates['up'] = True
 						else:
@@ -753,20 +757,39 @@ class Maneuver():
 				pass
 
 			if self.maneuverType == 'circularize':
-				pass
+				# true to circ at periapsis. false to circ at apoapsis.
+				if self.parameter1:
+					actor.setPoint = actor.prograde + 0.5 * math.pi
+				else:
+					actor.setPoint = actor.retrograde + 0.5 * math.pi
+
+				if actor.orbit is not None:
+					if (actor.orbit.tAn > 0 and actor.orbit.tAn < 0.1 and self.parameter1) or (actor.orbit.tAn > math.pi -0.1 and actor.orbit.tAn < math.pi + 0.1 and not self.parameter1): # the ship is near the apoapsis
+						self.event2 = True
+					if self.event2:
+						angleDifference = actor.setPoint - actor.body.angle
+						if (angleDifference < 0.1 and angleDifference > 0) or angleDifference > (2*math.pi - 0.1): # only fire engines if the ship is pointing vaguely in the right direction
+							actor.keyStates['up'] = True
+						else:
+							actor.keyStates['up'] = False
+					if actor.orbit.getApoapsis() < actor.orbit.getPeriapsis() + (actor.orbit.getPeriapsis()* 0.01):
+						actor.keyStates['up'] = False
+						self.completed = True
+
 
 			if self.maneuverType == 'match velocity':
 				pass
 
 			if self.maneuverType == 'rendezvous':
-				pass
+				# pass
 				# the ship guides itself to a target which is orbiting the same attractor.
 				# it is safer to always phase the target by going upwards, because then you never have to worry about hitting the planet.
 
 				# figure out the time discrepancy between you and your target.
 
 				if not self.event1:
-					pass
+					print('rendezvous')
+					self.event1 = True
 				elif not self.event2:
 					pass
 
@@ -977,7 +1000,7 @@ class Actor():
 							# if self.isPlayer:
 								# print(sign)
 
-							torqueAmount = sign * giveQuantity
+							torqueAmount = sign * giveQuantity * timestepSize * 100
 
 							# apply two impulses, pushing in opposite directions, an equal distance from the center to create torque
 							self.body.apply_impulse_at_local_point([-torqueAmount,0], [0,-module.momentArm])
@@ -1131,7 +1154,8 @@ class SolarSystem():
 			# self.contents.append(bigmolly_instance)
 			# self.contents.append(derelict_instance)
 
-			lothar_instance.maneuverQueue.append(Maneuver('change aPe',0.3 * math.pi,yhivi))
+			# lothar_instance.maneuverQueue.append(Maneuver('change aPe',0.3 * math.pi,yhivi))
+			lothar_instance.maneuverQueue.append(Maneuver('change periapsis',151000, 1.6 * math.pi))
 
 			self.position = [250,450]
 			self.color = [10,200,50,255]
