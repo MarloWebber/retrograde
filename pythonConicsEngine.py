@@ -518,7 +518,7 @@ class Module():
 			self.mass = 0.2
 			self.resources = {
 				'torque': 5,
-				'electricity': -0.2
+				'electricity': -0.02
 			}
 			self.stores = {}
 			self.initialStores = {}
@@ -752,8 +752,8 @@ class Maneuver():
 
 				actor.setPoint = actor.prograde + 0.5 * math.pi
 				if actor.orbit is not None:
-					print(actor.orbit.tAn)
-					print(self.parameter2)
+					# print(actor.orbit.tAn)
+					# print(self.parameter2)
 					if actor.orbit.tAn >  self.parameter2 - 0.1 and actor.orbit.tAn <  self.parameter2 + 0.1: # the ship is near the apoapsis
 						self.event2 = True
 						print('change periapsis - mark')
@@ -955,6 +955,11 @@ class Actor():
 		self.combatantType = 'defender' # defenders will shoot at you while still doing what they're doing. attackers will pursue you. missiles will pursue you with the intent to ram.
 		self.autoPilotActive = False
 
+		self.autoPilotGoals = [] # a list of goals which the ai will use sequences of manuevers to accomplish.
+
+		self.target = None # another actor that this one can lock with radar and scanners.
+		self.selectedWeapon = None
+
 	def leaveFreefall(self, stepsToFreefall=1):
 		self.stepsToFreefall = stepsToFreefall
 		self.freefalling = False
@@ -986,10 +991,10 @@ class Actor():
 						availableAmount = self.availableResources[resource]
 					if availableAmount < abs(quantity):
 						module.enabled = False
-			if module.moduleType == 'RCS':
-				module.active = self.keyStates['left'] or self.keyStates['right']
-			elif module.moduleType == 'engine 10':
-				module.active = self.keyStates['up']
+			# if module.moduleType == 'RCS':
+			# 	module.active = self.keyStates['left'] or self.keyStates['right']
+			# elif module.moduleType == 'engine 10':
+			# 	module.active = self.keyStates['up']
 
 		# - consume and produce resources
 		for module in self.modules:
@@ -1013,48 +1018,43 @@ class Actor():
 		for resource, quantity in list(self.storagePool.items()):
 			if quantity > self.maximumStores[resource]: quantity = self.maximumStores[resource]			
 
-	
-
 	def doModuleEffects(self, keyStates, timestepSize):
+		# doModuleEffects performs engine thrust and RCS torque. It reports whether or not the craft has been accelerated.
+
 		ifThrustHasBeenApplied = False
 		for module in self.modules:
 			if module.enabled:
-				# if module.active:
-				for giveResource, giveQuantity in list(module.resources.items()): #module.produces.items():
+				for giveResource, giveQuantity in list(module.resources.items()):
 					if giveResource == 'thrust':
-						if keyStates['up']:
-							force = [(giveQuantity * timestepSize * 500 * math.cos(addRadians(module.angle, math.pi * 0.5))), -giveQuantity * timestepSize * 500 * math.sin(addRadians(module.angle, math.pi * 0.5) )]
-							self.body.apply_impulse_at_local_point(force, (0,0))
-							ifThrustHasBeenApplied = True
+						# if keyStates['up']:
+							if module.active:
+								force = [(giveQuantity * timestepSize * 500 * math.cos(addRadians(module.angle, math.pi * 0.5))), -giveQuantity * timestepSize * 500 * math.sin(addRadians(module.angle, math.pi * 0.5) )]
+								self.body.apply_impulse_at_local_point(force, (0,0))
+								ifThrustHasBeenApplied = True
+						# if not keyStates['up']:
+						# 	module.active = False
+
 
 					elif giveResource == 'torque':
-						# if keyStates['left']:
-							
-
 							self.setPoint = self.setPoint % (2*math.pi)
 							self.body.angle = self.body.angle % (2*math.pi)
-
 							correctionDirection = self.setPoint - self.body.angle
 
-							# if abs(correctionDirection) > 0.0001:
+							if abs(correctionDirection) > 0.001:
+								module.active = True
+								if correctionDirection > math.pi or correctionDirection < -math.pi:
+									correctionDirection = -correctionDirection
+								if correctionDirection == 0:
+									sign = -1
+								else:
+									sign = -correctionDirection / abs(correctionDirection)
+								torqueAmount = sign * giveQuantity * timestepSize * 100
 
-							if correctionDirection > math.pi or correctionDirection < -math.pi:
-								correctionDirection = -correctionDirection
-
-							
-							if correctionDirection == 0:
-								sign = -1
+								# apply two impulses, pushing in opposite directions, an equal distance from the center to create torque
+								self.body.apply_impulse_at_local_point([-torqueAmount,0], [0,-module.momentArm])
+								self.body.apply_impulse_at_local_point([torqueAmount,0], [0,module.momentArm])
 							else:
-								sign = -correctionDirection / abs(correctionDirection)
-							
-							# if self.isPlayer:
-								# print(sign)
-
-							torqueAmount = sign * giveQuantity * timestepSize * 100
-
-							# apply two impulses, pushing in opposite directions, an equal distance from the center to create torque
-							self.body.apply_impulse_at_local_point([-torqueAmount,0], [0,-module.momentArm])
-							self.body.apply_impulse_at_local_point([torqueAmount,0], [0,module.momentArm])
+								module.active = False
 
 		return ifThrustHasBeenApplied
 
@@ -1241,6 +1241,8 @@ class World():
 
 		self.mapView = False
 
+		self.playerTargetIndex = None # index of which actor in the list the player is targeting.
+
 	def gravityForce(self, actorPosition, attractorPosition, attractorMass):
 		distance = attractorPosition - actorPosition # scalar distance between two bodies
 		magnitude = mag(distance)
@@ -1415,20 +1417,29 @@ class World():
 				actor.body.apply_impulse_at_local_point([correctionForce,0], [0,10])
 				if abs(actor.body.angular_velocity) < 1/100000:
 					actor.body.angular_velocity = 0
-	
-			# figure out if the actor is freefalling by seeing if any engines or collisions have moved it.
-			if actor.doModuleEffects(actor.keyStates, self.timestepSize):
-				actor.leaveFreefall(0)
 
 			# draw the module effects like gun flashes and engine flames
 			for module in actor.modules:
-				if module.enabled:			
+				if module.enabled:		
+
+					if module.moduleType == 'RCS':
+						module.active = actor.keyStates['left'] or actor.keyStates['right']
+					elif  module.moduleType == 'engine 10':
+						module.active = actor.keyStates['up']
+
+
 					if module.active:
 						if module.effect is not None and module.effect.illuminator is not None:
 							position = actor.body.position + module.offset + module.effect.illuminator.offset
 							position = rotate_point(position, actor.body.angle, actor.body.position)
 							module.effect.illuminator.position = position
 							self.illuminators.append(module.effect.illuminator)
+	
+			# figure out if the actor is freefalling by seeing if any engines or collisions have moved it.
+			if actor.doModuleEffects(actor.keyStates, self.timestepSize):
+				actor.leaveFreefall(0)
+
+		
 
 				# turn the gun off until it has done a cooldown.
 				if module.moduleType == 'cannon 10':
@@ -1552,6 +1563,18 @@ class World():
 		
 		renderAConvexPolygon(main_batch, transformedPoints, self.viewpointObject.body.position, self.zoom, self.resolution,  module.effect.color, None, None)
 
+
+	def drawColorIndicator(self, color,  position, size, main_batch):
+		# draw a simple colored square that can be used for visual indication.
+
+		points = [[-size,size],[size,size],[size,-size],[-size,-size]]
+		newpos = transformForView(position, self.viewpointObject.body.position, self.zoom, self.resolution )
+		nupoints = []
+		for point in points:
+			nupoints.append([int(point[0] + newpos[0]), int(point[1] + newpos[1])])
+			
+		renderAConvexPolygon(main_batch, nupoints, self.viewpointObject.body.position, self.zoom, self.resolution,  color)
+
 	def drawModule(self, actor, module, main_batch): # draw the outline of the module.
 		rotatedPoints = module.points
 		rotatedPoints = rotate_polygon(rotatedPoints,module.angle)  # orient the polygon according to the body's current direction in space.
@@ -1571,25 +1594,14 @@ class World():
 			if module.enabled and module.active:
 				self.drawModuleEffects(main_batch, module, actor)
 
-	def drawColorIndicator(self, position, main_batch):
+		# if self.showHUD:
+		# 	if module.enabled:
+		# 		rotatedPoint = rotate_point(actor.body.position + module.offset, actor.body.angle, [actor.body.position[0] -module.offset[0], actor.body.position[1]-module.offset[1]])
+		# 		transformedPoint = transformForView(rotatedPoint,self.viewpointObject.body.position, self.zoom, self.resolution )
+		# 		# print(transformedPoint)
+		# 		self.drawColorIndicator([100,100,255,255], [int(transformedPoint[0]), int(transformedPoint[1])], 2, main_batch)
 
-		points = [[-2,2],[2,2],[2,-2],[-2,-2]]
-
-		newpos = transformForView(position, self.viewpointObject.body.position, self.zoom, self.resolution )
-
-
-		# print(newpos)
-
-		nupoints = []
-		for point in points:
-			nupoints.append([point[0] + newpos[0], point[1] + newpos[1]])
-			
-
-
-
-		renderAConvexPolygon(main_batch, nupoints, self.viewpointObject.body.position, self.zoom, self.resolution,  [0,0,255,255])
-
-
+	
 	def drawScreenFill(self, main_batch):
 		fillTriangles = [0,0, 0,0, 0,resolution[1], resolution[0],resolution[1], resolution[0],0, 0,0, 0,0 ]
 		main_batch.add(7, pyglet.gl.GL_TRIANGLE_STRIP, None, ('v2i',fillTriangles), ('c4B',[255,255,255,255]*7))
@@ -1768,7 +1780,7 @@ class World():
 
 		self.drawModuleForList(main_batch, listItem.module, iconSize, [buildListSpacing, index * buildListSpacing] )
 
-	def drawHUDListItem(self,string, quantity, index):
+	def drawHUDListItem(self,string, quantity, index, listCorner):
 		HUDlistItemSpacing = 15
 		listXPosition = 10
 		fontSize = 12
@@ -1776,12 +1788,35 @@ class World():
 		if quantity is None and len(string) == 0:
 			return index + 1
 
-		label = pyglet.text.Label(string + str(quantity),
-                      font_name='Times New Roman',
-                      font_size=fontSize,
-                      x=listXPosition, y=HUDlistItemSpacing * index,
-                      color=(100,100,100,255),
-                      align="left")
+		if listCorner is 'bottom left':
+			label = pyglet.text.Label(string + str(quantity),
+	                      font_name='Times New Roman',
+	                      font_size=fontSize,
+	                      x=listXPosition, y=HUDlistItemSpacing * index,
+	                      color=(100,100,100,255),
+	                      align="left")
+		elif listCorner is 'top right':
+			label = pyglet.text.Label(string + str(quantity),
+	                      font_name='Times New Roman',
+	                      font_size=fontSize,
+	                      x=resolution[0]-listXPosition - 100, y=resolution[1]-(HUDlistItemSpacing * index),
+	                      color=(100,100,100,255),
+	                      align="right")
+		elif listCorner is 'top left':
+			label = pyglet.text.Label(string + str(quantity),
+	                      font_name='Times New Roman',
+	                      font_size=fontSize,
+	                      x=listXPosition, y=resolution[1]-(HUDlistItemSpacing * index),
+	                      color=(100,100,100,255),
+	                      align="left")
+		elif listCorner is 'bottom right':
+			label = pyglet.text.Label(string + str(quantity),
+	                      font_name='Times New Roman',
+	                      font_size=fontSize,
+	                      x=resolution[0]-listXPosition - 100, y=HUDlistItemSpacing * index,
+	                      color=(100,100,100,255),
+	                      align="right")
+
 		label.draw()
 
 		return index + 1
@@ -1808,23 +1843,31 @@ class World():
 				hudList[resource] = self.viewpointObject.storagePool[resource]
 
 		for availableResource, availableQuantity in list(hudList.items()):
-			i = self.drawHUDListItem(str(availableResource) + ': ', availableQuantity, i)
-		i = self.drawHUDListItem('', None, i) # blank line as a separator
+			i = self.drawHUDListItem(str(availableResource) + ': ', availableQuantity, i, 'top left')
+		i = self.drawHUDListItem('', None, i, 'top left') # blank line as a separator
+		i = 1
 
-		i = self.drawHUDListItem('freefalling: ', self.viewpointObject.freefalling, i)
-		i = self.drawHUDListItem('landed: ', self.viewpointObject.exemptFromGravity, i)
+		i = self.drawHUDListItem('freefalling: ', self.viewpointObject.freefalling, i, 'bottom left')
+		i = self.drawHUDListItem('landed: ', self.viewpointObject.exemptFromGravity, i, 'bottom left')
 		if self.player.orbiting is not None:
-			i = self.drawHUDListItem('attractor: ', self.viewpointObject.orbiting.planetName, i)
-			# if self.player.orbit is not None:
-			# 	i = self.drawHUDListItem('orbit valid', None, i)
-			# else:
-			# 	i = self.drawHUDListItem('no orbit', None, i)
-		i = self.drawHUDListItem('', None, i) # blank line as a separator
+			i = self.drawHUDListItem('orbiting: ', self.viewpointObject.orbiting.planetName, i, 'bottom left')
+		i = self.drawHUDListItem('', None, i, 'bottom left') # blank line as a separator
 
-		i = self.drawHUDListItem('player: ', self.viewpointObject.isPlayer, i)
-		i = self.drawHUDListItem('warp: ', self.timestepSize * 3 * 100, i)
-		i = self.drawHUDListItem('zoom: ', self.zoom, i)
-		i = self.drawHUDListItem('paused: ', self.paused, i)
+		i = self.drawHUDListItem('player: ', self.viewpointObject.isPlayer, i, 'bottom left')
+		i = self.drawHUDListItem('warp: ', self.timestepSize * 3 * 100, i, 'bottom left')
+		i = self.drawHUDListItem('zoom: ', self.zoom, i, 'bottom left')
+		i = self.drawHUDListItem('paused: ', self.paused, i, 'bottom left')
+
+		i = 1
+
+		if self.player.target is not None:
+			i = self.drawHUDListItem('target: ', self.player.target.name, i, 'top right')
+		i = self.drawHUDListItem('weapon: ', self.player.selectedWeapon, i, 'top right')
+
+		i = 1
+
+		i = self.drawHUDListItem('hyperdrive: ', self.player.target, i, 'bottom right')
+		# i = self.drawHUDListItem('weapon: ', self.player.selectedWeapon, i, 'top right')
 		
 		# print the navcircle
 		for line in self.navCircleLines:
@@ -1914,9 +1957,9 @@ class World():
 		second_batch = pyglet.graphics.Batch()
 		pyglet.gl.glLineWidth(1)
 
+		
+		# draw the actor's orbits
 		if self.showHUD:
-			self.drawHUD(second_batch)
-			# draw the actor's orbits
 			for actor in self.actors:
 				if actor.orbit is not None:
 					self.drawAPOrbit(second_batch, actor, actor.orbit, actor.orbiting, (100,100,100))
@@ -1936,6 +1979,11 @@ class World():
 		for actor in self.actors:
 			self.drawActor(actor, main_batch)
 
+		main_batch.draw()
+		
+		third_batch = pyglet.graphics.Batch()
+		pyglet.gl.glLineWidth(2)
+
 		if self.showHUD:
 
 			# blip for actual orientation
@@ -1944,7 +1992,7 @@ class World():
 			start = ((blipLength * math.cos(angle)) + (self.resolution[0]*0.5) , -(blipLength* math.sin(angle)) +( self.resolution[1] * 0.5) )
 			end = ((self.navcircleInnerRadius) * math.cos(angle)+ (self.resolution[0]*0.5),- (self.navcircleInnerRadius) * math.sin(angle)+ (self.resolution[1]*0.5))
 			transformedPoints = transformPolygonForLines([start,end])
-			main_batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i', transformedPoints[1]), ('c4B',[200,40,0,255]*(transformedPoints[0])))
+			third_batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i', transformedPoints[1]), ('c4B',[200,40,0,255]*(transformedPoints[0])))
 
 			# blip for setpoint
 			blipLength = (self.navcircleInnerRadius-self.navcircleLinesLength)
@@ -1952,7 +2000,7 @@ class World():
 			start = ((blipLength * math.cos(angle)) + (self.resolution[0]*0.5) , -(blipLength* math.sin(angle)) +( self.resolution[1] * 0.5) )
 			end = ((self.navcircleInnerRadius) * math.cos(angle)+ (self.resolution[0]*0.5),- (self.navcircleInnerRadius) * math.sin(angle)+ (self.resolution[1]*0.5))
 			transformedPoints = transformPolygonForLines([start,end])
-			main_batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i', transformedPoints[1]), ('c4B',[100,20,0,255]*(transformedPoints[0])))
+			third_batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i', transformedPoints[1]), ('c4B',[100,20,0,255]*(transformedPoints[0])))
 
 			if self.viewpointObject.freefalling and self.viewpointObject.orbit is not None:
 				if not math.isnan( self.viewpointObject.prograde):
@@ -1962,7 +2010,7 @@ class World():
 					start = ((blipLength * math.cos(angle)) + (self.resolution[0]*0.5) , -(blipLength* math.sin(angle)) +( self.resolution[1] * 0.5) )
 					end = ((self.navcircleInnerRadius) * math.cos(angle)+ (self.resolution[0]*0.5),- (self.navcircleInnerRadius) * math.sin(angle)+ (self.resolution[1]*0.5))
 					transformedPoints = transformPolygonForLines([start,end])
-					main_batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i', transformedPoints[1]), ('c4B',[0,200,20,255]*(transformedPoints[0])))
+					third_batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i', transformedPoints[1]), ('c4B',[0,200,20,255]*(transformedPoints[0])))
 
 					# blip for retrograde
 					blipLength = (self.navcircleInnerRadius-self.navcircleLinesLength)
@@ -1970,7 +2018,7 @@ class World():
 					start = ((blipLength * math.cos(angle)) + (self.resolution[0]*0.5) , -(blipLength* math.sin(angle)) +( self.resolution[1] * 0.5) )
 					end = ((self.navcircleInnerRadius) * math.cos(angle)+ (self.resolution[0]*0.5),- (self.navcircleInnerRadius) * math.sin(angle)+ (self.resolution[1]*0.5))
 					transformedPoints = transformPolygonForLines([start,end])
-					main_batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i', transformedPoints[1]), ('c4B',[0,100,10,255]*(transformedPoints[0])))
+					third_batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i', transformedPoints[1]), ('c4B',[0,100,10,255]*(transformedPoints[0])))
 
 
 			# blip for nadir
@@ -1979,7 +2027,7 @@ class World():
 			start = ((blipLength * math.cos(angle)) + (self.resolution[0]*0.5) , -(blipLength* math.sin(angle)) +( self.resolution[1] * 0.5) )
 			end = ((self.navcircleInnerRadius) * math.cos(angle)+ (self.resolution[0]*0.5),- (self.navcircleInnerRadius) * math.sin(angle)+ (self.resolution[1]*0.5))
 			transformedPoints = transformPolygonForLines([start,end])
-			main_batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i', transformedPoints[1]), ('c4B',[0,100,200,255]*(transformedPoints[0])))
+			third_batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i', transformedPoints[1]), ('c4B',[0,100,200,255]*(transformedPoints[0])))
 
 			# blip for zenith
 			blipLength = (self.navcircleInnerRadius-self.navcircleLinesLength)
@@ -1987,12 +2035,39 @@ class World():
 			start = ((blipLength * math.cos(angle)) + (self.resolution[0]*0.5) , -(blipLength* math.sin(angle)) +( self.resolution[1] * 0.5) )
 			end = ((self.navcircleInnerRadius) * math.cos(angle)+ (self.resolution[0]*0.5),- (self.navcircleInnerRadius) * math.sin(angle)+ (self.resolution[1]*0.5))
 			transformedPoints = transformPolygonForLines([start,end])
-			main_batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i', transformedPoints[1]), ('c4B',[0,50,100,255]*(transformedPoints[0])))
+			third_batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i', transformedPoints[1]), ('c4B',[0,50,100,255]*(transformedPoints[0])))
 
+			# blip for target
+			if self.player.target is not None:
+				blipLength = (self.navcircleInnerRadius+self.navcircleLinesLength)
+				angle = math.atan2(self.player.target.body.position[1] - self.player.body.position[1],(self.player.target.body.position[0] - self.player.body.position[0]))
+				start = ((blipLength * math.cos(angle)) + (self.resolution[0]*0.5) , -(blipLength* math.sin(angle)) +( self.resolution[1] * 0.5) )
+				end = ((self.navcircleInnerRadius+self.navcircleLinesLength*2) * math.cos(angle)+ (self.resolution[0]*0.5),- ((self.navcircleInnerRadius+self.navcircleLinesLength*2)) * math.sin(angle)+ (self.resolution[1]*0.5))
+				transformedPoints = transformPolygonForLines([start,end])
+				third_batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i', transformedPoints[1]), ('c4B',[250,200,0,255]*(transformedPoints[0])))
+
+
+		if self.showHUD:
+			self.drawHUD(third_batch)
+
+
+		if self.showHUD:
+			for module in self.player.modules:
+				if module.enabled:
+					rotatedPoint = rotate_point([self.player.body.position[0] +module.offset[0], self.player.body.position[1]+module.offset[1]], self.player.body.angle, self.player.body.position)
+					# transformedPoint = transformForView(rotatedPoint,self.viewpointObject.body.position, self.zoom, self.resolution )
+					# print(transformedPoint)
+
+					# transformedPoint = [200,200]#transformForView(self.player.body.position + module.offset,self.viewpointObject.body.position, self.zoom, self.resolution )
+
+					self.drawColorIndicator([100,100,100,255], [rotatedPoint[0], rotatedPoint[1]], int(1.5*self.zoom), third_batch)
+					if module.active:
+						self.drawColorIndicator([250,50,0,255], [rotatedPoint[0], rotatedPoint[1]], int(0.5*self.zoom), third_batch)
+
+		third_batch.draw()
 
 		# self.drawColorIndicator( color_point, main_batch)
 
-		main_batch.draw()
 		
 
 	def hyperspaceJump(self, actor, destination) :
@@ -2133,6 +2208,21 @@ def on_key_press(symbol, modifiers):
 		Nirn.hyperspaceJump()
 	elif symbol == key.M:
 		Nirn.mapView = not Nirn.mapView
+	elif symbol == key.R:
+		if Nirn.playerTargetIndex == None:
+			Nirn.playerTargetIndex = 0
+		else:
+			Nirn.playerTargetIndex += 1
+			if Nirn.playerTargetIndex > len(Nirn.actors) - 1:
+				Nirn.playerTargetIndex = None
+
+		if Nirn.playerTargetIndex is not None:
+			if Nirn.actors[Nirn.playerTargetIndex] is Nirn.player:
+				Nirn.playerTargetIndex += 1
+			Nirn.player.target = Nirn.actors[Nirn.playerTargetIndex]
+		else:
+			Nirn.player.target = None
+
 
 @window.event
 def on_key_release(symbol, modifiers):
