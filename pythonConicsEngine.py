@@ -1183,6 +1183,7 @@ class World():
 
 		self.mapView = False
 		self.galaxy = [] # a list of all the solar systems the player can visit.
+		self.currentSystem = None
 
 		self.playerTargetIndex = None # index of which actor in the list the player is targeting.
 
@@ -1242,6 +1243,12 @@ class World():
 		self.space.remove(actor.shape)
 		if actor in self.actors:
 				self.actors.remove(actor)
+
+	def destroyAttractor(self,attractor):
+		self.space.remove(attractor.body)
+		self.space.remove(attractor.shape)
+		if attractor in self.attractor:
+				self.attractor.remove(attractor)
 
 	def decomposeActor(self, actor, modules):
 		listLength = len(actor.modules)
@@ -1760,8 +1767,8 @@ class World():
 	def createHUDNavCircle(self): # this function predraws the nav circle. because it is just static lines, it does not need to be recalculated every frame.
 		for n in range(0,self.n_navcircle_lines):
 			angle = n * (2 * math.pi / self.n_navcircle_lines)
-			start = ((self.navcircleInnerRadius * math.cos(angle)) + (self.resolution[0]*0.5) , (self.navcircleInnerRadius* math.sin(angle)) +( self.resolution[1] * 0.5) )
-			end = ((self.navcircleInnerRadius + self.navcircleLinesLength) * math.cos(angle)+ (self.resolution[0]*0.5), (self.navcircleInnerRadius + self.navcircleLinesLength) * math.sin(angle)+ (self.resolution[1]*0.5))
+			start = ((self.navcircleInnerRadius * math.cos(angle)) + (resolution[0]*0.5) , (self.navcircleInnerRadius* math.sin(angle)) +(resolution[1] * 0.5) )
+			end = ((self.navcircleInnerRadius + self.navcircleLinesLength) * math.cos(angle)+ (resolution[0]*0.5), (self.navcircleInnerRadius + self.navcircleLinesLength) * math.sin(angle)+ (resolution[1]*0.5))
 			self.navCircleLines.append([start, end])
 		
 	def drawHUD(self, main_batch):
@@ -1929,16 +1936,16 @@ class World():
 			# blip for actual orientation
 			blipLength = (self.navcircleInnerRadius)
 			angle = self.viewpointObject.body.angle - 0.5 * math.pi
-			start = ((blipLength * math.cos(angle)) + (self.resolution[0]*0.5) , -(blipLength* math.sin(angle)) +( self.resolution[1] * 0.5) )
-			end = ((self.navcircleInnerRadius+self.navcircleLinesLength) * math.cos(angle)+ (self.resolution[0]*0.5),- (self.navcircleInnerRadius+self.navcircleLinesLength) * math.sin(angle)+ (self.resolution[1]*0.5))
+			start = ((blipLength * math.cos(angle)) + (resolution[0]*0.5) , -(blipLength* math.sin(angle)) +( resolution[1] * 0.5) )
+			end = ((self.navcircleInnerRadius+self.navcircleLinesLength) * math.cos(angle)+ (resolution[0]*0.5),- (self.navcircleInnerRadius+self.navcircleLinesLength) * math.sin(angle)+ (resolution[1]*0.5))
 			transformedPoints = transformPolygonForLines([start,end])
 			third_batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i', transformedPoints[1]), ('c4B',[200,40,0,255]*(transformedPoints[0])))
 
 			# blip for setpoint
 			blipLength = (self.navcircleInnerRadius)
 			angle = self.viewpointObject.setPoint - 0.5 * math.pi
-			start = ((blipLength * math.cos(angle)) + (self.resolution[0]*0.5) , -(blipLength* math.sin(angle)) +( self.resolution[1] * 0.5) )
-			end = ((self.navcircleInnerRadius+self.navcircleLinesLength) * math.cos(angle)+ (self.resolution[0]*0.5),- (self.navcircleInnerRadius+self.navcircleLinesLength) * math.sin(angle)+ (self.resolution[1]*0.5))
+			start = ((blipLength * math.cos(angle)) + (resolution[0]*0.5) , -(blipLength* math.sin(angle)) +( resolution[1] * 0.5) )
+			end = ((self.navcircleInnerRadius+self.navcircleLinesLength) * math.cos(angle)+ (resolution[0]*0.5),- (self.navcircleInnerRadius+self.navcircleLinesLength) * math.sin(angle)+ (resolution[1]*0.5))
 			transformedPoints = transformPolygonForLines([start,end])
 			third_batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i', transformedPoints[1]), ('c4B',[255,150,50,255]*(transformedPoints[0])))
 
@@ -1947,16 +1954,16 @@ class World():
 					# blip for prograde
 					blipLength = (self.navcircleInnerRadius-self.navcircleLinesLength)
 					angle = self.viewpointObject.prograde
-					start = ((blipLength * math.cos(angle)) + (self.resolution[0]*0.5) , -(blipLength* math.sin(angle)) +( self.resolution[1] * 0.5) )
-					end = ((self.navcircleInnerRadius) * math.cos(angle)+ (self.resolution[0]*0.5),- (self.navcircleInnerRadius) * math.sin(angle)+ (self.resolution[1]*0.5))
+					start = ((blipLength * math.cos(angle)) + (resolution[0]*0.5) , -(blipLength* math.sin(angle)) +( resolution[1] * 0.5) )
+					end = ((self.navcircleInnerRadius) * math.cos(angle)+ (resolution[0]*0.5),- (self.navcircleInnerRadius) * math.sin(angle)+ (resolution[1]*0.5))
 					transformedPoints = transformPolygonForLines([start,end])
 					third_batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i', transformedPoints[1]), ('c4B',[0,200,20,255]*(transformedPoints[0])))
 
 					# blip for retrograde
 					blipLength = (self.navcircleInnerRadius-self.navcircleLinesLength)
 					angle = self.viewpointObject.retrograde
-					start = ((blipLength * math.cos(angle)) + (self.resolution[0]*0.5) , -(blipLength* math.sin(angle)) +( self.resolution[1] * 0.5) )
-					end = ((self.navcircleInnerRadius) * math.cos(angle)+ (self.resolution[0]*0.5),- (self.navcircleInnerRadius) * math.sin(angle)+ (self.resolution[1]*0.5))
+					start = ((blipLength * math.cos(angle)) + (resolution[0]*0.5) , -(blipLength* math.sin(angle)) +( resolution[1] * 0.5) )
+					end = ((self.navcircleInnerRadius) * math.cos(angle)+ (resolution[0]*0.5),- (self.navcircleInnerRadius) * math.sin(angle)+ (resolution[1]*0.5))
 					transformedPoints = transformPolygonForLines([start,end])
 					third_batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i', transformedPoints[1]), ('c4B',[0,100,10,255]*(transformedPoints[0])))
 
@@ -1964,16 +1971,16 @@ class World():
 			# blip for nadir
 			blipLength = (self.navcircleInnerRadius-self.navcircleLinesLength)
 			angle = self.viewpointObject.nadir
-			start = ((blipLength * math.cos(angle)) + (self.resolution[0]*0.5) , -(blipLength* math.sin(angle)) +( self.resolution[1] * 0.5) )
-			end = ((self.navcircleInnerRadius) * math.cos(angle)+ (self.resolution[0]*0.5),- (self.navcircleInnerRadius) * math.sin(angle)+ (self.resolution[1]*0.5))
+			start = ((blipLength * math.cos(angle)) + (resolution[0]*0.5) , -(blipLength* math.sin(angle)) +( resolution[1] * 0.5) )
+			end = ((self.navcircleInnerRadius) * math.cos(angle)+ (resolution[0]*0.5),- (self.navcircleInnerRadius) * math.sin(angle)+ (resolution[1]*0.5))
 			transformedPoints = transformPolygonForLines([start,end])
 			third_batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i', transformedPoints[1]), ('c4B',[0,100,200,255]*(transformedPoints[0])))
 
 			# blip for zenith
 			blipLength = (self.navcircleInnerRadius-self.navcircleLinesLength)
 			angle = self.viewpointObject.zenith
-			start = ((blipLength * math.cos(angle)) + (self.resolution[0]*0.5) , -(blipLength* math.sin(angle)) +( self.resolution[1] * 0.5) )
-			end = ((self.navcircleInnerRadius) * math.cos(angle)+ (self.resolution[0]*0.5),- (self.navcircleInnerRadius) * math.sin(angle)+ (self.resolution[1]*0.5))
+			start = ((blipLength * math.cos(angle)) + (resolution[0]*0.5) , -(blipLength* math.sin(angle)) +( resolution[1] * 0.5) )
+			end = ((self.navcircleInnerRadius) * math.cos(angle)+ (resolution[0]*0.5),- (self.navcircleInnerRadius) * math.sin(angle)+ (resolution[1]*0.5))
 			transformedPoints = transformPolygonForLines([start,end])
 			third_batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i', transformedPoints[1]), ('c4B',[0,50,100,255]*(transformedPoints[0])))
 
@@ -1981,8 +1988,8 @@ class World():
 			if self.player.target is not None:
 				blipLength = (self.navcircleInnerRadius+self.navcircleLinesLength)
 				angle = math.atan2(self.player.target.body.position[1] - self.player.body.position[1],(self.player.target.body.position[0] - self.player.body.position[0]))
-				start = ((blipLength * math.cos(angle)) + (self.resolution[0]*0.5) , -(blipLength* math.sin(angle)) +( self.resolution[1] * 0.5) )
-				end = ((self.navcircleInnerRadius+self.navcircleLinesLength*2) * math.cos(angle)+ (self.resolution[0]*0.5),- ((self.navcircleInnerRadius+self.navcircleLinesLength*2)) * math.sin(angle)+ (self.resolution[1]*0.5))
+				start = ((blipLength * math.cos(angle)) + (resolution[0]*0.5) , -(blipLength* math.sin(angle)) +( resolution[1] * 0.5) )
+				end = ((self.navcircleInnerRadius+self.navcircleLinesLength*2) * math.cos(angle)+ (resolution[0]*0.5),- ((self.navcircleInnerRadius+self.navcircleLinesLength*2)) * math.sin(angle)+ (resolution[1]*0.5))
 				transformedPoints = transformPolygonForLines([start,end])
 				third_batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i', transformedPoints[1]), ('c4B',[250,200,0,255]*(transformedPoints[0])))
 
@@ -2001,24 +2008,42 @@ class World():
 
 		third_batch.draw()
 
+		self.illuminators = []
+
 	def hyperspaceJump(self, actor, destination) :
 
-		# if the actor is not the player, just remove it.
+		if actor.isPlayer:
+			previousSystem = self.currentSystem
 
-		# if the actor was the player, unload the old solar system, load the new one, and insert the player into it.
+			for otherActor in self.actors:
+				self.destroyActor(otherActor)
+			for attractor in self.attractors:
+				self.destroyAttractor(attractor)
 
-		pass
+			self.currentSystem = destination
+
+			for thing in currentSystem.contents:
+				self.add(thing)
+
+			playerInsertionAngle = math.atan2(self.currentSystem.position[1] - previousSystem.position[1], self.currentSystem.position[0] - previousSystem.position[1])
+			actor.body.position = [self.currentSystem.hyperspaceThreshold * math.cos(playerInsertionAngle), self.currentSystem.hyperspaceThreshold * math.sin(playerInsertionAngle)]
+			self.add(actor)
+
+		else:
+			self.destroyActor(actor)
+
 
 	def step(self):
-		if not self.buildMenu:
+		if self.buildMenu:
+			self.buildMenuGraphics()
+		elif self.mapView:
+			self.mapViewGraphics()
+		else:
 			self.player = self._getPlayer()
 			if not self.paused:
 				self.physics()
 			self.graphics()
-
-			self.illuminators = []
-		else:
-			self.buildMenuGraphics()
+		
 
 	def setup(self):
 		self.createHUDNavCircle()
@@ -2026,9 +2051,22 @@ class World():
 		for module in lothar:
 			self.availableModules.append(copy.deepcopy(module))
 
-		system = SolarSystem("Mooi", self.gravitationalConstant)
-		for thing in system.contents:
+		Mooi = SolarSystem("Procyon", self.gravitationalConstant)
+		Sol_III = SolarSystem("Sol III", self.gravitationalConstant)
+		Sol_IV = SolarSystem("Sol IV", self.gravitationalConstant)
+
+		self.galaxy.append(Mooi)
+		self.galaxy.append(Sol_III)
+		self.galaxy.append(Sol_IV)
+
+		self.currentSystem = self.galaxy[0]
+
+		print(self.currentSystem)
+
+		for thing in self.currentSystem.contents:
 			self.add(thing)
+
+		self.viewpointObject = self._getPlayer()
 
 	def start(self):
 		self.setup()
