@@ -179,49 +179,44 @@ def transformPolygonForLines(polygon):
 		return [n,points]
 
 def transformForView( position ,viewpointObjectPosition, zoom, resolution):
-	transformedPosition = position - viewpointObjectPosition # offset everything by the position of the viewpointObject, so the viewpoint is at 0,0
-	transformedPosition = transformedPosition * zoom  # shrink or expand everything around the 0,0 point
-	transformedPosition[0] = int(transformedPosition[0] + resolution_half[0]) # add half the width of the screen, to get to the middle. 0,0 is naturally on the corner.
-	transformedPosition[1] = int(-transformedPosition[1] + resolution_half[1]) # add half the height. and invert it so that it's the right way up in opengl.
-	
+	transformedPosition = position - viewpointObjectPosition 					# offset everything by the position of the viewpointObject, so the viewpoint is at 0,0
+	transformedPosition = transformedPosition * zoom  							# shrink or expand everything around the 0,0 point
+	transformedPosition[0] = int(transformedPosition[0] + resolution_half[0]) 	# add half the width of the screen, to get to the middle. 0,0 is naturally on the corner.
+	transformedPosition[1] = int(-transformedPosition[1] + resolution_half[1]) 	# add half the height. and invert it so that it's the right way up in opengl.
 	# t: transformed position
 	# p: pos
 	# v: viewpoint pos
 	# z: zoom
 	# o: offset
 	# t = ((p - v) * z) + o
-
 	return transformedPosition
 
 def antiTransformForView( position ,viewpointObjectPosition, zoom, resolution): # the inverse of transformForView
-
-	# t = ((p - v) * z) + o
-	# t - o = ((p - v) * z)
-	# ((t-o)/z) = p-v
 	# ((t-o)/z)+v = p
-
 	transformedPosition = [(position[0] - resolution_half[0]) / zoom, (-1 * position[1] + resolution_half[1]) / zoom]
 	transformedPosition[0] += viewpointObjectPosition[0]
 	transformedPosition[1] += viewpointObjectPosition[1]
-
-	return transformedPosition #[transformedPosition[0], transformedPosition[1]]
+	return transformedPosition
 
 def isPointIlluminated(point, color, illuminators,viewpointObjectPosition, zoom, resolution):
 	thePointIsIlluminated = False
+
+	# for each illuminator, see if it is close enough to the point to light it up.
 	for illuminator in illuminators:
 		illuminator.isItLightingThisPoint = False
 		distanceVector = [point[0] - illuminator.transformedPosition[0],point[1] - illuminator.transformedPosition[1]]
-		
-		distanceScalar = (distanceVector[0] ** 2 + distanceVector[1] ** 2) ** 0.5
+		distanceScalar = (distanceVector[0] ** 2 + distanceVector[1] ** 2) ** 0.5 # just like mag(), but doesn't need an numpy vector.
 		if distanceScalar < illuminator.radius :
 			illuminator.isItLightingThisPoint = True
 			thePointIsIlluminated = True
 
+	# exit out of the function quickly if it is not.
 	if thePointIsIlluminated:
 		resultColor = [color[0], color[1], color[2], color[3]]
 	else:
 		return color
 
+	# if it is lighting, figure out how bright the light is.
 	for illuminator in illuminators:
 		if illuminator.isItLightingThisPoint:
 			scaledDistance = distanceScalar/zoom
@@ -230,6 +225,7 @@ def isPointIlluminated(point, color, illuminators,viewpointObjectPosition, zoom,
 			else:
 				amountOfLight = 1/scaledDistance
 			
+			# mix the light color into the point's original color.
 			resultColor[0] += int(amountOfLight * illuminator.color[0])
 			if resultColor[0] > 255: resultColor[0] = 255
 			resultColor[1] += int(amountOfLight * illuminator.color[1])
@@ -239,6 +235,7 @@ def isPointIlluminated(point, color, illuminators,viewpointObjectPosition, zoom,
 	return resultColor
 
 def transformPolygonForLinesWithIlluminators(polygon, color, illuminators, viewpointObjectPosition, zoom, resolution):
+		# this function prepares a polygon to be rendered by openGL. It accomodates lighting information from the game. It is used to render outlines.
 		n = 0
 		points = []
 		colorstream = []
@@ -268,6 +265,7 @@ def transformPolygonForLinesWithIlluminators(polygon, color, illuminators, viewp
 		return [n,points, colorstream]
 
 def transformPolygonForTriangleFan(polygon):
+	# this function transforms a polygon into a fan-shaped array of triangles that can be rendered by openGL. It is used for rendering filled-in areas of convex objects.
 	# the number of points returned by this function is always 1.5n + 5, where n is the number of points in polygon.
 	centroid = centroidOfPolygon(polygon)
 	centroid[0] = int(centroid[0])
@@ -314,8 +312,8 @@ def transformPolygonForTriangleFan(polygon):
 	n+= 4
 	return [n,transformedPoints]
 
-
-def unwrapAtmosphereForGradient(n, inside_verts, outside_verts, inside_color, outside_color): # shred one of the ingame annular atmospheres into a ribbon of triangles, and add a color gradient from the inner edge to the outer.
+def unwrapAtmosphereForGradient(n, inside_verts, outside_verts, inside_color, outside_color): 
+		# this function prepares an atmosphere from the game, which is an annulus composed of two concentric circles of points, to be rendered by openGL. It allows a a color gradient from the inner edge to the outer edge.
 		bitstream = []
 		colorstream = []
 		nn = 0
@@ -323,7 +321,6 @@ def unwrapAtmosphereForGradient(n, inside_verts, outside_verts, inside_color, ou
 		#repeat start
 		bitstream.append(inside_verts[0][0])
 		bitstream.append(inside_verts[0][1])
-
 		colorstream.append(inside_color[0])
 		colorstream.append(inside_color[1])
 		colorstream.append(inside_color[2])
@@ -335,67 +332,54 @@ def unwrapAtmosphereForGradient(n, inside_verts, outside_verts, inside_color, ou
 		# inner n, outer n, inner n + 1, outer n + 1
 		# the colorstream order is (index matching bitstream order above):
 		# full color, no color, full color, no color
-
 		for index in range(0,n):
 			bitstream.append(inside_verts[index][0])
 			bitstream.append(inside_verts[index][1])
-
 			bitstream.append(outside_verts[index][0])
 			bitstream.append(outside_verts[index][1])
-			nn += 2
-
 			colorstream.append(inside_color[0])
 			colorstream.append(inside_color[1])
 			colorstream.append(inside_color[2])
 			colorstream.append(inside_color[3])
-
 			colorstream.append(outside_color[0])
 			colorstream.append(outside_color[1])
 			colorstream.append(outside_color[2])
 			colorstream.append(outside_color[3])
+			nn += 2
 
+		# closing the annulus is done by creating a pair of triangles between the first and last segments of the inner and outer edges.
+		# it may fail in situations with an uneven number of points, so far we have always used even numbers of points.
 		bitstream.append(inside_verts[0][0])
 		bitstream.append(inside_verts[0][1])
-		
 		colorstream.append(inside_color[0])
 		colorstream.append(inside_color[1])
 		colorstream.append(inside_color[2])
 		colorstream.append(inside_color[3])
-
 		nn += 1
 
 		bitstream.append(outside_verts[0][0])
 		bitstream.append(outside_verts[0][1])
-		
 		colorstream.append(outside_color[0])
 		colorstream.append(outside_color[1])
 		colorstream.append(outside_color[2])
 		colorstream.append(outside_color[3])
-
 		nn += 1
-
-		
 
 		bitstream.append(outside_verts[0][0])
 		bitstream.append(outside_verts[0][1])
-		
 		colorstream.append(outside_color[0])
 		colorstream.append(outside_color[1])
 		colorstream.append(outside_color[2])
 		colorstream.append(outside_color[3])
-
 		nn += 1
-
-
-
 
 		return [nn, bitstream, colorstream]
 
 def renderAConvexPolygon(batch, polygon, viewpointObjectPosition, zoom, resolution, color, outlineColor=None, illuminators=None):
+	# this function is used to route game objects to the appropriate rendering method, depending on their properties.
 	if len(polygon) > 0:
 		transformedPoints = transformPolygonForTriangleFan(polygon)
 		batch.add(transformedPoints[0], pyglet.gl.GL_TRIANGLE_STRIP, None, ('v2i',transformedPoints[1]), ('c4B',color*transformedPoints[0]))
-
 		if outlineColor is not None:
 			if illuminators is not None:
 				transformedPoints = transformPolygonForLinesWithIlluminators(polygon, outlineColor, illuminators, viewpointObjectPosition, zoom, resolution)
@@ -408,7 +392,6 @@ class Atmosphere():
 	def __init__(self, radius, planetPosition, atmosphereType):
 
 		if atmosphereType is "earthAtmosphere":
-
 			self.height = 15000
 			self.bottomDensity = 1
 			self.topDensity = 0
@@ -417,7 +400,6 @@ class Atmosphere():
 			self.outlineColor = [50,125,200,255]
 
 		if atmosphereType is "marsAtmosphere":
-
 			self.height = 10000
 			self.bottomDensity = 0.1
 			self.topDensity = 0
@@ -426,7 +408,6 @@ class Atmosphere():
 			self.outlineColor = [50,125,200,255]
 
 		if atmosphereType is "yhiviAtmosphere":
-
 			self.height = 20000
 			self.bottomDensity = 0.5
 			self.topDensity = 0
@@ -434,15 +415,11 @@ class Atmosphere():
 			self.outerColor = [0,0,0,255]
 			self.outlineColor = [210,255,120,255]
 
-
 		# each atmosphere layer is an annulus.
 		# it is rendered as a triangle strip with a gradient between the inner and outer edges.
 		self.n_points = 100
 		self.innerPoints = make_circle(radius, self.n_points, 0)
 		self.outerPoints = make_circle(radius+self.height, self.n_points, 0)
-
-		# self.rendering = unwrapForGradient(n_points, self.innerPoints, self.outerPoints, self.color, self.outerColor)
-
 		self.mass = ( (self.bottomDensity + self.topDensity) / 2 ) * area_of_annulus(radius+self.height, radius)
 
 class Illuminator():
@@ -518,9 +495,6 @@ class Module():
 			self.points = [[-size, -size*2], [-size, size*2], [size,size*2], [size, -size*2]]
 			self.color = [50,50,50,255]
 			self.outlineColor = [100,100,100,255]
-
-			# self.illuminatorOffset = [0,10]
-
 			self.effect = ModuleEffect('engine 10 flame', [0,size*3])
 
 		elif self.moduleType is 'RCS':
@@ -539,7 +513,6 @@ class Module():
 			self.points = [[-size, -size], [-size, size], [size,size], [size, -size]]
 			self.color = [120,100,100,255]
 			self.outlineColor = [170,150,150,255]
-
 			self.momentArm = self.radius
 
 		elif self.moduleType is 'spar 10':
@@ -553,7 +526,6 @@ class Module():
 			self.points = [[-size, -size*10], [-size, size*10], [size,size*10], [size, -size*10]]
 			self.color = [50,50,50,255]
 			self.outlineColor = [100,100,100,255]
-
 			self.momentArm = self.radius
 
 		elif self.moduleType is 'box 10':
@@ -567,7 +539,6 @@ class Module():
 			self.points = [[-size*5, -size*5], [-size*5, size*5], [size*5,size*5], [size*5, -size*5]]
 			self.color = [50,50,50,255]
 			self.outlineColor = [100,100,100,255]
-
 			self.momentArm = self.radius
 
 		elif self.moduleType is 'box 100':
@@ -581,7 +552,6 @@ class Module():
 			self.points = [[-size*100, -size*100], [-size*100, size*100], [size*100,size*100], [size*100, -size*100]]
 			self.color = [50,50,50,255]
 			self.outlineColor = [100,100,100,255]
-
 			self.momentArm = self.radius
 
 		elif self.moduleType is 'spar 100':
@@ -595,7 +565,6 @@ class Module():
 			self.points = [[-size*10, -size*100], [-size*10, size*100], [size*10,size*100], [size*10, -size*100]]
 			self.color = [50,50,50,255]
 			self.outlineColor = [100,100,100,255]
-
 			self.momentArm = self.radius
 
 		elif self.moduleType is 'cannonshell 10':
@@ -613,7 +582,6 @@ class Module():
 			self.points = [[-self.radius, -self.radius], [-self.radius, self.radius], [self.radius,self.radius], [self.radius, -self.radius]]
 			self.color = [255,230,200,255]
 			self.outlineColor = [255,235,225,255]
-
 			self.lifetime = 100 # the shell lasts for 1000 somethings and then explodes.
 
 		elif self.moduleType is 'cannon 10':
@@ -641,7 +609,6 @@ class Module():
 			self.muzzleVelocity = 250000
 			self.cooldownTime = 100
 			self.cooldownValue = 0
-
 			self.effect = ModuleEffect('cannon 10 flash', [0,-self.radius])
 
 		elif self.moduleType is 'hyperdrive 10':
@@ -664,7 +631,6 @@ class Module():
 			self.points = [[-size*1.5, -size*2], [-size*1.5, size*2], [size*1.5,size*2], [size*1.5, -size*2]]
 			self.color = [50,50,50,255]
 			self.outlineColor = [100,100,100,255]
-
 			self.momentArm = self.radius
 
 # shipyard
@@ -673,9 +639,7 @@ lothar = [Module('generator',[0,0]), Module('engine 10',[-13,8], 0.6/math.pi), M
 boldang = [Module('spar 10',[0,-100], (0.5* math.pi)), Module('box 10',[0,0])]
 bigmolly = [Module('box 100',[0,0]), Module('spar 100',[1000,0], 0.5 * math.pi),Module('box 100',[-1000,0]),Module('box 100',[2000,0]), Module('box 100',[-2000,0]),  Module('box 100',[3000,0])]
 derelict_hyperunit = [Module('hyperdrive 10',[0,0])]
-
 ida_frigate = [Module('generator',[0,0]), Module('engine 10',[-13,8], 0.6/math.pi), Module('engine 10',[13,8],-0.6/math.pi), Module('RCS',[-13,-10]), Module('RCS',[13,-10]) , Module('box 10',[0,-40]), Module('box 10',[0,-90]), Module('hyperdrive 10',[0,-125]), Module('RCS',[-13,-120]), Module('RCS',[13,-120]) ]
-
 
 class Maneuver():
 	# description of an AI behaviour item.
@@ -718,18 +682,6 @@ class Maneuver():
 					targetLeadAngle = math.atan2(targetFuturePosition[1]- actor.body.position[1] , targetFuturePosition[0]- actor.body.position[0])
 					actor.setPoint = targetLeadAngle + 0.5 * math.pi
 					
-
-
-				# angleDifference = differenceBetweenAngles(actor.setPoint, actor.body.angle)
-				# if angleDifference < (0.2) and angleDifference > (- 0.2): # only fire engines if the ship is pointing vaguely in the right direction
-				# 	actor.keyStates['up'] = True
-				# else:
-				# 	actor.keyStates['up'] = False
-
-
-
-
-
 
 
 			if self.maneuverType == 'fast intercept':
@@ -775,8 +727,6 @@ class Maneuver():
 
 				actor.setPoint = actor.prograde + 0.5 * math.pi
 				if actor.orbit is not None:
-					# print(actor.orbit.tAn)
-					# print(self.parameter2)
 					if actor.orbit.tAn >  self.parameter2 - 0.1 and actor.orbit.tAn <  self.parameter2 + 0.1: # the ship is near the apoapsis
 						self.event2 = True
 						print('change periapsis - mark')
@@ -809,23 +759,6 @@ class Maneuver():
 						actor.keyStates['up'] = False
 						self.completed = True
 
-			##### deprecated by just introducing an angle element to change periapsis.
-			# if self.maneuverType == 'change aPe':
-			# 	# take a relatively circular orbit and make it slightly elliptical to a particular angle
-			# 	if not self.event1:
-			# 		print('change argument of periapsis')
-			# 		self.event1 = True
-			# 	actor.setPoint = actor.nadir + 0.5 * math.pi
-			# 	if actor.orbit is not None:
-			# 		if actor.orbit.tAn > addRadians(self.parameter1, - 0.1) and actor.orbit.tAn < addRadians(self.parameter1, 0.1):
-			# 			self.event2 = True
-			# 		if self.event2:
-			# 			angleDifference = actor.setPoint - actor.body.angle
-			# 			if (angleDifference < 0.1 and angleDifference > 0) or angleDifference > (2*math.pi - 0.1): # only fire engines if the ship is pointing vaguely in the right direction
-			# 				actor.keyStates['up'] = True
-			# 			else:
-			# 				actor.keyStates['up'] = False
-
 			if self.maneuverType == 'transfer':
 				pass
 
@@ -848,7 +781,6 @@ class Maneuver():
 					if actor.orbit.getApoapsis() < actor.orbit.getPeriapsis() + (actor.orbit.getPeriapsis()* 0.01):
 						actor.keyStates['up'] = False
 						self.completed = True
-
 
 			if self.maneuverType == 'match velocity':
 				pass
@@ -1020,10 +952,6 @@ class Actor():
 						availableAmount = self.availableResources[resource]
 					if availableAmount < abs(quantity):
 						module.enabled = False
-			# if module.moduleType == 'RCS':
-			# 	module.active = self.keyStates['left'] or self.keyStates['right']
-			# elif module.moduleType == 'engine 10':
-			# 	module.active = self.keyStates['up']
 
 		# - consume and produce resources
 		for module in self.modules:
@@ -1055,20 +983,14 @@ class Actor():
 			if module.enabled:
 				for giveResource, giveQuantity in list(module.resources.items()):
 					if giveResource == 'thrust':
-						# if keyStates['up']:
 							if module.active:
 								force = [(giveQuantity * timestepSize * 500 * math.cos(addRadians(module.angle, math.pi * 0.5))), -giveQuantity * timestepSize * 500 * math.sin(addRadians(module.angle, math.pi * 0.5) )]
 								self.body.apply_impulse_at_local_point(force, (0,0))
 								ifThrustHasBeenApplied = True
-						# if not keyStates['up']:
-						# 	module.active = False
-
-
 					elif giveResource == 'torque':
 							self.setPoint = self.setPoint % (2*math.pi)
 							self.body.angle = self.body.angle % (2*math.pi)
 							correctionDirection = self.setPoint - self.body.angle
-
 							if abs(correctionDirection) > 0.001:
 								module.active = True
 								if correctionDirection > math.pi or correctionDirection < -math.pi:
@@ -1174,53 +1096,42 @@ class SolarSystem():
 		self.contents = []
 
 		if solarSystemName == "Sol III":
-
-			
-
 			planet_erf = Attractor('earth', [1,1], gravitationalConstant)
 			planet_moon = Attractor('moon',[3000000,-3000000], gravitationalConstant)
-			self.contents.append(planet_erf)
-			self.contents.append(planet_moon)
 			lothar_instance = Actor('NPC lothar', lothar,(10000, -645050), [100000,0], 0.6 * math.pi)
 			lothar_instance2 = Actor('player Lothar', dinghy,(100, -640030), [0,0], 0, True)
 			boldang_instance = Actor('NPC boldang', boldang,(-100, -640050), [0,0],0)
 			bigmolly_instance = Actor('NPC molly', bigmolly,(100, -700050), [52000,0],0)
-
 			derelict_instance = Actor('derelict hyperunit', derelict_hyperunit,(1000200, -1080100), [10000,0], 0)
 
+			self.contents.append(planet_erf)
+			self.contents.append(planet_moon)
 			self.contents.append(lothar_instance)
 			self.contents.append(lothar_instance2)
 			self.contents.append(bigmolly_instance)
 			self.contents.append(derelict_instance)
+
 			self.position = [0,0]
 			self.color = [10,50,200,255]
-
 			self.links = ['Sol IV']
 
-
 		if solarSystemName == "Sol IV":
-
-
-			planet_murs = Attractor('mars', [1,1], gravitationalConstant)
+			planet_murs = Attractor('mars', [1,1], gravitationalConstant)			
+			dinghy_instance = Actor('NPC dinghy', dinghy,(200000, -200000), [10000,0], 0, True)
 
 			self.contents.append(planet_murs)
-			dinghy_instance = Actor('NPC dinghy', dinghy,(200000, -200000), [10000,0], 0, True)
 			self.contents.append(dinghy_instance)
 
 			self.position = [150,100]
 			self.color = [200,100,50,255]	
-
 			self.links = ['Sol III']
 
-		if solarSystemName == "Mooi":
-
-
+		if solarSystemName == "Procyon":
 			yhivi = Attractor('yhivi', [1,1], gravitationalConstant)
-			
-			self.contents.append(yhivi)
-
 			lothar_instance = Actor('NPC lothar', ida_frigate,(1, 121000), [17000,0], 0.6 * math.pi, True)
 			lothar_instance2 = Actor('player Lothar', lothar,(50000, 171000), [8000,0], 0)
+
+			self.contents.append(yhivi)
 			self.contents.append(lothar_instance)
 			self.contents.append(lothar_instance2)
 
@@ -1231,20 +1142,16 @@ class SolarSystem():
 
 			self.links = ['Sol IV']
 
-			
-
-
-
 class World():
 	def __init__(self):
-		self.time = 0 # the number of timesteps that have passed in-universe. used for physics and orbital calculations.
-		self.space = pymunk.Space()
-		self.space.gravity = (0.0, 0.0)
-		self.gravitationalConstant = 0.01
-		self.dragCoefficient = 0.005 # atmospheric drag
+		self.time = 0 							# the number of timesteps that have passed in-universe. used for physics and orbital calculations.
+		self.space = pymunk.Space()				
+		self.space.gravity = (0.0, 0.0)			# pymunk's own gravity is turned off, so we can use our own.
+		self.gravitationalConstant = 0.01		# sets the strength of gravity
+		self.dragCoefficient = 0.005 			# Sets the strength of atmospheric drag
 		self.actors = []
 		self.attractors = []
-		self.resolution = resolution
+		self.resolution = resolution_half
 		self.ch = self.space.add_collision_handler(0, 0)
 		self.ch.post_solve = self.handle_collision
 		self.viewpointObject = None
@@ -1275,11 +1182,13 @@ class World():
 		self.bottomLimit = antiTransformForView( [0,0] ,[0,0], self.zoom, resolution)
 
 		self.mapView = False
+		self.galaxy = [] # a list of all the solar systems the player can visit.
 
 		self.playerTargetIndex = None # index of which actor in the list the player is targeting.
 
 	def gravityForce(self, actorPosition, attractorPosition, attractorMass):
-		distance = attractorPosition - actorPosition # scalar distance between two bodies
+		# this function returns the force of gravity between an actor and an attractor.
+		distance = attractorPosition - actorPosition
 		magnitude = mag(distance)
 		gravity = self.gravitationalConstant * attractorMass
 		appliedGravity = gravity/(magnitude**2)
@@ -1288,21 +1197,24 @@ class World():
 		return force
 
 	def gravitate(self, actor, force):
+		# this function is used to apply a force to an actor. It is principally used to apply gravity to the actors when they are not freefalling.
 		rotatedForce = Vec2d(force[0], force[1])
 		rotatedForce = rotatedForce.rotated(-actor.body.angle)
 		actor.body.apply_impulse_at_local_point(rotatedForce, [0,0])
 
 	def getModuleFromCursorPosition(self, cursorPositionRaw):
 		cursorPosition = cursorPositionRaw
-		# cursorPosition[1] = -cursorPosition[1] + 0.5 * resolution[0]
 		smellyCursor = [0,0]
 		smellyCursor[0] = cursorPositionRaw[0]
 		smellyCursor[1] = -cursorPositionRaw[1] +  resolution[1]
+
+		# when picking a module out of the list, you don't need to transform into game coordinates.
 		for listItem in self.availableModuleListItems:
 			if pointInRect(smellyCursor, listItem.boundingRectangle):
 				self.availableModuleListItems.remove(listItem)
 				return listItem.module
 
+		# put bounding boxes around the modules in-game coordinates, then antitransform the mouse and see if it landed on any of them.
 		for module in self.modulesInUse:
 			transformedPoints = []
 			for point in module.points:
@@ -1310,10 +1222,7 @@ class World():
 				transformedPoint[0] = (point[0] + module.offset[0])
 				transformedPoint[1] = (point[1] + module.offset[1])
 				transformedPoints.append(transformedPoint)
-
 			boundingBox = boundPolygon(transformedPoints)
-			# print(self.antiTransformForBuild(cursorPositionRaw))
-			# print(boundingBox)
 			if pointInRect( self.antiTransformForBuild(cursorPositionRaw) , boundingBox):
 				self.modulesInUse.remove(module)
 				return module
@@ -1474,8 +1383,6 @@ class World():
 			if actor.doModuleEffects(actor.keyStates, self.timestepSize):
 				actor.leaveFreefall(0)
 
-		
-
 				# turn the gun off until it has done a cooldown.
 				if module.moduleType == 'cannon 10':
 					module.active = False
@@ -1536,7 +1443,6 @@ class World():
 			# let the ai drive the ship. this comes after orbit calculation because it needs valid orbits
 			actor.flightComputer()
 
-				
 	def rotatePolygon(self, points, angle):
 		return Rotate2D(points,(0,0),angle)
 
@@ -1598,7 +1504,6 @@ class World():
 		
 		renderAConvexPolygon(main_batch, transformedPoints, self.viewpointObject.body.position, self.zoom, self.resolution,  module.effect.color, None, None)
 
-
 	def drawColorIndicator(self, color,  position, size, main_batch):
 		# draw a simple colored square that can be used for visual indication.
 
@@ -1628,16 +1533,9 @@ class World():
 		if module.effect is not None:
 			if module.enabled and module.active:
 				self.drawModuleEffects(main_batch, module, actor)
-
-		# if self.showHUD:
-		# 	if module.enabled:
-		# 		rotatedPoint = rotate_point(actor.body.position + module.offset, actor.body.angle, [actor.body.position[0] -module.offset[0], actor.body.position[1]-module.offset[1]])
-		# 		transformedPoint = transformForView(rotatedPoint,self.viewpointObject.body.position, self.zoom, self.resolution )
-		# 		# print(transformedPoint)
-		# 		self.drawColorIndicator([100,100,255,255], [int(transformedPoint[0]), int(transformedPoint[1])], 2, main_batch)
-
 	
 	def drawScreenFill(self, main_batch):
+		# this function is used to fill the build menu with a white backdrop.
 		fillTriangles = [0,0, 0,0, 0,resolution[1], resolution[0],resolution[1], resolution[0],0, 0,0, 0,0 ]
 		main_batch.add(7, pyglet.gl.GL_TRIANGLE_STRIP, None, ('v2i',fillTriangles), ('c4B',[255,255,255,255]*7))
 
@@ -1788,6 +1686,7 @@ class World():
 				return actor
 
 	def drawAPOrbit(self, main_batch, actor, orbit, attractor, color):
+		# This function visually renders an AstroPynamics orbit object.
 		if actor.orbit is None:
 			return
 		if len(actor.orbitPoints) > 0:
@@ -2254,6 +2153,8 @@ def on_key_press(symbol, modifiers):
 			Nirn.player.target = Nirn.actors[Nirn.playerTargetIndex]
 		else:
 			Nirn.player.target = None
+	elif symbol == key.M:
+		Nirn.mapView = not Nirn.mapView
 
 
 @window.event
