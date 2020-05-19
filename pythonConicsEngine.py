@@ -1,27 +1,32 @@
-import math, sys, random
+import sys, copy, time
 
+import numpy, math, random
+
+# pymunk is used for rigid body dynamics.
 import pymunk
 from pymunk import Vec2d
-import numpy
-import time
 
+# astropynamics is used for orbital mechanics calculations.
 from AstroPynamics.tools.body import Body as APBody
 from AstroPynamics.orbits.orbit import Orbit
 from astropy.time import Time, TimeDelta
+import time
     
-global contact
-global shape_to_remove
+# global contact
+# global shape_to_remove
 
+# pyglet is used primarily for graphics but also handles keyboard input.
 import pyglet
 from pyglet.gl import *
 from pyglet.window import Window
 from pyglet.window import key
 from pyglet.window import mouse
 
-import copy
 
+# cProfile is used along with snakeviz to analyze the game's performance.
 import cProfile
 
+# dill is used to save and load information so you can save ships and your game progress.
 import pickle
 import dill
 
@@ -944,7 +949,7 @@ class Actor():
 		self.body.velocity = velocity
 		self.shape = pymunk.Poly(self.body, self.points)
 		self.shape.friction = 0.9
-		self.orbit = None #initpos_to_orbit(self.)
+		self.orbit = None 
 		self.freefalling = True
 		self.color = (200,50,50)
 		self.keyStates = {
@@ -957,7 +962,11 @@ class Actor():
 			'J':False
 		}
 		self.orbiting = None
-		self.stepsToFreefall = 1
+		self.stepsToFreefall = 1 # After an object has collided or accelerated, it doesn't return to freefall straight away. It waits 1 or 0 turns. 
+								# If you wait 0 turns, an orbit will be prepared for you, so you can view your trajectory while still burning your rockets.
+								# if you wait 1 turn, no orbit will be prepared or drawn, which is good for objects that are sitting on the ground.
+								# objects that are sitting on the ground will also not gravitate, to prevent jiggling. This is ended when something hits them or they accelerate.
+
 		self.decompEnergy = 5000000
 		self.desiredAngle = 0
 		self.exemptFromGravity = False
@@ -978,6 +987,7 @@ class Actor():
 
 		self.target = None # another actor that this one can lock with radar and scanners.
 		self.selectedWeapon = None
+		self.hyperdriveDestination = None
 
 	def leaveFreefall(self, stepsToFreefall=1):
 		self.stepsToFreefall = stepsToFreefall
@@ -1810,6 +1820,8 @@ class World():
 		listXPosition = 10
 		fontSize = 12
 
+		color = (200,200,200,255)
+
 		if quantity is None and len(string) == 0:
 			return index + 1
 
@@ -1818,28 +1830,28 @@ class World():
 	                      font_name='Times New Roman',
 	                      font_size=fontSize,
 	                      x=listXPosition, y=HUDlistItemSpacing * index,
-	                      color=(100,100,100,255),
+	                      color=color,
 	                      align="left")
 		elif listCorner is 'top right':
 			label = pyglet.text.Label(string + str(quantity),
 	                      font_name='Times New Roman',
 	                      font_size=fontSize,
 	                      x=resolution[0]-listXPosition - 100, y=resolution[1]-(HUDlistItemSpacing * index),
-	                      color=(100,100,100,255),
+	                      color=color,
 	                      align="right")
 		elif listCorner is 'top left':
 			label = pyglet.text.Label(string + str(quantity),
 	                      font_name='Times New Roman',
 	                      font_size=fontSize,
 	                      x=listXPosition, y=resolution[1]-(HUDlistItemSpacing * index),
-	                      color=(100,100,100,255),
+	                      color=color,
 	                      align="left")
 		elif listCorner is 'bottom right':
 			label = pyglet.text.Label(string + str(quantity),
 	                      font_name='Times New Roman',
 	                      font_size=fontSize,
 	                      x=resolution[0]-listXPosition - 100, y=HUDlistItemSpacing * index,
-	                      color=(100,100,100,255),
+	                      color=color,
 	                      align="right")
 
 		label.draw()
@@ -1872,14 +1884,18 @@ class World():
 		i = self.drawHUDListItem('', None, i, 'top left') # blank line as a separator
 		i = 1
 
-		i = self.drawHUDListItem('freefalling: ', self.viewpointObject.freefalling, i, 'bottom left')
+		printFreefalling = False
+		if self.viewpointObject.freefalling or self.viewpointObject.stepsToFreefall == 0:
+			printFreefalling = True
+
+		i = self.drawHUDListItem('freefalling: ', printFreefalling, i, 'bottom left')
 		i = self.drawHUDListItem('landed: ', self.viewpointObject.exemptFromGravity, i, 'bottom left')
 		if self.player.orbiting is not None:
 			i = self.drawHUDListItem('orbiting: ', self.viewpointObject.orbiting.planetName, i, 'bottom left')
 		i = self.drawHUDListItem('', None, i, 'bottom left') # blank line as a separator
 
 		i = self.drawHUDListItem('player: ', self.viewpointObject.isPlayer, i, 'bottom left')
-		i = self.drawHUDListItem('warp: ', self.timestepSize * 3 * 100, i, 'bottom left')
+		i = self.drawHUDListItem('time accel: ', self.timestepSize * 3 * 100, i, 'bottom left')
 		i = self.drawHUDListItem('zoom: ', self.zoom, i, 'bottom left')
 		i = self.drawHUDListItem('paused: ', self.paused, i, 'bottom left')
 
@@ -1891,7 +1907,7 @@ class World():
 
 		i = 1
 
-		i = self.drawHUDListItem('hyperdrive: ', self.player.target, i, 'bottom right')
+		i = self.drawHUDListItem('hyperdrive: ', self.player.hyperdriveDestination, i, 'bottom right')
 		# i = self.drawHUDListItem('weapon: ', self.player.selectedWeapon, i, 'top right')
 		
 		# print the navcircle
