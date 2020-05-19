@@ -541,13 +541,13 @@ class Module():
 			self.momentArm = self.radius
 
 		elif self.moduleType is 'box 10':
-			self.mass = 10
+			self.mass = 2
 			self.resources = {}
-			self.stores = {}
-			self.initialStores = {}
+			self.stores = {'cargo':100}
+			self.initialStores = {'cargo':0}
 			self.radius = 5
 			size = self.radius
-			self.points = [[-size*10, -size*10], [-size*10, size*10], [size*10,size*10], [size*10, -size*10]]
+			self.points = [[-size*5, -size*5], [-size*5, size*5], [size*5,size*5], [size*5, -size*5]]
 			self.color = [50,50,50,255]
 			self.outlineColor = [100,100,100,255]
 
@@ -647,6 +647,9 @@ lothar = [Module('generator',[0,0]), Module('engine 10',[-13,8], 0.6/math.pi), M
 boldang = [Module('spar 10',[0,-100], (0.5* math.pi)), Module('box 10',[0,0])]
 bigmolly = [Module('box 100',[0,0]), Module('spar 100',[1000,0], 0.5 * math.pi),Module('box 100',[-1000,0]),Module('box 100',[2000,0]), Module('box 100',[-2000,0]),  Module('box 100',[3000,0])]
 derelict_hyperunit = [Module('hyperdrive 10',[0,0])]
+
+ida_frigate = [Module('generator',[0,0]), Module('engine 10',[-13,8], 0.6/math.pi), Module('engine 10',[13,8],-0.6/math.pi), Module('RCS',[-13,-10]), Module('RCS',[13,-10]) , Module('box 10',[0,-40]), Module('box 10',[0,-90]), Module('hyperdrive 10',[0,-125]), Module('RCS',[-13,-120]), Module('RCS',[13,-120]) ]
+
 
 class Maneuver():
 	# description of an AI behaviour item.
@@ -1191,7 +1194,7 @@ class SolarSystem():
 			
 			self.contents.append(yhivi)
 
-			lothar_instance = Actor('NPC lothar', lothar,(1, 121000), [17000,0], 0.6 * math.pi, True)
+			lothar_instance = Actor('NPC lothar', ida_frigate,(1, 121000), [17000,0], 0.6 * math.pi, True)
 			lothar_instance2 = Actor('player Lothar', lothar,(50000, 171000), [8000,0], 0)
 			self.contents.append(lothar_instance)
 			self.contents.append(lothar_instance2)
@@ -1912,6 +1915,27 @@ class World():
 	def graphics(self):
 		window.clear()
 
+		first_batch = pyglet.graphics.Batch()
+		pyglet.gl.glLineWidth(2)
+		for attractor in self.attractors:
+			if attractor.atmosphere != None:
+				self.drawActor(attractor.atmosphere, first_batch)
+
+
+		first_batch.draw()
+
+		second_batch = pyglet.graphics.Batch()
+		pyglet.gl.glLineWidth(1)
+
+		if self.showHUD:
+			self.drawHUD(second_batch)
+			# draw the actor's orbits
+			for actor in self.actors:
+				if actor.orbit is not None:
+					self.drawAPOrbit(second_batch, actor, actor.orbit, actor.orbiting, (100,100,100))
+
+		second_batch.draw()
+
 		main_batch = pyglet.graphics.Batch()
 		pyglet.gl.glLineWidth(2)
 
@@ -1919,8 +1943,8 @@ class World():
 			illuminator.transformedPosition = transformForView( illuminator.position ,self.viewpointObject.body.position, self.zoom, resolution)
 
 		for attractor in self.attractors:
-			if attractor.atmosphere != None:
-				self.drawActor(attractor.atmosphere, main_batch)
+			# if attractor.atmosphere != None:
+			# 	self.drawActor(attractor.atmosphere, main_batch)
 			self.drawActor(attractor, main_batch)
 		for actor in self.actors:
 			self.drawActor(actor, main_batch)
@@ -1982,17 +2006,7 @@ class World():
 		self.drawColorIndicator( color_point, main_batch)
 
 		main_batch.draw()
-		second_batch = pyglet.graphics.Batch()
-		pyglet.gl.glLineWidth(1)
-
-		if self.showHUD:
-			self.drawHUD(second_batch)
-			# draw the actor's orbits
-			for actor in self.actors:
-				if actor.orbit is not None:
-					self.drawAPOrbit(second_batch, actor, actor.orbit, actor.orbiting, (100,100,100))
-
-		second_batch.draw()
+		
 
 	def hyperspaceJump() :
 		pass
@@ -2023,6 +2037,12 @@ class World():
 
 
 
+def saveShipFromBuildMenu():
+	dill.dump(Nirn.modulesInUse,open('ships/playerShip', 'wb'))
+
+def loadShipIntoBuildMenu():
+	# dill.dump(Nirn.modulesInUse,open('ships/playerShip', 'wb'))
+	Nirn.modulesInUse = dill.load(open('ships/playerShip', 'rb'))
 
 def save():
 	dill.dump(Nirn,open('save', 'wb'))
@@ -2103,7 +2123,8 @@ def on_key_press(symbol, modifiers):
 		Nirn.player.keyStates['Fire'] = True
 	elif symbol == key.S:
 		if modifiers & key.MOD_CTRL:
-			save()
+			if Nirn.buildMenu:
+				saveShipFromBuildMenu()
 		else:
 			Nirn.player.keyStates['face direction'] = 'retrograde'
 	elif symbol == key.W:
@@ -2113,7 +2134,9 @@ def on_key_press(symbol, modifiers):
 	elif symbol == key.T:
 		Nirn.player.autoPilotActive = not Nirn.player.autoPilotActive
 	elif symbol == key.L:
-		load()
+		if modifiers & key.MOD_CTRL:
+			if Nirn.buildMenu:
+				loadShipIntoBuildMenu()
 	elif symbol == key.J:
 		Nirn.hyperspaceJump()
 	elif symbol == key.M:
