@@ -875,8 +875,8 @@ class Actor():
 				if resource not in self.maximumStores: self.maximumStores[resource] = quantity
 				else: self.maximumStores[resource] += quantity
 		
-		inertia = pymunk.moment_for_poly(self.mass, self.points, (0,0))
-		self.body = pymunk.Body(self.mass, inertia)
+		self.inertia = pymunk.moment_for_poly(self.mass, self.points, (0,0))
+		self.body = pymunk.Body(self.mass, self.inertia)
 		self.body.position = position
 		self.body.velocity = velocity
 		self.shape = pymunk.Poly(self.body, self.points)
@@ -920,6 +920,7 @@ class Actor():
 		self.target = None # another actor that this one can lock with radar and scanners.
 		self.selectedWeapon = None
 		self.hyperdriveDestination = None
+		self.jumping = False
 
 	def leaveFreefall(self, stepsToFreefall=1):
 		self.stepsToFreefall = stepsToFreefall
@@ -1009,6 +1010,9 @@ class Actor():
 
 					elif giveResource == 'warp energy':
 						if self.keyStates['J'] and module.enabled:
+							if self.storagePool['warp energy'] >= module.stores['warp energy']:
+								self.jumping = True
+
 							module.active = True
 						else:
 							module.active = False
@@ -1094,12 +1098,13 @@ class SolarSystem():
 	def __init__(self, solarSystemName, gravitationalConstant):
 
 		self.contents = []
+		self.solarSystemName = solarSystemName
 
 		if solarSystemName == "Sol III":
 			planet_erf = Attractor('earth', [1,1], gravitationalConstant)
 			planet_moon = Attractor('moon',[3000000,-3000000], gravitationalConstant)
 			lothar_instance = Actor('NPC lothar', lothar,(10000, -645050), [100000,0], 0.6 * math.pi)
-			lothar_instance2 = Actor('player Lothar', dinghy,(100, -640030), [0,0], 0, True)
+			lothar_instance2 = Actor('player Lothar', dinghy,(100, -640030), [0,0], 0)
 			boldang_instance = Actor('NPC boldang', boldang,(-100, -640050), [0,0],0)
 			bigmolly_instance = Actor('NPC molly', bigmolly,(100, -700050), [52000,0],0)
 			derelict_instance = Actor('derelict hyperunit', derelict_hyperunit,(1000200, -1080100), [10000,0], 0)
@@ -1113,34 +1118,39 @@ class SolarSystem():
 
 			self.position = [0,0]
 			self.color = [10,50,200,255]
-			self.links = ['Sol IV']
+			self.outlineColor = [255,255,255,255]
+			self.links = ['Sol IV', 'Procyon']
+			self.hyperspaceThreshold = 4000000
 
 		if solarSystemName == "Sol IV":
 			planet_murs = Attractor('mars', [1,1], gravitationalConstant)			
-			dinghy_instance = Actor('NPC dinghy', dinghy,(200000, -200000), [10000,0], 0, True)
+			dinghy_instance = Actor('NPC dinghy', dinghy,(200000, -200000), [10000,0], 0)
 
 			self.contents.append(planet_murs)
 			self.contents.append(dinghy_instance)
 
-			self.position = [150,100]
+			self.position = [15,10]
 			self.color = [200,100,50,255]	
+			self.outlineColor = [255,255,255,255]
 			self.links = ['Sol III']
+			self.hyperspaceThreshold = 3000000
 
 		if solarSystemName == "Procyon":
 			yhivi = Attractor('yhivi', [1,1], gravitationalConstant)
-			lothar_instance = Actor('NPC lothar', ida_frigate,(1, 121000), [17000,0], 0.6 * math.pi, True)
 			lothar_instance2 = Actor('player Lothar', lothar,(50000, 171000), [8000,0], 0)
 
 			self.contents.append(yhivi)
-			self.contents.append(lothar_instance)
+			# self.contents.append(lothar_instance)
 			self.contents.append(lothar_instance2)
 
-			lothar_instance.maneuverQueue.append(Maneuver('ram',lothar_instance2))
+			# lothar_instance.maneuverQueue.append(Maneuver('ram',lothar_instance2))
 
-			self.position = [250,450]
+			self.position = [-150,-450]
 			self.color = [10,200,50,255]
+			self.outlineColor = [255,255,255,255]
 
-			self.links = ['Sol IV']
+			self.links = ['Sol III']
+			self.hyperspaceThreshold = 200000
 
 class World():
 	def __init__(self):
@@ -1151,7 +1161,7 @@ class World():
 		self.dragCoefficient = 0.005 			# Sets the strength of atmospheric drag
 		self.actors = []
 		self.attractors = []
-		self.resolution = resolution_half
+		resolution = resolution_half
 		self.ch = self.space.add_collision_handler(0, 0)
 		self.ch.post_solve = self.handle_collision
 		self.viewpointObject = None
@@ -1182,8 +1192,9 @@ class World():
 		self.bottomLimit = antiTransformForView( [0,0] ,[0,0], self.zoom, resolution)
 
 		self.mapView = False
-		self.galaxy = [] # a list of all the solar systems the player can visit.
+		self.galaxy = {} # a list of all the solar systems the player can visit.
 		self.currentSystem = None
+		self.hyperjumpDestinationIndex = 0
 
 		self.playerTargetIndex = None # index of which actor in the list the player is targeting.
 
@@ -1239,16 +1250,17 @@ class World():
 		self.viewpointObject = self.player
 
 	def destroyActor(self, actor):
-		self.space.remove(actor.body)
-		self.space.remove(actor.shape)
+		# 
+		self.space.remove(actor.shape, actor.body)
 		if actor in self.actors:
 				self.actors.remove(actor)
 
 	def destroyAttractor(self,attractor):
-		self.space.remove(attractor.body)
-		self.space.remove(attractor.shape)
-		if attractor in self.attractor:
-				self.attractor.remove(attractor)
+		# self.space.remove(attractor.shape, attractor.body)
+		self.space.remove(attractor.shape, attractor.body)
+		# self.space.remove(attractor.body)
+		if attractor in self.attractors:
+				self.attractors.remove(attractor)
 
 	def decomposeActor(self, actor, modules):
 		listLength = len(actor.modules)
@@ -1450,6 +1462,12 @@ class World():
 			# let the ai drive the ship. this comes after orbit calculation because it needs valid orbits
 			actor.flightComputer()
 
+			# perform hyperspace travel.
+			if actor.jumping:
+				actor.jumping = False
+				actor.storagePool['warp energy'] = 0
+				self.hyperspaceJump(actor)
+
 	def rotatePolygon(self, points, angle):
 		return Rotate2D(points,(0,0),angle)
 
@@ -1458,15 +1476,15 @@ class World():
 		transformedPosition = [0,0] #* self.zoom  # shrink or expand everything around the 0,0 point
 		transformedPosition[0] = -position[0] * self.zoom
 		transformedPosition[1] = -position[1] * self.zoom
-		transformedPosition[0] += 0.5 * self.resolution[0] # add half the width of the screen, to get to the middle. 0,0 is naturally on the corner.
-		transformedPosition[1] += 0.5 * self.resolution[1] # add half the height.
+		transformedPosition[0] += 0.5 * resolution[0] # add half the width of the screen, to get to the middle. 0,0 is naturally on the corner.
+		transformedPosition[1] += 0.5 * resolution[1] # add half the height.
 		return transformedPosition
 
 	def antiTransformForBuild(self, position):
 		# performs the inverse operation to transformForBuild, used to map the mouse cursor to coordinates in the game world.
 		transformedPosition = [0,0] #* self.zoom  # shrink or expand everything around the 0,0 point
-		transformedPosition[0] = (-position[0]) + 0.5 * self.resolution[0] # add half the width of the screen, to get to the middle. 0,0 is naturally on the corner.
-		transformedPosition[1] = (-position[1]) + 0.5 * self.resolution[1] # add half the height.
+		transformedPosition[0] = (-position[0]) + 0.5 * resolution[0] # add half the width of the screen, to get to the middle. 0,0 is naturally on the corner.
+		transformedPosition[1] = (-position[1]) + 0.5 * resolution[1] # add half the height.
 		transformedPosition[0] = transformedPosition[0] / self.zoom
 		transformedPosition[1] = transformedPosition[1] / self.zoom
 		return transformedPosition
@@ -1476,9 +1494,9 @@ class World():
 		for point in module.points:
 			transformedPoint = [0,0]
 			transformedPoint[0] = ((point[0] * iconSize) + position[0])
-			transformedPoint[1] = -((point[1] * iconSize) + position[1]) + self.resolution[1]
+			transformedPoint[1] = -((point[1] * iconSize) + position[1]) + resolution[1]
 			transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
-		renderAConvexPolygon(main_batch, transformedPoints, self.viewpointObject.body.position, self.zoom, self.resolution, module.color, module.outlineColor)
+		renderAConvexPolygon(main_batch, transformedPoints, self.viewpointObject.body.position, self.zoom, resolution, module.color, module.outlineColor)
 
 	def drawModuleForDrag(self,main_batch, module, position):
 		rotatedPoints = rotate_polygon(module.points, module.angle)
@@ -1489,7 +1507,7 @@ class World():
 			rotatedPoint[1] = (rotatedPoint[1] * self.zoom ) + position[1]
 			transformedPoint = rotatedPoint # transformForView does operations like zooming and mapping 0 to the center of the screen. 
 			transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
-		renderAConvexPolygon(main_batch, transformedPoints,self.viewpointObject.body.position, self.zoom, self.resolution,  module.color, module.outlineColor)
+		renderAConvexPolygon(main_batch, transformedPoints,self.viewpointObject.body.position, self.zoom, resolution,  module.color, module.outlineColor)
 
 	def drawModuleForBuild(self, main_batch, module):
 		rotatedPoints = rotate_polygon(module.points, module.angle)
@@ -1500,27 +1518,27 @@ class World():
 			rotatedPoint[1] += module.offset[1]
 			transformedPoint = self.transformForBuild(rotatedPoint) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
 			transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
-		renderAConvexPolygon(main_batch, transformedPoints, self.viewpointObject.body.position, self.zoom, self.resolution, module.color, module.outlineColor)
+		renderAConvexPolygon(main_batch, transformedPoints, self.viewpointObject.body.position, self.zoom, resolution, module.color, module.outlineColor)
 
 	def drawModuleEffects(self, main_batch, module, actor):
 		rotatedPoints = rotate_polygon(module.effect.points, module.angle+actor.body.angle, [ -module.offset[0]-module.effect.position[0], -module.offset[1]-module.effect.position[1]] )
 		transformedPoints = []
 		for index, rotatedPoint in enumerate(rotatedPoints):
-			transformedPoint = transformForView(rotatedPoint + actor.body.position + module.offset + module.effect.position,self.viewpointObject.body.position, self.zoom, self.resolution ) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
+			transformedPoint = transformForView(rotatedPoint + actor.body.position + module.offset + module.effect.position,self.viewpointObject.body.position, self.zoom, resolution ) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
 			transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
 		
-		renderAConvexPolygon(main_batch, transformedPoints, self.viewpointObject.body.position, self.zoom, self.resolution,  module.effect.color, None, None)
+		renderAConvexPolygon(main_batch, transformedPoints, self.viewpointObject.body.position, self.zoom, resolution,  module.effect.color, None, None)
 
 	def drawColorIndicator(self, color,  position, size, main_batch):
 		# draw a simple colored square that can be used for visual indication.
 
 		points = [[-size,size],[size,size],[size,-size],[-size,-size]]
-		newpos = transformForView(position, self.viewpointObject.body.position, self.zoom, self.resolution )
+		newpos = transformForView(position, self.viewpointObject.body.position, self.zoom, resolution )
 		nupoints = []
 		for point in points:
 			nupoints.append([int(point[0] + newpos[0]), int(point[1] + newpos[1])])
 			
-		renderAConvexPolygon(main_batch, nupoints, self.viewpointObject.body.position, self.zoom, self.resolution,  color)
+		renderAConvexPolygon(main_batch, nupoints, self.viewpointObject.body.position, self.zoom, resolution,  color)
 
 	def drawModule(self, actor, module, main_batch): # draw the outline of the module.
 		rotatedPoints = module.points
@@ -1530,12 +1548,12 @@ class World():
 
 		for index, rotatedPoint in enumerate(rotatedPoints):
 			try:
-				transformedPoint = transformForView(rotatedPoint + actor.body.position + module.offset,self.viewpointObject.body.position, self.zoom, self.resolution ) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
+				transformedPoint = transformForView(rotatedPoint + actor.body.position + module.offset,self.viewpointObject.body.position, self.zoom, resolution ) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
 				transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
 			except:
 				pass
 			
-		renderAConvexPolygon(main_batch, transformedPoints, self.viewpointObject.body.position, self.zoom, self.resolution,  module.color, module.outlineColor, self.illuminators)
+		renderAConvexPolygon(main_batch, transformedPoints, self.viewpointObject.body.position, self.zoom, resolution,  module.color, module.outlineColor, self.illuminators)
 
 		if module.effect is not None:
 			if module.enabled and module.active:
@@ -1557,9 +1575,9 @@ class World():
 			transformedOuterPoints = []
 
 			for index, point in enumerate(actor.innerPoints): 
-				transformedInnerPoints.append(transformForView(point,self.viewpointObject.body.position, self.zoom, self.resolution))
+				transformedInnerPoints.append(transformForView(point,self.viewpointObject.body.position, self.zoom, resolution))
 			for index, point in enumerate(actor.outerPoints): 
-				transformedOuterPoints.append(transformForView(point,self.viewpointObject.body.position, self.zoom, self.resolution))
+				transformedOuterPoints.append(transformForView(point,self.viewpointObject.body.position, self.zoom, resolution))
 
 			rendering = unwrapAtmosphereForGradient(actor.n_points, transformedInnerPoints, transformedOuterPoints, actor.color, actor.outerColor)
 			main_batch.add(rendering[0], pyglet.gl.GL_TRIANGLE_STRIP, None, ('v2i',rendering[1]), ('c4B',rendering[2]))
@@ -1597,28 +1615,28 @@ class World():
 
 				# if one of the points is outside the view field, and one is inside, you want to draw it, so that the line leaving the screen looks correct.
 				if (pointInside and not prevPointInside) or (prevPointInside and not pointInside):
-					transformedPoint = transformForView(prevPoint,self.viewpointObject.body.position, self.zoom, self.resolution) 
+					transformedPoint = transformForView(prevPoint,self.viewpointObject.body.position, self.zoom, resolution) 
 					transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
-					transformedPoint = transformForView(currentPoint,self.viewpointObject.body.position, self.zoom, self.resolution) 
+					transformedPoint = transformForView(currentPoint,self.viewpointObject.body.position, self.zoom, resolution) 
 					transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
 
 					# on the last point, you want to make a connection between the first and last point in the polygon. It should be treated the same as the other lines.
 					if index == onTheVeryLastPoint:
-						transformedPoint = transformForView(firstPoint,self.viewpointObject.body.position, self.zoom, self.resolution) 
+						transformedPoint = transformForView(firstPoint,self.viewpointObject.body.position, self.zoom, resolution) 
 						transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
 
 				# if both points are inside, you want to draw both. But you've already drawn lastPoint, so you only need to add the current point.
 				elif pointInside and prevPointInside:
-					transformedPoint = transformForView(currentPoint,self.viewpointObject.body.position, self.zoom, self.resolution) 
+					transformedPoint = transformForView(currentPoint,self.viewpointObject.body.position, self.zoom, resolution) 
 					transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
 
 					if index == onTheVeryLastPoint:
-						transformedPoint = transformForView(firstPoint,self.viewpointObject.body.position, self.zoom, self.resolution) 
+						transformedPoint = transformForView(firstPoint,self.viewpointObject.body.position, self.zoom, resolution) 
 						transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
 
 			# if the polygon was completely offscreen, the length of the array will be 0, and you can skip it.
 			if len(transformedPoints) > 0:
-				renderAConvexPolygon(main_batch, transformedPoints,self.viewpointObject.body.position, self.zoom, self.resolution,  actor.color, actor.outlineColor)	
+				renderAConvexPolygon(main_batch, transformedPoints,self.viewpointObject.body.position, self.zoom, resolution,  actor.color, actor.outlineColor)	
 
 	def getActorFromBody(self, body):
 		for actor in self.actors:
@@ -1816,11 +1834,6 @@ class World():
 		i = self.drawHUDListItem('hyperdrive: ', self.player.hyperdriveDestination, i, 'bottom right')
 		# i = self.drawHUDListItem('weapon: ', self.player.selectedWeapon, i, 'top right')
 		
-		# print the navcircle
-		for line in self.navCircleLines:
-
-			transformedPoints = transformPolygonForLines(line)
-			main_batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i', transformedPoints[1]), ('c4B',[50,50,50,255]*(transformedPoints[0])))
 
 	def shootABullet(self, gunModule, actor):
 		if gunModule.enabled:
@@ -1875,19 +1888,55 @@ class World():
 
 		main_batch.draw()
 
+
+	def drawJumpLinksInMapView(self,solar_system, main_batch):
+
+		for link in solar_system.links:
+
+			aEnd = [int((( solar_system.position[0]) * self.zoom) + resolution_half[0]), int((( solar_system.position[1]) * self.zoom) + resolution_half[1])] # solar_system.position
+			bEnd = None
+				
+			otherSolarSystem = self.galaxy[link]
+
+			bEnd = ([int((( otherSolarSystem.position[0]) * self.zoom) + resolution_half[0]), int(((  otherSolarSystem.position[1]) * self.zoom) + resolution_half[1])]) #otherSolarSystem.position
+
+			if bEnd is not None:
+				transformedPoints = transformPolygonForLines([aEnd, bEnd])
+				main_batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i',transformedPoints[1]), ('c4B',[100,100,100,255]*transformedPoints[0]))
+
+			if self.player.hyperdriveDestination is not None:
+				aEnd = [int((( solar_system.position[0]) * self.zoom) + resolution_half[0]), int((( solar_system.position[1]) * self.zoom) + resolution_half[1])] 
+				bEnd = ([int((( self.player.hyperdriveDestination.position[0]) * self.zoom) + resolution_half[0]), int(((  self.player.hyperdriveDestination.position[1]) * self.zoom) + resolution_half[1])]) #otherSolarSystem.position
+
+				transformedPoints = transformPolygonForLines([aEnd, bEnd])
+				main_batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i',transformedPoints[1]), ('c4B',[100,100,100,255]*transformedPoints[0]))
+
+
+
 	def drawSolarSystemInMapView(self, solar_system, main_batch):
-		pass
+		#self.drawColorIndicator([20,200,80,255], [rotatedPoint[0], rotatedPoint[1]], int(1*self.zoom), third_batch)
+		size = int(5 )
+		points = [[-size,size],[size,size],[size,-size],[-size,-size]]
+		# newpos = transformForView(position, self.viewpointObject.body.position, self.zoom, resolution )
+		nupoints = []
+		for point in points:
+			nupoints.append([int(((point[0] + solar_system.position[0]) * self.zoom) + resolution_half[0]), int(((point[1] + solar_system.position[1]) * self.zoom) + resolution_half[1])])
+			
+		renderAConvexPolygon(main_batch, nupoints, resolution_half, self.zoom, resolution,  solar_system.color, solar_system.outlineColor)
 
 	def mapViewGraphics(self):
 		window.clear()
 
-		main_batch = pyglet.graphics.Batch()
+		mapBatch = pyglet.graphics.Batch()
 		pyglet.gl.glLineWidth(2)
 
-		for solar_system in self.galaxy:
-			self.drawSolarSystemInMapView(solar_system, main_batch)
+		for key, solar_system in self.galaxy.items():
+			self.drawJumpLinksInMapView(solar_system, mapBatch)
 
-		main_batch.draw()
+		for key, solar_system in self.galaxy.items():
+			self.drawSolarSystemInMapView(solar_system, mapBatch)
+
+		mapBatch.draw()
 
 	def graphics(self):
 		window.clear()
@@ -1897,7 +1946,6 @@ class World():
 		for attractor in self.attractors:
 			if attractor.atmosphere != None:
 				self.drawActor(attractor.atmosphere, first_batch)
-
 
 		first_batch.draw()
 
@@ -1920,8 +1968,6 @@ class World():
 			illuminator.transformedPosition = transformForView( illuminator.position ,self.viewpointObject.body.position, self.zoom, resolution)
 
 		for attractor in self.attractors:
-			# if attractor.atmosphere != None:
-			# 	self.drawActor(attractor.atmosphere, main_batch)
 			self.drawActor(attractor, main_batch)
 		for actor in self.actors:
 			self.drawActor(actor, main_batch)
@@ -1932,6 +1978,11 @@ class World():
 		pyglet.gl.glLineWidth(2)
 
 		if self.showHUD:
+
+			# print the navcircle
+			for line in self.navCircleLines:
+				transformedPoints = transformPolygonForLines(line)
+				third_batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i', transformedPoints[1]), ('c4B',[50,50,50,255]*(transformedPoints[0])))
 
 			# blip for actual orientation
 			blipLength = (self.navcircleInnerRadius)
@@ -1947,7 +1998,7 @@ class World():
 			start = ((blipLength * math.cos(angle)) + (resolution[0]*0.5) , -(blipLength* math.sin(angle)) +( resolution[1] * 0.5) )
 			end = ((self.navcircleInnerRadius+self.navcircleLinesLength) * math.cos(angle)+ (resolution[0]*0.5),- (self.navcircleInnerRadius+self.navcircleLinesLength) * math.sin(angle)+ (resolution[1]*0.5))
 			transformedPoints = transformPolygonForLines([start,end])
-			third_batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i', transformedPoints[1]), ('c4B',[255,150,50,255]*(transformedPoints[0])))
+			third_batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i', transformedPoints[1]), ('c4B',[250,200,0,255]*(transformedPoints[0])))
 
 			if self.viewpointObject.freefalling and self.viewpointObject.orbit is not None:
 				if not math.isnan( self.viewpointObject.prograde):
@@ -1966,7 +2017,6 @@ class World():
 					end = ((self.navcircleInnerRadius) * math.cos(angle)+ (resolution[0]*0.5),- (self.navcircleInnerRadius) * math.sin(angle)+ (resolution[1]*0.5))
 					transformedPoints = transformPolygonForLines([start,end])
 					third_batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i', transformedPoints[1]), ('c4B',[0,100,10,255]*(transformedPoints[0])))
-
 
 			# blip for nadir
 			blipLength = (self.navcircleInnerRadius-self.navcircleLinesLength)
@@ -1991,7 +2041,7 @@ class World():
 				start = ((blipLength * math.cos(angle)) + (resolution[0]*0.5) , -(blipLength* math.sin(angle)) +( resolution[1] * 0.5) )
 				end = ((self.navcircleInnerRadius+self.navcircleLinesLength*2) * math.cos(angle)+ (resolution[0]*0.5),- ((self.navcircleInnerRadius+self.navcircleLinesLength*2)) * math.sin(angle)+ (resolution[1]*0.5))
 				transformedPoints = transformPolygonForLines([start,end])
-				third_batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i', transformedPoints[1]), ('c4B',[250,200,0,255]*(transformedPoints[0])))
+				third_batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i', transformedPoints[1]), ('c4B',[250,250,250,255]*(transformedPoints[0])))
 
 		if self.showHUD:
 			self.drawHUD(third_batch)
@@ -2010,28 +2060,43 @@ class World():
 
 		self.illuminators = []
 
-	def hyperspaceJump(self, actor, destination) :
+	def hyperspaceJump(self, actor) :
+
+		if actor.hyperdriveDestination is None:
+			return
 
 		if actor.isPlayer:
 			previousSystem = self.currentSystem
+			self.currentSystem = actor.hyperdriveDestination
 
+			# print('previous')
+			# print(actor.hyperdriveDestination)
+			# self.destroyActor(actor)
 			for otherActor in self.actors:
 				self.destroyActor(otherActor)
 			for attractor in self.attractors:
 				self.destroyAttractor(attractor)
 
-			self.currentSystem = destination
 
-			for thing in currentSystem.contents:
+			# self.time = 0 							# the number of timesteps that have passed in-universe. used for physics and orbital calculations.
+			# self.space = pymunk.Space()				
+			# self.space.gravity = (0.0, 0.0)			# pymunk's own gravity is turned off, so we can use our own.
+			
+			# print('dest')
+			# print(destination)
+			# print('current')
+			# print(self.currentSystem)
+			# print('molone')
+
+			for thing in self.currentSystem.contents:
 				self.add(thing)
 
 			playerInsertionAngle = math.atan2(self.currentSystem.position[1] - previousSystem.position[1], self.currentSystem.position[0] - previousSystem.position[1])
 			actor.body.position = [self.currentSystem.hyperspaceThreshold * math.cos(playerInsertionAngle), self.currentSystem.hyperspaceThreshold * math.sin(playerInsertionAngle)]
-			self.add(actor)
+			# self.add(actor)
 
 		else:
 			self.destroyActor(actor)
-
 
 	def step(self):
 		if self.buildMenu:
@@ -2043,7 +2108,9 @@ class World():
 			if not self.paused:
 				self.physics()
 			self.graphics()
-		
+
+	def addSolarSystem(self, solar_system):
+		self.galaxy[solar_system.solarSystemName] = solar_system
 
 	def setup(self):
 		self.createHUDNavCircle()
@@ -2051,27 +2118,28 @@ class World():
 		for module in lothar:
 			self.availableModules.append(copy.deepcopy(module))
 
-		Mooi = SolarSystem("Procyon", self.gravitationalConstant)
+		Procyon = SolarSystem("Procyon", self.gravitationalConstant)
 		Sol_III = SolarSystem("Sol III", self.gravitationalConstant)
 		Sol_IV = SolarSystem("Sol IV", self.gravitationalConstant)
 
-		self.galaxy.append(Mooi)
-		self.galaxy.append(Sol_III)
-		self.galaxy.append(Sol_IV)
+		self.addSolarSystem(Procyon)
+		self.addSolarSystem(Sol_III)
+		self.addSolarSystem(Sol_IV)
 
-		self.currentSystem = self.galaxy[0]
+		self.currentSystem = self.galaxy["Procyon"]
 
 		print(self.currentSystem)
 
 		for thing in self.currentSystem.contents:
 			self.add(thing)
 
+		ida_frigate_instance = Actor('NPC lothar', ida_frigate,(1, 121000), [17000,0], 0.6 * math.pi, True)
+		self.add(ida_frigate_instance)
+
 		self.viewpointObject = self._getPlayer()
 
 	def start(self):
 		self.setup()
-
-
 
 def saveShipFromBuildMenu():
 	dill.dump(Nirn.modulesInUse,open('ships/playerShip', 'wb'))
@@ -2191,8 +2259,23 @@ def on_key_press(symbol, modifiers):
 			Nirn.player.target = Nirn.actors[Nirn.playerTargetIndex]
 		else:
 			Nirn.player.target = None
-	elif symbol == key.M:
-		Nirn.mapView = not Nirn.mapView
+
+	elif symbol == key.BACKSLASH:
+		if Nirn.hyperjumpDestinationIndex == None:
+			Nirn.hyperjumpDestinationIndex = 0
+		else:
+			Nirn.hyperjumpDestinationIndex += 1
+			if Nirn.hyperjumpDestinationIndex > len(Nirn.currentSystem.links) - 1:
+				Nirn.hyperjumpDestinationIndex = None
+
+		if Nirn.hyperjumpDestinationIndex is not None:
+			if Nirn.currentSystem.links[Nirn.hyperjumpDestinationIndex]  is Nirn.currentSystem:
+				Nirn.hyperjumpDestinationIndex += 1
+			Nirn.player.hyperdriveDestination =Nirn.galaxy[Nirn.currentSystem.links[Nirn.hyperjumpDestinationIndex]]
+		else:
+			Nirn.player.hyperdriveDestination = None
+
+		# print(Nirn.currentSystem.links)
 
 
 @window.event
