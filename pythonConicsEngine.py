@@ -34,8 +34,13 @@ label = pyglet.text.Label('Abc', x=5, y=5)
 
 white = [255]*4 
 
+color_point = [0,0]
+
 def mag(x):
 	return numpy.sqrt(x.dot(x))
+
+def sign(x):
+	return x * abs(x)
 
 def getFarthestPointInPolygon(polygon):
 	farthestPoint = [0,0]
@@ -65,6 +70,9 @@ def pointInRect(point,rect):
 
 def addRadians(a, b):
 	return (a + b + math.pi) % (2*math.pi) - math.pi
+
+def differenceBetweenAngles(a, b):
+	return math.pi - abs(abs( a - b) - math.pi); 
 
 def rotate_point(point, angle_rad, center_point=(0, 0)):
     """Rotates a point around center_point(origin by default)
@@ -661,9 +669,45 @@ class Maneuver():
 			if self.maneuverType == 'attack target':
 				pass 
 
+			if self.maneuverType == 'lead target':
+				# fly directly into the target, accelerating the whole way. better if you can lead the target.
+				if not self.event1:
+					print('lead target')
+					self.event1 = True 
+
+
+				if self.parameter1.orbit is not None: # the target is on a rail
+					speedAngle = math.atan2(actor.body.velocity[1], actor.body.velocity[0] )
+					angleToTarget = math.atan2(self.parameter1.body.position[1]- actor.body.position[1] , self.parameter1.body.position[0]- actor.body.position[0])
+					distanceToTarget = mag(actor.body.position - self.parameter1.body.position)
+					speedMagnitude = mag(actor.body.velocity)
+					timeToTarget = distanceToTarget / speedMagnitude
+					futuretAn = self.parameter1.orbit.tAnAtTime(timeToTarget)
+					targetFuturePosition = self.parameter1.orbit.cartesianCoordinates(futuretAn)
+					color_point[0] = targetFuturePosition[0]
+					color_point[1] = targetFuturePosition[1]
+					targetLeadAngle = math.atan2(targetFuturePosition[1]- actor.body.position[1] , targetFuturePosition[0]- actor.body.position[0])
+					actor.setPoint = targetLeadAngle + 0.5 * math.pi
+					
+
+
+				# angleDifference = differenceBetweenAngles(actor.setPoint, actor.body.angle)
+				# if angleDifference < (0.2) and angleDifference > (- 0.2): # only fire engines if the ship is pointing vaguely in the right direction
+				# 	actor.keyStates['up'] = True
+				# else:
+				# 	actor.keyStates['up'] = False
+
+
+
+
+
+
+
 			if self.maneuverType == 'fast intercept':
 				# point at the target, fly half way there at full speed. turn around at the halfway point and decelerate the rest of the way.
-				pass 
+				if not self.event1:
+					print('fast intercept')
+					self.event1 = True 
 
 
 			if self.maneuverType == 'add speed':
@@ -1148,14 +1192,16 @@ class SolarSystem():
 			self.contents.append(yhivi)
 
 			lothar_instance = Actor('NPC lothar', lothar,(1, 121000), [17000,0], 0.6 * math.pi, True)
-			lothar_instance2 = Actor('player Lothar', lothar,(1, -121000), [-18000,0], 0)
+			lothar_instance2 = Actor('player Lothar', lothar,(50000, 171000), [8000,0], 0)
 			self.contents.append(lothar_instance)
 			self.contents.append(lothar_instance2)
 			# self.contents.append(bigmolly_instance)
 			# self.contents.append(derelict_instance)
 
 			# lothar_instance.maneuverQueue.append(Maneuver('change aPe',0.3 * math.pi,yhivi))
-			lothar_instance.maneuverQueue.append(Maneuver('change periapsis',151000, 1.6 * math.pi))
+			# lothar_instance.maneuverQueue.append(Maneuver('change periapsis',151000, 1.6 * math.pi))
+			# 
+			lothar_instance.maneuverQueue.append(Maneuver('ram',lothar_instance2))
 
 			self.position = [250,450]
 			self.color = [10,200,50,255]
@@ -1537,6 +1583,25 @@ class World():
 			if module.enabled and module.active:
 				self.drawModuleEffects(main_batch, module, actor)
 
+	def drawColorIndicator(self, position, main_batch):
+
+		points = [[-2,2],[2,2],[2,-2],[-2,-2]]
+
+		newpos = transformForView(position, self.viewpointObject.body.position, self.zoom, self.resolution )
+
+
+		# print(newpos)
+
+		nupoints = []
+		for point in points:
+			nupoints.append([point[0] + newpos[0], point[1] + newpos[1]])
+			
+
+
+
+		renderAConvexPolygon(main_batch, nupoints, self.viewpointObject.body.position, self.zoom, self.resolution,  [0,0,255,255])
+
+
 	def drawScreenFill(self, main_batch):
 		fillTriangles = [0,0, 0,0, 0,resolution[1], resolution[0],resolution[1], resolution[0],0, 0,0, 0,0 ]
 		main_batch.add(7, pyglet.gl.GL_TRIANGLE_STRIP, None, ('v2i',fillTriangles), ('c4B',[255,255,255,255]*7))
@@ -1912,6 +1977,9 @@ class World():
 			end = ((self.navcircleInnerRadius) * math.cos(angle)+ (self.resolution[0]*0.5),- (self.navcircleInnerRadius) * math.sin(angle)+ (self.resolution[1]*0.5))
 			transformedPoints = transformPolygonForLines([start,end])
 			main_batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i', transformedPoints[1]), ('c4B',[0,50,100,255]*(transformedPoints[0])))
+
+
+		self.drawColorIndicator( color_point, main_batch)
 
 		main_batch.draw()
 		second_batch = pyglet.graphics.Batch()
