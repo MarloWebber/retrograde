@@ -42,6 +42,9 @@ def mag(x):
 def sign(x):
 	return x * abs(x)
 
+def round_to_n(x, n):
+	return round(x, -int(math.floor(math.log10(x))) + (n - 1))
+
 def getFarthestPointInPolygon(polygon):
 	farthestPoint = [0,0]
 	for point in polygon:
@@ -1057,8 +1060,8 @@ class Actor():
 
 	def flightComputer(self):
 		# this function describes the AI flight behaviour and player autopilot
-		# pass
 
+		# allow the player to hold attitude
 		if self.keyStates['face direction'] is not None:
 			if self.keyStates['face direction'] == 'retrograde': self.setPoint = self.retrograde + 0.5 * math.pi
 			if self.keyStates['face direction'] == 'prograde': self.setPoint = self.prograde +  0.5 * math.pi
@@ -1066,6 +1069,7 @@ class Actor():
 			if self.keyStates['face direction'] == 'zenith': self.setPoint = self.zenith +  0.5 * math.pi
 			if str.isnumeric(self.keyStates['face direction']): self.setpoint = float(self.keyStates['face direction'])
 
+		# perform autopilot manuevers for the player and for NPCs
 		if self.autoPilotActive:
 			if len(self.maneuverQueue) > 0:
 				self.maneuverQueue[0].perform(self)
@@ -1142,7 +1146,6 @@ class SolarSystem():
 			planet_moon = Attractor('moon',[3000000,-3000000], gravitationalConstant)
 			self.contents.append(planet_erf)
 			self.contents.append(planet_moon)
-			# dinghy_instance = Actor('NPC dinghy', dinghy,(3000000, -3080100), [10000,0], 0)
 			lothar_instance = Actor('NPC lothar', lothar,(10000, -645050), [100000,0], 0.6 * math.pi)
 			lothar_instance2 = Actor('player Lothar', dinghy,(100, -640030), [0,0], 0, True)
 			boldang_instance = Actor('NPC boldang', boldang,(-100, -640050), [0,0],0)
@@ -1150,9 +1153,6 @@ class SolarSystem():
 
 			derelict_instance = Actor('derelict hyperunit', derelict_hyperunit,(1000200, -1080100), [10000,0], 0)
 
-			# lothar_instance2.maneuverQueue.append(Maneuver('takeoff',30000,planet_erf))
-
-			# self.contents.append(dinghy_instance)
 			self.contents.append(lothar_instance)
 			self.contents.append(lothar_instance2)
 			self.contents.append(bigmolly_instance)
@@ -1168,19 +1168,9 @@ class SolarSystem():
 
 			planet_murs = Attractor('mars', [1,1], gravitationalConstant)
 
-			# planet_erf = Attractor('earth', [1,1], gravitationalConstant)
-			# planet_moon = Attractor('moon',[1000000,-1000000], gravitationalConstant)
 			self.contents.append(planet_murs)
-			# self.contents.append(planet_moon)
 			dinghy_instance = Actor('NPC dinghy', dinghy,(200000, -200000), [10000,0], 0, True)
-			# lothar_instance = Actor('NPC lothar', lothar,(10000, -345050), [45000,0], 0.6 * math.pi, True)
-			# lothar_instance2 = Actor('player Lothar', lothar,(100, -320030), [0,0], 0)
-			# boldang_instance = Actor('NPC boldang', boldang,(-100, -320050), [0,0],0)
-			# bigmolly_instance = Actor('NPC molly', bigmolly,(100, -350050), [45000,0],0)
 			self.contents.append(dinghy_instance)
-			# self.contents.append(lothar_instance)
-			# self.contents.append(lothar_instance2)
-			# self.contents.append(bigmolly_instance)
 
 			self.position = [150,100]
 			self.color = [200,100,50,255]	
@@ -1198,12 +1188,7 @@ class SolarSystem():
 			lothar_instance2 = Actor('player Lothar', lothar,(50000, 171000), [8000,0], 0)
 			self.contents.append(lothar_instance)
 			self.contents.append(lothar_instance2)
-			# self.contents.append(bigmolly_instance)
-			# self.contents.append(derelict_instance)
 
-			# lothar_instance.maneuverQueue.append(Maneuver('change aPe',0.3 * math.pi,yhivi))
-			# lothar_instance.maneuverQueue.append(Maneuver('change periapsis',151000, 1.6 * math.pi))
-			# 
 			lothar_instance.maneuverQueue.append(Maneuver('ram',lothar_instance2))
 
 			self.position = [250,450]
@@ -1785,17 +1770,19 @@ class World():
 
 	def drawHUDListItem(self,string, quantity, index):
 		HUDlistItemSpacing = 15
-		listXPosition = 30
+		listXPosition = 10
+		fontSize = 12
 
-		if quantity is None:
-			pass
-		else:
-			# label = pyglet.text.Label('Hello, world',
-   #                        font_name='Times New Roman',
-   #                        font_size=36,
-   #                        x=window.width//2, y=window.height//2,
-   #                        anchor_x='center', anchor_y='center')
-			pass
+		if quantity is None and len(string) == 0:
+			return index + 1
+
+		label = pyglet.text.Label(string + str(quantity),
+                      font_name='Times New Roman',
+                      font_size=fontSize,
+                      x=listXPosition, y=HUDlistItemSpacing * index,
+                      color=(100,100,100,255),
+                      align="left")
+		label.draw()
 
 		return index + 1
 
@@ -1828,10 +1815,10 @@ class World():
 		i = self.drawHUDListItem('landed: ', self.viewpointObject.exemptFromGravity, i)
 		if self.player.orbiting is not None:
 			i = self.drawHUDListItem('attractor: ', self.viewpointObject.orbiting.planetName, i)
-			if self.player.orbit is not None:
-				i = self.drawHUDListItem('orbit valid', None, i)
-			else:
-				i = self.drawHUDListItem('no orbit', None, i)
+			# if self.player.orbit is not None:
+			# 	i = self.drawHUDListItem('orbit valid', None, i)
+			# else:
+			# 	i = self.drawHUDListItem('no orbit', None, i)
 		i = self.drawHUDListItem('', None, i) # blank line as a separator
 
 		i = self.drawHUDListItem('player: ', self.viewpointObject.isPlayer, i)
@@ -2003,12 +1990,17 @@ class World():
 			main_batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i', transformedPoints[1]), ('c4B',[0,50,100,255]*(transformedPoints[0])))
 
 
-		self.drawColorIndicator( color_point, main_batch)
+		# self.drawColorIndicator( color_point, main_batch)
 
 		main_batch.draw()
 		
 
-	def hyperspaceJump() :
+	def hyperspaceJump(self, actor, destination) :
+
+		# if the actor is not the player, just remove it.
+
+		# if the actor was the player, unload the old solar system, load the new one, and insert the player into it.
+
 		pass
 
 	def step(self):
@@ -2071,15 +2063,15 @@ def on_key_press(symbol, modifiers):
 	elif symbol == key.P:
 		Nirn.paused = not Nirn.paused
 	elif symbol == key.EQUAL:
-		Nirn.zoom += Nirn.zoom * 0.5
+		Nirn.zoom = round_to_n(Nirn.zoom + (Nirn.zoom * 0.5), 2)
 	elif symbol == key.MINUS:
-		Nirn.zoom -= Nirn.zoom * 0.5
+		Nirn.zoom = round_to_n(Nirn.zoom - (Nirn.zoom * 0.5), 2)
 	elif symbol == key.H:
 		Nirn.showHUD = not Nirn.showHUD
 	elif symbol == key.COMMA:
-		Nirn.timestepSize += Nirn.timestepSize * 0.5
+		Nirn.timestepSize = round_to_n(Nirn.timestepSize + (Nirn.timestepSize * 0.5), 2)
 	elif symbol == key.PERIOD:
-		Nirn.timestepSize -= Nirn.timestepSize * 0.5
+		Nirn.timestepSize = round_to_n(Nirn.timestepSize - (Nirn.timestepSize * 0.5), 2)
 	elif symbol == key.B:
 		if Nirn.buildMenu:
 			Nirn.buildMenu = False
@@ -2180,6 +2172,7 @@ def on_draw():
 
 def hello():
 	Nirn.start()
+
 	pyglet.clock.schedule_interval(stepWithBatch, 0.01)
 	pyglet.app.run()
 
