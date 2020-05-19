@@ -2061,7 +2061,6 @@ class World():
 		self.illuminators = []
 
 	def hyperspaceJump(self, actor) :
-
 		if actor.hyperdriveDestination is None:
 			return
 
@@ -2069,32 +2068,23 @@ class World():
 			previousSystem = self.currentSystem
 			self.currentSystem = actor.hyperdriveDestination
 
-			# print('previous')
-			# print(actor.hyperdriveDestination)
-			# self.destroyActor(actor)
 			for otherActor in self.actors:
-				self.destroyActor(otherActor)
+				if otherActor is not actor:
+					self.destroyActor(otherActor)
 			for attractor in self.attractors:
 				self.destroyAttractor(attractor)
-
-
-			# self.time = 0 							# the number of timesteps that have passed in-universe. used for physics and orbital calculations.
-			# self.space = pymunk.Space()				
-			# self.space.gravity = (0.0, 0.0)			# pymunk's own gravity is turned off, so we can use our own.
-			
-			# print('dest')
-			# print(destination)
-			# print('current')
-			# print(self.currentSystem)
-			# print('molone')
 
 			for thing in self.currentSystem.contents:
 				self.add(thing)
 
 			playerInsertionAngle = math.atan2(self.currentSystem.position[1] - previousSystem.position[1], self.currentSystem.position[0] - previousSystem.position[1])
 			actor.body.position = [self.currentSystem.hyperspaceThreshold * math.cos(playerInsertionAngle), self.currentSystem.hyperspaceThreshold * math.sin(playerInsertionAngle)]
-			# self.add(actor)
 
+
+			self.viewpointObject = self._getPlayer()
+			# self.viewpointObject = actor
+
+			# self.add(actor)
 		else:
 			self.destroyActor(actor)
 
@@ -2128,7 +2118,7 @@ class World():
 
 		self.currentSystem = self.galaxy["Procyon"]
 
-		print(self.currentSystem)
+		# print(self.currentSystem)
 
 		for thing in self.currentSystem.contents:
 			self.add(thing)
