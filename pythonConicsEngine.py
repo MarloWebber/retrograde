@@ -2028,20 +2028,20 @@ class World():
 		if self.showHUD:
 
 			# blip for actual orientation
-			blipLength = (self.navcircleInnerRadius-self.navcircleLinesLength)
+			blipLength = (self.navcircleInnerRadius)
 			angle = self.viewpointObject.body.angle - 0.5 * math.pi
 			start = ((blipLength * math.cos(angle)) + (self.resolution[0]*0.5) , -(blipLength* math.sin(angle)) +( self.resolution[1] * 0.5) )
-			end = ((self.navcircleInnerRadius) * math.cos(angle)+ (self.resolution[0]*0.5),- (self.navcircleInnerRadius) * math.sin(angle)+ (self.resolution[1]*0.5))
+			end = ((self.navcircleInnerRadius+self.navcircleLinesLength) * math.cos(angle)+ (self.resolution[0]*0.5),- (self.navcircleInnerRadius+self.navcircleLinesLength) * math.sin(angle)+ (self.resolution[1]*0.5))
 			transformedPoints = transformPolygonForLines([start,end])
 			third_batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i', transformedPoints[1]), ('c4B',[200,40,0,255]*(transformedPoints[0])))
 
 			# blip for setpoint
-			blipLength = (self.navcircleInnerRadius-self.navcircleLinesLength)
+			blipLength = (self.navcircleInnerRadius)
 			angle = self.viewpointObject.setPoint - 0.5 * math.pi
 			start = ((blipLength * math.cos(angle)) + (self.resolution[0]*0.5) , -(blipLength* math.sin(angle)) +( self.resolution[1] * 0.5) )
-			end = ((self.navcircleInnerRadius) * math.cos(angle)+ (self.resolution[0]*0.5),- (self.navcircleInnerRadius) * math.sin(angle)+ (self.resolution[1]*0.5))
+			end = ((self.navcircleInnerRadius+self.navcircleLinesLength) * math.cos(angle)+ (self.resolution[0]*0.5),- (self.navcircleInnerRadius+self.navcircleLinesLength) * math.sin(angle)+ (self.resolution[1]*0.5))
 			transformedPoints = transformPolygonForLines([start,end])
-			third_batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i', transformedPoints[1]), ('c4B',[100,20,0,255]*(transformedPoints[0])))
+			third_batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i', transformedPoints[1]), ('c4B',[255,150,50,255]*(transformedPoints[0])))
 
 			if self.viewpointObject.freefalling and self.viewpointObject.orbit is not None:
 				if not math.isnan( self.viewpointObject.prograde):
@@ -2087,29 +2087,20 @@ class World():
 				transformedPoints = transformPolygonForLines([start,end])
 				third_batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i', transformedPoints[1]), ('c4B',[250,200,0,255]*(transformedPoints[0])))
 
-
 		if self.showHUD:
 			self.drawHUD(third_batch)
 
-
-		if self.showHUD:
+		# this part draws color dots on all the modules so you can tell if they're active or enabled or off. But I think it looks ugly, so I disabled it.
+		if self.showHUD and False:
 			for module in self.player.modules:
 				if module.enabled:
 					rotatedPoint = rotate_point([self.player.body.position[0] +module.offset[0], self.player.body.position[1]+module.offset[1]], self.player.body.angle, self.player.body.position)
-					# transformedPoint = transformForView(rotatedPoint,self.viewpointObject.body.position, self.zoom, self.resolution )
-					# print(transformedPoint)
-
-					# transformedPoint = [200,200]#transformForView(self.player.body.position + module.offset,self.viewpointObject.body.position, self.zoom, self.resolution )
-
-					self.drawColorIndicator([100,100,100,255], [rotatedPoint[0], rotatedPoint[1]], int(1.5*self.zoom), third_batch)
 					if module.active:
-						self.drawColorIndicator([200,50,0,255], [rotatedPoint[0], rotatedPoint[1]], int(0.5*self.zoom), third_batch)
+						self.drawColorIndicator([20,200,80,255], [rotatedPoint[0], rotatedPoint[1]], int(1*self.zoom), third_batch)
+					else:
+						self.drawColorIndicator([255,150,50,255], [rotatedPoint[0], rotatedPoint[1]], int(1*self.zoom), third_batch)
 
 		third_batch.draw()
-
-		# self.drawColorIndicator( color_point, main_batch)
-
-		
 
 	def hyperspaceJump(self, actor, destination) :
 
