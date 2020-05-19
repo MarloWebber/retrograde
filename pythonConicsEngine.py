@@ -478,6 +478,7 @@ class Module():
 		if self.moduleType is 'generator':
 			self.mass = 1
 			self.active = True
+			self.quiescent = {}
 			self.resources = {
 				'electricity': 0.1,
 				'fuel': -0.0001
@@ -497,6 +498,9 @@ class Module():
 
 		elif self.moduleType is 'engine 10':
 			self.mass = 1
+			self.quiescent = {
+				'electricity':0.001
+			}
 			self.resources = {
 				'thrust': 100,
 				'fuel': -0.1,
@@ -516,6 +520,9 @@ class Module():
 
 		elif self.moduleType is 'RCS':
 			self.mass = 0.2
+			self.quiescent = {
+				'electricity':0.001
+			}
 			self.resources = {
 				'torque': 5,
 				'electricity': -0.02
@@ -532,6 +539,7 @@ class Module():
 
 		elif self.moduleType is 'spar 10':
 			self.mass = 1
+			self.quiescent = {}
 			self.resources = {}
 			self.stores = {}
 			self.initialStores = {}
@@ -545,6 +553,7 @@ class Module():
 
 		elif self.moduleType is 'box 10':
 			self.mass = 2
+			self.quiescent = {}
 			self.resources = {}
 			self.stores = {'cargo':100}
 			self.initialStores = {'cargo':0}
@@ -558,6 +567,7 @@ class Module():
 
 		elif self.moduleType is 'box 100':
 			self.mass = 100
+			self.quiescent = {}
 			self.resources = {}
 			self.stores = {}
 			self.initialStores = {}
@@ -571,6 +581,7 @@ class Module():
 
 		elif self.moduleType is 'spar 100':
 			self.mass = 1
+			self.quiescent = {}
 			self.resources = {}
 			self.stores = {}
 			self.initialStores = {}
@@ -586,6 +597,7 @@ class Module():
 			self.mass = 0.1
 			self.active = True
 			self.resources = {}
+			self.quiescent = {}
 			self.stores = {
 				'high explosive': 10
 			}
@@ -602,6 +614,9 @@ class Module():
 		elif self.moduleType is 'cannon 10':
 			self.mass = 2
 			self.active = False
+			self.quiescent = {
+				'electricity':0.001
+			}
 			self.resources = {
 				# 'cannonshell 10': 1
 				'electricity':0.001
@@ -626,9 +641,12 @@ class Module():
 
 		elif self.moduleType is 'hyperdrive 10':
 			self.mass = 5
+			self.quiescent = {
+				'electricity':0.001
+			}
 			self.resources = {
-				'electricity':1,
-				'warp energy':-1
+				'electricity':-1,
+				'warp energy':1
 			}
 			self.stores = {
 				'warp energy':100
@@ -935,7 +953,8 @@ class Actor():
 			'left': False,
 			'right': False,
 			'Fire': False,
-			'face direction': None
+			'face direction': None,
+			'J':False
 		}
 		self.orbiting = None
 		self.stepsToFreefall = 1
@@ -983,7 +1002,7 @@ class Actor():
 		# - turn modules on and off
 		for module in self.modules:
 			module.enabled = True
-			for resource, quantity in list(module.resources.items()):
+			for resource, quantity in list(module.quiescent.items()):
 				if quantity < 0:
 					if resource in self.storagePool:
 						availableAmount = self.storagePool[resource] + self.availableResources[resource]
@@ -1055,6 +1074,12 @@ class Actor():
 								self.body.apply_impulse_at_local_point([torqueAmount,0], [0,module.momentArm])
 							else:
 								module.active = False
+
+					elif giveResource == 'warp energy':
+						if self.keyStates['J'] and module.enabled:
+							module.active = True
+						else:
+							module.active = False
 
 		return ifThrustHasBeenApplied
 
@@ -2062,7 +2087,7 @@ class World():
 
 					self.drawColorIndicator([100,100,100,255], [rotatedPoint[0], rotatedPoint[1]], int(1.5*self.zoom), third_batch)
 					if module.active:
-						self.drawColorIndicator([250,50,0,255], [rotatedPoint[0], rotatedPoint[1]], int(0.5*self.zoom), third_batch)
+						self.drawColorIndicator([200,50,0,255], [rotatedPoint[0], rotatedPoint[1]], int(0.5*self.zoom), third_batch)
 
 		third_batch.draw()
 
@@ -2205,7 +2230,7 @@ def on_key_press(symbol, modifiers):
 			if Nirn.buildMenu:
 				loadShipIntoBuildMenu()
 	elif symbol == key.J:
-		Nirn.hyperspaceJump()
+		Nirn.player.keyStates['J'] = True
 	elif symbol == key.M:
 		Nirn.mapView = not Nirn.mapView
 	elif symbol == key.R:
@@ -2232,6 +2257,8 @@ def on_key_release(symbol, modifiers):
     	Nirn.player.keyStates['right'] = False
     elif symbol == key.UP:
     	Nirn.player.keyStates['up'] = False		
+    elif symbol == key.J:
+    	Nirn.player.keyStates['J'] = False		
 
 def stepWithBatch(dt):
 	pass
