@@ -200,37 +200,45 @@ def antiTransformForView( position ,viewpointObjectPosition, zoom, resolution): 
 
 def isPointIlluminated(point, color, illuminators,viewpointObjectPosition, zoom, resolution):
 	thePointIsIlluminated = False
+	# n_lum = 0
 
 	# for each illuminator, see if it is close enough to the point to light it up.
 	for illuminator in illuminators:
 		illuminator.isItLightingThisPoint = False
-		distanceVector = [point[0] - illuminator.transformedPosition[0],point[1] - illuminator.transformedPosition[1]]
-		distanceScalar = (distanceVector[0] ** 2 + distanceVector[1] ** 2) ** 0.5 # just like mag(), but doesn't need an numpy vector.
-		if distanceScalar < illuminator.radius :
+		illuminator.distanceVector = [point[0] - illuminator.transformedPosition[0],point[1] - illuminator.transformedPosition[1]]
+		illuminator.distanceScalar = (illuminator.distanceVector[0] ** 2 + illuminator.distanceVector[1] ** 2) ** 0.5 # just like mag(), but doesn't need an numpy vector.
+		if illuminator.distanceScalar < illuminator.radius :
 			illuminator.isItLightingThisPoint = True
 			thePointIsIlluminated = True
+			# n_lum +=1 
 
 	# exit out of the function quickly if it is not.
-	if thePointIsIlluminated:
-		resultColor = [color[0], color[1], color[2], color[3]]
-	else:
+	if not thePointIsIlluminated:
 		return color
+	# else:
+	# 	print(n_lum)
 
 	# if it is lighting, figure out how bright the light is.
+	resultColor = copy.copy(color)
 	for illuminator in illuminators:
 		if illuminator.isItLightingThisPoint:
-			scaledDistance = distanceScalar/zoom
+			scaledDistance = illuminator.distanceScalar/zoom
 			if scaledDistance == 0:
 				amountOfLight = 1
 			else:
 				amountOfLight = 1/scaledDistance
+
+
+			
 			
 			# mix the light color into the point's original color.
-			resultColor[0] += int(amountOfLight * illuminator.color[0])
+			resultColor[0] = resultColor[0] + int(amountOfLight * illuminator.color[0])
 			if resultColor[0] > 255: resultColor[0] = 255
-			resultColor[1] += int(amountOfLight * illuminator.color[1])
+
+			resultColor[1] = resultColor[1] + int(amountOfLight * illuminator.color[1])
 			if resultColor[1] > 255: resultColor[1] = 255
-			resultColor[2] += int(amountOfLight * illuminator.color[2])
+
+			resultColor[2] = resultColor[2] + int(amountOfLight * illuminator.color[2])
 			if resultColor[2] > 255: resultColor[2] = 255
 	return resultColor
 
@@ -431,6 +439,8 @@ class Illuminator():
 		self.position = offset # the offset is the illuminators position relative to the parent module. the 'position' field is just computed once per turn, so you don't have to do it once per point.
 		self.transformedPosition = [0,0]
 		self.isItLightingThisPoint = False
+		self.distanceScalar = 0
+		self.distanceVector = [0,0]
 
 class ModuleEffect(): # a ModuleEffect is just a polygon that is visually displayed when a module is active.
 	def __init__(self, effectType, position=[0,0]):
@@ -2096,6 +2106,16 @@ class World():
 					transformedPoints = transformPolygonForLines([start,end])
 					third_batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i', transformedPoints[1]), ('c4B',[250,250,250,255]*(transformedPoints[0])))
 
+			# blip for hyperdrive destination
+			if self.player is not None:
+				if self.player.hyperdriveDestination is not None:
+					blipLength = (self.navcircleInnerRadius+self.navcircleLinesLength)
+					angle = math.atan2(self.player.hyperdriveDestination.position[1] - self.currentSystem.position[1],(self.player.hyperdriveDestination.position[0] - self.currentSystem.position[0]))
+					start = ((blipLength * math.cos(angle)) + (resolution[0]*0.5) , -(blipLength* math.sin(angle)) +( resolution[1] * 0.5) )
+					end = ((self.navcircleInnerRadius+self.navcircleLinesLength*2) * math.cos(angle)+ (resolution[0]*0.5),- ((self.navcircleInnerRadius+self.navcircleLinesLength*2)) * math.sin(angle)+ (resolution[1]*0.5))
+					transformedPoints = transformPolygonForLines([start,end])
+					third_batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i', transformedPoints[1]), ('c4B',[160,0,255,255]*(transformedPoints[0])))
+
 		if self.showHUD:
 			self.drawHUD(third_batch)
 
@@ -2111,7 +2131,7 @@ class World():
 
 		third_batch.draw()
 
-		self.illuminators = []
+		
 
 	def hyperspaceJump(self, actor) :
 		if actor.hyperdriveDestination is None:
@@ -2149,6 +2169,8 @@ class World():
 		else:
 			
 			if not self.paused:
+				print(self.illuminators)
+				self.illuminators = []
 				self.physics()
 
 			self.player = self._getPlayer()
@@ -2212,15 +2234,15 @@ def on_key_press(symbol, modifiers):
 	if symbol == key.ESCAPE:
 		exit()
 	elif symbol == key.LEFT:
-		if self.player is not None:
+		if Nirn.player is not None:
 			Nirn.player.keyStates['left'] = True
 			Nirn.player.keyStates['face direction'] = None
 	elif symbol == key.RIGHT:
-		if self.player is not None:
+		if Nirn.player is not None:
 			Nirn.player.keyStates['right'] = True
 			Nirn.player.keyStates['face direction'] = None
 	elif symbol == key.UP:
-		if self.player is not None:
+		if Nirn.player is not None:
 			Nirn.player.keyStates['up'] = True
 	elif symbol == key.P:
 		Nirn.paused = not Nirn.paused
@@ -2253,7 +2275,7 @@ def on_key_press(symbol, modifiers):
 				Nirn.availableModules.append(Nirn.buildDraggingModule)
 				Nirn.buildDraggingModule = None
 		else:
-			if self.player is not None:
+			if Nirn.player is not None:
 				Nirn.player.keyStates['face direction'] = 'zenith'
 			
 	elif symbol == key.E:
@@ -2275,30 +2297,30 @@ def on_key_press(symbol, modifiers):
 			Nirn.viewpointObjectIndex = len(Nirn.actors)-1
 		Nirn.viewpointObject = Nirn.actors[Nirn.viewpointObjectIndex]
 	elif symbol == key.SPACE:
-		if self.player is not None:
+		if Nirn.player is not None:
 			Nirn.player.keyStates['Fire'] = True
 	elif symbol == key.S:
 		if modifiers & key.MOD_CTRL:
 			if Nirn.buildMenu:
 				saveShipFromBuildMenu()
 		else:
-			if self.player is not None:
+			if Nirn.player is not None:
 				Nirn.player.keyStates['face direction'] = 'retrograde'
 	elif symbol == key.W:
-		if self.player is not None:
+		if Nirn.player is not None:
 			Nirn.player.keyStates['face direction'] = 'prograde'
 	elif symbol == key.A:
-		if self.player is not None:
+		if Nirn.player is not None:
 			Nirn.player.keyStates['face direction'] = 'nadir'
 	elif symbol == key.T:
-		if self.player is not None:
+		if Nirn.player is not None:
 			Nirn.player.autoPilotActive = not Nirn.player.autoPilotActive
 	elif symbol == key.L:
 		if modifiers & key.MOD_CTRL:
 			if Nirn.buildMenu:
 				loadShipIntoBuildMenu()
 	elif symbol == key.J:
-		if self.player is not None:
+		if Nirn.player is not None:
 			Nirn.player.keyStates['J'] = True
 	elif symbol == key.M:
 		Nirn.mapView = not Nirn.mapView
@@ -2311,16 +2333,16 @@ def on_key_press(symbol, modifiers):
 				Nirn.playerTargetIndex = None
 
 		if Nirn.playerTargetIndex is not None:
-			if self.player is not None:
+			if Nirn.player is not None:
 				if Nirn.actors[Nirn.playerTargetIndex] is Nirn.player:
 					Nirn.playerTargetIndex += 1
 				Nirn.player.target = Nirn.actors[Nirn.playerTargetIndex]
 		else:
-			if self.player is not None:
+			if Nirn.player is not None:
 				Nirn.player.target = None
 
 	elif symbol == key.BACKSLASH:
-		if self.player is not None:
+		if Nirn.player is not None:
 			if Nirn.hyperjumpDestinationIndex == None:
 				Nirn.hyperjumpDestinationIndex = 0
 			else:
@@ -2338,16 +2360,16 @@ def on_key_press(symbol, modifiers):
 @window.event
 def on_key_release(symbol, modifiers):
     if symbol == key.LEFT:
-    	if self.player is not None:
+    	if Nirn.player is not None:
 	    	Nirn.player.keyStates['left'] = False
     elif symbol == key.RIGHT:
-    	if self.player is not None:
+    	if Nirn.player is not None:
 	    	Nirn.player.keyStates['right'] = False
     elif symbol == key.UP:
-    	if self.player is not None:
+    	if Nirn.player is not None:
 	    	Nirn.player.keyStates['up'] = False		
     elif symbol == key.J:
-    	if self.player is not None:
+    	if Nirn.player is not None:
 	    	Nirn.player.keyStates['J'] = False		
 
 def stepWithBatch(dt):
