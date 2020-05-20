@@ -31,7 +31,7 @@ import pickle
 import dill
 
 #
-import solarSystems.solarSystems
+import solarSystems
 
 resolution = (1280,780)
 resolution_half = (1280/2,780/2)
@@ -405,31 +405,14 @@ def renderAConvexPolygon(batch, polygon, viewpointObjectPosition, zoom, resoluti
 				batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i',transformedPoints[1]), ('c4B',outlineColor*transformedPoints[0]))
 
 class Atmosphere():
-	def __init__(self, radius, planetPosition, atmosphereType):
+	def __init__(self, planetRadius, height, bottomDensity, topDensity, color, outerColor):
 
-		if atmosphereType is "earthAtmosphere":
-			self.height = 15000
-			self.bottomDensity = 1
-			self.topDensity = 0
-			self.color = [70,145,220,255]
-			self.outerColor = [0,0,0,255]
-			self.outlineColor = [50,125,200,255]
-
-		if atmosphereType is "marsAtmosphere":
-			self.height = 10000
-			self.bottomDensity = 0.1
-			self.topDensity = 0
-			self.color = [50,50,50,255]
-			self.outerColor = [0,0,0,255]
-			self.outlineColor = [50,125,200,255]
-
-		if atmosphereType is "yhiviAtmosphere":
-			self.height = 20000
-			self.bottomDensity = 0.5
-			self.topDensity = 0
-			self.color = [210,255,120,255]
-			self.outerColor = [0,0,0,255]
-			self.outlineColor = [210,255,120,255]
+		# if atmosphereType is "earthAtmosphere":
+		self.height = height
+		self.bottomDensity = bottomDensity
+		self.topDensity = topDensity
+		self.color = color
+		self.outerColor = outerColor
 
 		# each atmosphere layer is an annulus.
 		# it is rendered as a triangle strip with a gradient between the inner and outer edges.
@@ -1074,41 +1057,14 @@ class Actor():
 				self.maneuverQueue[0].perform(self)
 
 class Attractor():
-	def __init__(self, planetType, position, gravitationalConstant):
-		self.planetName = planetType # just set the planetName to something easy for now. # the name of the individual instance of this planet type.
-		
-		if planetType == 'earth':
-			self.radius = 640000
-			self.density = 1
-			self.friction = 0.9
-			self.color = [180,170,145,255]
-			self.outlineColor = [200,190,155,255]
-			self.atmosphere = Atmosphere(self.radius, position, "earthAtmosphere")
-
-		elif planetType == 'moon':
-			self.radius = 160000
-			self.density = 1
-			self.friction = 0.9
-			self.color = [45,45,45,255]
-			self.outlineColor = [145,145,145,255]
-			self.atmosphere = None #Atmosphere(self)
-
-		elif planetType == 'mars':
-			self.radius = 560000
-			self.density = 0.8
-			self.friction = 0.9
-			self.color = [125,45,25,255]
-			self.outlineColor = [155,75,55,255]
-			self.atmosphere = Atmosphere(self.radius, position, "marsAtmosphere")
-
-		elif planetType == 'yhivi':
-			self.radius = 100000
-			self.density = 5
-			self.friction = 0.9
-			self.color = [130,220,120,255]
-			self.outlineColor = [220,255,180,255]
-			self.atmosphere = Atmosphere(self.radius, position, "yhiviAtmosphere")
-
+	def __init__(self,planetName,radius,density,friction,color,outlineColor,atmosphere, position):
+		self.planetName = planetName
+		self.radius = radius
+		self.density = density
+		self.friction = friction
+		self.color = color
+		self.outlineColor = outlineColor
+		self.atmosphere = atmosphere
 
 		# create pymunk physical body and shape
 		self.mass = mass_of_a_sphere(self.density, self.radius)
@@ -1133,62 +1089,14 @@ class buildMenuItem():
 
 class SolarSystem():
 	# fills the world with a variety of preset planets and characters.
-	def __init__(self, solarSystemName, gravitationalConstant):
-
-		self.contents = []
+	def __init__(self, solarSystemName, contents, position, color, outlineColor, links, hyperspaceThreshold, gravitationalConstant):
+		self.contents = contents
 		self.solarSystemName = solarSystemName
-
-		if solarSystemName == "Sol III":
-			planet_erf = Attractor('earth', [1,1], gravitationalConstant)
-			planet_moon = Attractor('moon',[3000000,-3000000], gravitationalConstant)
-			lothar_instance = Actor('NPC lothar', lothar,(10000, -645050), [100000,0], 0.6 * math.pi)
-			lothar_instance2 = Actor('player Lothar', dinghy,(100, -640030), [0,0], 0)
-			boldang_instance = Actor('NPC boldang', boldang,(-100, -640050), [0,0],0)
-			bigmolly_instance = Actor('NPC molly', bigmolly,(100, -700050), [52000,0],0)
-			derelict_instance = Actor('derelict hyperunit', derelict_hyperunit,(1000200, -1080100), [10000,0], 0)
-
-			self.contents.append(planet_erf)
-			self.contents.append(planet_moon)
-			self.contents.append(lothar_instance)
-			self.contents.append(lothar_instance2)
-			self.contents.append(bigmolly_instance)
-			self.contents.append(derelict_instance)
-
-			self.position = [0,0]
-			self.color = [10,50,200,255]
-			self.outlineColor = [255,255,255,255]
-			self.links = ['Sol IV', 'Procyon']
-			self.hyperspaceThreshold = 4000000
-
-		if solarSystemName == "Sol IV":
-			planet_murs = Attractor('mars', [1,1], gravitationalConstant)			
-			dinghy_instance = Actor('NPC dinghy', dinghy,(200000, -200000), [10000,0], 0)
-
-			self.contents.append(planet_murs)
-			self.contents.append(dinghy_instance)
-
-			self.position = [15,10]
-			self.color = [200,100,50,255]	
-			self.outlineColor = [255,255,255,255]
-			self.links = ['Sol III']
-			self.hyperspaceThreshold = 3000000
-
-		if solarSystemName == "Procyon":
-			yhivi = Attractor('yhivi', [1,1], gravitationalConstant)
-			# lothar_instance2 = Actor('player Lothar', lothar,(50000, 171000), [8000,0], 0)
-
-			self.contents.append(yhivi)
-			# self.contents.append(lothar_instance)
-			# self.contents.append(lothar_instance2)
-
-			# lothar_instance.maneuverQueue.append(Maneuver('ram',lothar_instance2))
-
-			self.position = [-150,-450]
-			self.color = [10,200,50,255]
-			self.outlineColor = [255,255,255,255]
-
-			self.links = ['Sol III']
-			self.hyperspaceThreshold = 200000
+		self.position = position
+		self.color = color
+		self.outlineColor = outlineColor
+		self.links = links
+		self.hyperspaceThreshold = hyperspaceThreshold
 
 class BackgroundStar():
 	def __init__(self, position, color, size):
@@ -2234,15 +2142,15 @@ class World():
 		for module in lothar:
 			self.availableModules.append(copy.deepcopy(module))
 
-		Procyon = SolarSystem("Procyon", self.gravitationalConstant)
-		Sol_III = SolarSystem("Sol III", self.gravitationalConstant)
-		Sol_IV = SolarSystem("Sol IV", self.gravitationalConstant)
+		# Procyon = SolarSystem("Procyon", self.gravitationalConstant)
+		# Sol_III = SolarSystem("Sol III", self.gravitationalConstant)
+		# Sol_IV = SolarSystem("Sol IV", self.gravitationalConstant)
 
-		self.addSolarSystem(Procyon)
-		self.addSolarSystem(Sol_III)
-		self.addSolarSystem(Sol_IV)
+		# self.addSolarSystem(Procyon)
+		# self.addSolarSystem(Sol_III)
+		# self.addSolarSystem(Sol_IV)
 
-		self.currentSystem = self.galaxy["Procyon"]
+		# self.currentSystem = self.galaxy["Procyon"]
 
 		# print(self.currentSystem)
 
@@ -2261,7 +2169,6 @@ def saveShipFromBuildMenu():
 	dill.dump(Nirn.modulesInUse,open('ships/playerShip', 'wb'))
 
 def loadShipIntoBuildMenu():
-	# dill.dump(Nirn.modulesInUse,open('ships/playerShip', 'wb'))
 	Nirn.modulesInUse = dill.load(open('ships/playerShip', 'rb'))
 
 def save():
