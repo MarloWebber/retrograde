@@ -639,7 +639,7 @@ lothar = [Module('generator',[0,0]), Module('engine 10',[-13,8], 0.6/math.pi), M
 boldang = [Module('spar 10',[0,-100], (0.5* math.pi)), Module('box 10',[0,0])]
 bigmolly = [Module('box 100',[0,0]), Module('spar 100',[1000,0], 0.5 * math.pi),Module('box 100',[-1000,0]),Module('box 100',[2000,0]), Module('box 100',[-2000,0]),  Module('box 100',[3000,0])]
 derelict_hyperunit = [Module('hyperdrive 10',[0,0])]
-ida_frigate = [Module('generator',[0,0]), Module('engine 10',[-13,8], 0.6/math.pi), Module('engine 10',[13,8],-0.6/math.pi), Module('RCS',[-13,-10]), Module('RCS',[13,-10]) , Module('box 10',[0,-40]), Module('box 10',[0,-90]), Module('hyperdrive 10',[0,-125]), Module('RCS',[-13,-120]), Module('RCS',[13,-120]) ]
+ida_frigate = [Module('generator',[0,50]), Module('engine 10',[-13,58], 0.6/math.pi), Module('engine 10',[13,58],-0.6/math.pi), Module('RCS',[-13,40]), Module('RCS',[13,40]) , Module('box 10',[0,10]), Module('box 10',[0,-40]), Module('hyperdrive 10',[0,-75]), Module('RCS',[-13,-70]), Module('RCS',[13,-70]) ]
 
 class Maneuver():
 	# description of an AI behaviour item.
@@ -927,7 +927,7 @@ class Actor():
 		self.freefalling = False
 		self.orbit = None
 		
-	def doResources(self):
+	def doResources(self, timestepSize):
 		# - tally the amount of stored resources. first, zero everything out
 		for module in self.modules:
 			for resource, quantity in list(module.resources.items()):
@@ -936,42 +936,59 @@ class Actor():
 		# add all the unstored resources being produced by active modules
 		for module in self.modules:
 			for resource, quantity in list(module.resources.items()):
-				if quantity > 0 and module.enabled and module.active:
+				# 'instantaneous' resources are different to material quantities that are produced and stored. 
+				if resource is 'torque' or resource is 'thrust': 
+					adjustedQuantity = quantity
+				else:
+					adjustedQuantity = quantity * timestepSize
+				if adjustedQuantity > 0 and module.enabled and module.active:
 					if resource not in self.availableResources:
-						self.availableResources[resource] = quantity
+						self.availableResources[resource] = adjustedQuantity
 					else:
-						self.availableResources[resource] += quantity
+						self.availableResources[resource] += adjustedQuantity
 
 		# - turn modules on and off
 		for module in self.modules:
 			module.enabled = True
 			for resource, quantity in list(module.quiescent.items()):
-				if quantity < 0:
+				if resource is 'torque' or resource is 'thrust': 
+					adjustedQuantity = quantity
+				else:
+					adjustedQuantity = quantity * timestepSize
+				if adjustedQuantity < 0:
 					if resource in self.storagePool:
 						availableAmount = self.storagePool[resource] + self.availableResources[resource]
 					else:
 						availableAmount = self.availableResources[resource]
-					if availableAmount < abs(quantity):
+					if availableAmount < abs(adjustedQuantity):
 						module.enabled = False
 
 		# - consume and produce resources
 		for module in self.modules:
 			if module.enabled and module.active:
 				for resource, quantity in list(module.resources.items()):
-					if quantity > 0: # producing resource
+					if resource is 'torque' or resource is 'thrust': 
+						adjustedQuantity = quantity
+					else:
+						adjustedQuantity = quantity * timestepSize
+					if adjustedQuantity > 0: # producing resource
 						if resource in self.storagePool:
 							remainingCapacity = self.maximumStores[resource] - self.storagePool[resource]
-							if quantity > remainingCapacity:
+							if adjustedQuantity > remainingCapacity:
 								self.storagePool[resource] += remainingCapacity
-								self.availableResources[resource] += quantity - remainingCapacity
+								self.availableResources[resource] += adjustedQuantity - remainingCapacity
 							else:
-								self.storagePool[resource] += quantity
+								self.storagePool[resource] += adjustedQuantity
 
 					else: # consuming resource
-						self.availableResources[resource] += quantity # adding a negative number is a subtraction
+						self.availableResources[resource] += adjustedQuantity # adding a negative number is a subtraction
 						if self.availableResources[resource] < 0:
-							self.storagePool[resource] += self.availableResources[resource]
-							self.availableResources[resource] = 0
+							if resource in self.storagePool:
+								self.storagePool[resource] += self.availableResources[resource]
+								self.availableResources[resource] = 0
+							else:
+								module.enabled = False
+								module.active = False
 
 		for resource, quantity in list(self.storagePool.items()):
 			if quantity > self.maximumStores[resource]: quantity = self.maximumStores[resource]			
@@ -1268,16 +1285,21 @@ class World():
 			return # the actor is already fully decomposed, destroy it if you want
 		else:
 			# create a new actor, minus the module
+			addAPlayerFragment = False
+			if actor.isPlayer:
+				addAPlayerFragment = True
 			for index, module in enumerate(actor.modules):
 
 				# create the module on it's own as a new actor
 				fragmentPosition = [actor.body.position[0] + (module.offset[0] * math.cos(actor.body.angle)), actor.body.position[1] +  (module.offset[1] * math.sin(actor.body.angle))]
 				module.offset = [0,0]
 
-				if actor.isPlayer and index == listLength-1:
+				if addAPlayerFragment:
 					self.add(Actor(actor.name + ' fragment', [module], fragmentPosition, actor.body.velocity, True))
 					self.player = self._getPlayer()
 					self.viewpointObject = self.player
+					print('added player fragment')
+					addAPlayerFragment = False
 				else:
 					self.add(Actor(actor.name + ' fragment', [module], fragmentPosition, actor.body.velocity, False))
 
@@ -1306,7 +1328,7 @@ class World():
 			if destroyed:
 				continue
 
-			actor.doResources()
+			actor.doResources(self.timestepSize)
 
 			# figure out which attractor you are orbiting
 			strongestForce = None
@@ -1443,13 +1465,13 @@ class World():
 								# trueAnomaly = numpy.arccos( (cos_e - actor.orbit.e )/ ( 1- actor.orbit.e * cos_e) )
 
 
-								trueAnomaly = 2 * math.atan2(  math.sqrt((1 + actor.orbit.e))* math.sin(eccentricAnomaly/2) , math.sqrt((1 - actor.orbit.e)) * math.cos(eccentricAnomaly/2)  )
+								trueAnomaly = 2 * math.atan2(  math.sqrt((1 + actor.orbit.e))* math.sin(eccentricAnomaly/2) , math.sqrt((1 - actor.orbit.e)) * math .cos(eccentricAnomaly/2)  )
 
 								# trueAnomaly = math.atan2( math.cos(eccentricAnomaly) - actor.orbit.e,  math.sqrt(1 - actor.orbit.e ** 2) * math.sin(eccentricAnomaly) )
 
 								# trueAnomaly = math.atan2( math.sqrt(1 + actor.orbit.e**2 + actor.orbit.e**2 * math.cos(eccentricAnomaly)**2 ) , math.cos(eccentricAnomaly) - actor.orbit.e )
 
-								print(trueAnomaly)
+								# print(trueAnomaly)
 								temp_vec3d = actor.orbit.cartesianCoordinates(trueAnomaly)	
 								actor.orbitPoints.append((temp_vec3d[0] + actor.orbiting.body.position[0], temp_vec3d[1] + actor.orbiting.body.position[1]))
 
@@ -1460,7 +1482,7 @@ class World():
 							# 	point[1] +=  actor.orbiting.body.position[1]
 					except:
 						actor.orbit = None
-						print('except')
+						# print('except')
 
 					if actor.orbit is not None:
 						futureSteptAn = actor.orbit.tAnAtTime(self.timestepSize)
@@ -2121,9 +2143,13 @@ class World():
 		elif self.mapView:
 			self.mapViewGraphics()
 		else:
-			self.player = self._getPlayer()
+			
 			if not self.paused:
 				self.physics()
+
+			self.player = self._getPlayer()
+			self.viewpointObject = self.player
+
 			self.graphics()
 
 	def addSolarSystem(self, solar_system):
