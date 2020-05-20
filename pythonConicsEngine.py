@@ -224,21 +224,26 @@ def isPointIlluminated(point, color, illuminators,viewpointObjectPosition, zoom,
 		if illuminator.isItLightingThisPoint:
 			scaledDistance = illuminator.distanceScalar/zoom
 			if scaledDistance == 0:
-				amountOfLight = 1
+				amountOfLight = illuminator.brightness
 			else:
-				amountOfLight = 1/scaledDistance
+				amountOfLight = illuminator.brightness/scaledDistance
 
 
 			
 			
 			# mix the light color into the point's original color.
-			resultColor[0] = resultColor[0] + int(amountOfLight * illuminator.color[0])
+			print('gagh')
+			print(resultColor)
+			print(amountOfLight)
+			print(illuminator.color)
+
+			resultColor[0] = int(resultColor[0] + amountOfLight * illuminator.color[0])
 			if resultColor[0] > 255: resultColor[0] = 255
 
-			resultColor[1] = resultColor[1] + int(amountOfLight * illuminator.color[1])
+			resultColor[1] = int(resultColor[1] + amountOfLight * illuminator.color[1])
 			if resultColor[1] > 255: resultColor[1] = 255
 
-			resultColor[2] = resultColor[2] + int(amountOfLight * illuminator.color[2])
+			resultColor[2] = int(resultColor[2] + amountOfLight * illuminator.color[2])
 			if resultColor[2] > 255: resultColor[2] = 255
 	return resultColor
 
@@ -431,7 +436,7 @@ class Atmosphere():
 		self.mass = ( (self.bottomDensity + self.topDensity) / 2 ) * area_of_annulus(radius+self.height, radius)
 
 class Illuminator():
-	def __init__(self, offset, radius, color):
+	def __init__(self, offset, radius, color, brightness):
 		self.radius = 1000
 		self.color = color
 		self.intensity = 1
@@ -441,22 +446,25 @@ class Illuminator():
 		self.isItLightingThisPoint = False
 		self.distanceScalar = 0
 		self.distanceVector = [0,0]
+		self.brightness = brightness
 
 class ModuleEffect(): # a ModuleEffect is just a polygon that is visually displayed when a module is active.
-	def __init__(self, effectType, position=[0,0]):
-		self.position = position
+	def __init__(self, effectType, offset=[0,0]):
+		self.offset = offset
 
 		if effectType == 'engine 10 flame':
 			self.radius = 3
 			self.points = [[-self.radius, -self.radius], [self.radius, -self.radius], [0,2*self.radius]]
-			self.color = [0,250,255,255]
-			self.illuminator = Illuminator(position, 1500, self.color)
+			self.color = [255,255,255,255]
+			self.outlineColor = [255,220,150,255]
+			self.illuminator = Illuminator(offset, 1500, self.outlineColor, 3)
 
 		if effectType == 'cannon 10 flash':
 			self.radius = 1
 			self.points = [[-self.radius, self.radius], [self.radius, self.radius], [0,-2*self.radius]]
-			self.color = [245,250,255,255]
-			self.illuminator = Illuminator(position, 5000, self.color)
+			self.color = [255,255,255,255]
+			self.outlineColor = [245,250,255,255]
+			self.illuminator = Illuminator(offset, 100, self.outlineColor, 20)
 
 class Module():
 	def __init__(self, moduleType, offset=[0,0], angle=0):
@@ -1580,13 +1588,35 @@ class World():
 		renderAConvexPolygon(main_batch, transformedPoints, self.viewpointObject.body.position, self.zoom, resolution, module.color, module.outlineColor)
 
 	def drawModuleEffects(self, main_batch, module, actor):
-		rotatedPoints = rotate_polygon(module.effect.points, module.angle+actor.body.angle, [ -module.offset[0]-module.effect.position[0], -module.offset[1]-module.effect.position[1]] )
-		transformedPoints = []
-		for index, rotatedPoint in enumerate(rotatedPoints):
-			transformedPoint = transformForView(rotatedPoint + actor.body.position + module.offset + module.effect.position,self.viewpointObject.body.position, self.zoom, resolution ) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
-			transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
+		# rotatedPoints = rotate_polygon(module.effect.points, module.angle+actor.body.angle, [ -module.offset[0]-module.effect.position[0], -module.offset[1]-module.effect.position[1]] )
+
+		# rotatedPoints = []
+		# for point in module.effect.points: rotatedPoints.append( [point[0] + module.effect.offset[0] +module.offset[0], point[1] + module.effect.offset[1] + module.offset[1]])
+
+		# # rotatedPoints = rotate_polygon(rotatedPoints,module.angle, [ - module.effect.offset[0], - module.effect.offset[1]])  # orient the polygon according to the body's current direction in space.
+
+
+		# rotatedPoints = rotate_polygon(rotatedPoints, addRadians( actor.body.angle, module.angle), [-(module.offset[0] + module.effect.offset[0]), (module.offset[1] + module.effect.offset[1])])
+		# transformedPoints = []
+		# for index, rotatedPoint in enumerate(rotatedPoints):
+		# 	transformedPoint = transformForView(rotatedPoint + actor.body.position ,self.viewpointObject.body.position, self.zoom, resolution ) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
+		# 	transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
 		
-		renderAConvexPolygon(main_batch, transformedPoints, self.viewpointObject.body.position, self.zoom, resolution,  module.effect.color, None, None)
+		# renderAConvexPolygon(main_batch, transformedPoints, self.viewpointObject.body.position, self.zoom, resolution,  module.effect.color, None, None)
+		rotatedPoints = module.effect.points
+		rotatedPoints = rotate_polygon(rotatedPoints,module.angle)  # orient the polygon according to the body's current direction in space.
+		rotatedPoints = rotate_polygon(rotatedPoints, actor.body.angle, [-(module.offset[0] + module.effect.offset[0]), -(module.offset[1] + module.effect.offset[1])])
+		transformedPoints = []
+
+		for index, rotatedPoint in enumerate(rotatedPoints):
+			try:
+				transformedPoint = transformForView(rotatedPoint + actor.body.position + module.offset + module.effect.offset,self.viewpointObject.body.position, self.zoom, resolution ) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
+				transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
+			except:
+				pass
+			
+		renderAConvexPolygon(main_batch, transformedPoints, self.viewpointObject.body.position, self.zoom, resolution,  module.effect.color, module.effect.outlineColor)#, self.illuminators)
+
 
 	def drawColorIndicator(self, color,  position, size, main_batch):
 		# draw a simple colored square that can be used for visual indication.
