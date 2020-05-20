@@ -1137,11 +1137,11 @@ class SolarSystem():
 
 		if solarSystemName == "Procyon":
 			yhivi = Attractor('yhivi', [1,1], gravitationalConstant)
-			lothar_instance2 = Actor('player Lothar', lothar,(50000, 171000), [8000,0], 0)
+			# lothar_instance2 = Actor('player Lothar', lothar,(50000, 171000), [8000,0], 0)
 
 			self.contents.append(yhivi)
 			# self.contents.append(lothar_instance)
-			self.contents.append(lothar_instance2)
+			# self.contents.append(lothar_instance2)
 
 			# lothar_instance.maneuverQueue.append(Maneuver('ram',lothar_instance2))
 
@@ -1429,11 +1429,38 @@ class World():
 							actor.orbitPoints = []
 							n_points = 100
 							sliceSize =  (2 * math.pi / n_points)
-							for i in range(0,100):
-								temp_vec3d = actor.orbit.cartesianCoordinates(i *sliceSize)
+							onMirrorHalf = False
+							for i in range(0,n_points):
+								eccentricAnomaly =i *sliceSize
+
+								# if eccentricAnomaly > math.pi:
+								# 	mirrorAnomaly = n_points - i
+								# 	onMirrorHalf = True
+								# 	cos_e = numpy.cos(mirrorAnomaly)
+								# else:
+								# 	cos_e = numpy.cos(eccentricAnomaly)
+
+								# trueAnomaly = numpy.arccos( (cos_e - actor.orbit.e )/ ( 1- actor.orbit.e * cos_e) )
+
+
+								trueAnomaly = 2 * math.atan2(  math.sqrt((1 + actor.orbit.e))* math.sin(eccentricAnomaly/2) , math.sqrt((1 - actor.orbit.e)) * math.cos(eccentricAnomaly/2)  )
+
+								# trueAnomaly = math.atan2( math.cos(eccentricAnomaly) - actor.orbit.e,  math.sqrt(1 - actor.orbit.e ** 2) * math.sin(eccentricAnomaly) )
+
+								# trueAnomaly = math.atan2( math.sqrt(1 + actor.orbit.e**2 + actor.orbit.e**2 * math.cos(eccentricAnomaly)**2 ) , math.cos(eccentricAnomaly) - actor.orbit.e )
+
+								print(trueAnomaly)
+								temp_vec3d = actor.orbit.cartesianCoordinates(trueAnomaly)	
 								actor.orbitPoints.append((temp_vec3d[0] + actor.orbiting.body.position[0], temp_vec3d[1] + actor.orbiting.body.position[1]))
+
+								# actor.orbitPoints.append((temp_vec3d[0] , temp_vec3d[1] ))
+							# actor.orbitPoints = rotate_polygon(actor.orbitPoints, math.pi, )
+							# for point in actor.orbitPoints:
+							# 	point[0] +=  actor.orbiting.body.position[0]
+							# 	point[1] +=  actor.orbiting.body.position[1]
 					except:
 						actor.orbit = None
+						print('except')
 
 					if actor.orbit is not None:
 						futureSteptAn = actor.orbit.tAnAtTime(self.timestepSize)
