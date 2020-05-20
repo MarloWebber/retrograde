@@ -30,6 +30,9 @@ import cProfile
 import pickle
 import dill
 
+#
+import solarSystems.solarSystems
+
 resolution = (1280,780)
 resolution_half = (1280/2,780/2)
 topLimit = [0,0]
@@ -1187,6 +1190,13 @@ class SolarSystem():
 			self.links = ['Sol III']
 			self.hyperspaceThreshold = 200000
 
+class BackgroundStar():
+	def __init__(self, position, color, size):
+		self.position = position
+		self.color = color
+		self.size = size
+
+
 class World():
 	def __init__(self):
 		self.time = 0 							# the number of timesteps that have passed in-universe. used for physics and orbital calculations.
@@ -2161,12 +2171,21 @@ class World():
 
 		third_batch.draw()
 
-		
+	def generateBackgroundStars(self):
+		self.backgroundStars = []
+		n_stars = 50
+		for i in range(n_stars):
+			position = [random.randint(0,resolution[0]), random.randint(0,resolution[1])]
+			color = [255,200,255,255]
+			color[0] -= random.randint(0,55)
+			color[2] -= random.randint(0,55)
+			self.backgroundStars.append(BackgroundStar(position, color, random.randint(1,2)))
 
+		
 	def hyperspaceJump(self, actor) :
+		# teleports the player across space, by removing all the other actors and stuff and replacing them with new stuff.
 		if actor.hyperdriveDestination is None:
 			return
-
 		if actor.isPlayer:
 			previousSystem = self.currentSystem
 			self.currentSystem = actor.hyperdriveDestination
@@ -2183,11 +2202,7 @@ class World():
 			playerInsertionAngle = math.atan2(self.currentSystem.position[1] - previousSystem.position[1], self.currentSystem.position[0] - previousSystem.position[1])
 			actor.body.position = [self.currentSystem.hyperspaceThreshold * math.cos(playerInsertionAngle), self.currentSystem.hyperspaceThreshold * math.sin(playerInsertionAngle)]
 
-
 			self.viewpointObject = self._getPlayer()
-			# self.viewpointObject = actor
-
-			# self.add(actor)
 		else:
 			self.destroyActor(actor)
 
@@ -2199,7 +2214,7 @@ class World():
 		else:
 			
 			if not self.paused:
-				print(self.illuminators)
+				# print(self.illuminators)
 				self.illuminators = []
 				self.physics()
 
@@ -2213,6 +2228,8 @@ class World():
 
 	def setup(self):
 		self.createHUDNavCircle()
+
+		self.generateBackgroundStars()
 
 		for module in lothar:
 			self.availableModules.append(copy.deepcopy(module))
