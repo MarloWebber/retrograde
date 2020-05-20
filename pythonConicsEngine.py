@@ -462,15 +462,15 @@ class Module():
 			self.active = True
 			self.quiescent = {}
 			self.resources = {
-				'electricity': 0.1,
-				'fuel': -0.0001
+				'electricity': 1,
+				'fuel': -0.001
 			}
 			self.stores = {
-				'fuel': 5000,
+				'fuel': 500,
 				'electricity': 500
 			}
 			self.initialStores = {
-				'fuel': 5000,
+				'fuel': 500,
 				'electricity': 50
 			}
 			self.radius = 5
@@ -485,7 +485,7 @@ class Module():
 			}
 			self.resources = {
 				'thrust': 100,
-				'fuel': -0.1,
+				'fuel': -1,
 				'electricity':1
 			}
 			self.stores = {}
@@ -504,7 +504,7 @@ class Module():
 			}
 			self.resources = {
 				'torque': 5,
-				'electricity': -0.02
+				'electricity': -0.2
 			}
 			self.stores = {}
 			self.initialStores = {}
@@ -591,14 +591,14 @@ class Module():
 				'electricity':0.001
 			}
 			self.resources = {
-				# 'cannonshell 10': 1
-				'electricity':0.001
+				'cannonshell 10': 1,
+				'electricity':10
 			}
 			self.stores = {
-				'cannonshell 10': 100
+				'cannonshell 10': 10
 			}
 			self.initialStores = {
-				'cannonshell 10': 100
+				'cannonshell 10': 10
 			}
 			self.radius = 5
 			self.points = [[-0.5*self.radius, -self.radius], [-0.5*self.radius, self.radius], [0.5*self.radius,self.radius], [0.5*self.radius, -self.radius]]
@@ -617,8 +617,8 @@ class Module():
 				'electricity':0.001
 			}
 			self.resources = {
-				'electricity':-1,
-				'warp energy':1
+				'electricity':-10,
+				'warp energy':10
 			}
 			self.stores = {
 				'warp energy':100
@@ -1990,6 +1990,9 @@ class World():
 	def graphics(self):
 		window.clear()
 
+		if self.viewpointObject is None:
+			self.viewpointObject = self.actors[len(self.actors)-1]
+
 		first_batch = pyglet.graphics.Batch()
 		pyglet.gl.glLineWidth(2)
 		for attractor in self.attractors:
@@ -2084,13 +2087,14 @@ class World():
 			third_batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i', transformedPoints[1]), ('c4B',[0,50,100,255]*(transformedPoints[0])))
 
 			# blip for target
-			if self.player.target is not None:
-				blipLength = (self.navcircleInnerRadius+self.navcircleLinesLength)
-				angle = math.atan2(self.player.target.body.position[1] - self.player.body.position[1],(self.player.target.body.position[0] - self.player.body.position[0]))
-				start = ((blipLength * math.cos(angle)) + (resolution[0]*0.5) , -(blipLength* math.sin(angle)) +( resolution[1] * 0.5) )
-				end = ((self.navcircleInnerRadius+self.navcircleLinesLength*2) * math.cos(angle)+ (resolution[0]*0.5),- ((self.navcircleInnerRadius+self.navcircleLinesLength*2)) * math.sin(angle)+ (resolution[1]*0.5))
-				transformedPoints = transformPolygonForLines([start,end])
-				third_batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i', transformedPoints[1]), ('c4B',[250,250,250,255]*(transformedPoints[0])))
+			if self.player is not None:
+				if self.player.target is not None:
+					blipLength = (self.navcircleInnerRadius+self.navcircleLinesLength)
+					angle = math.atan2(self.player.target.body.position[1] - self.player.body.position[1],(self.player.target.body.position[0] - self.player.body.position[0]))
+					start = ((blipLength * math.cos(angle)) + (resolution[0]*0.5) , -(blipLength* math.sin(angle)) +( resolution[1] * 0.5) )
+					end = ((self.navcircleInnerRadius+self.navcircleLinesLength*2) * math.cos(angle)+ (resolution[0]*0.5),- ((self.navcircleInnerRadius+self.navcircleLinesLength*2)) * math.sin(angle)+ (resolution[1]*0.5))
+					transformedPoints = transformPolygonForLines([start,end])
+					third_batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i', transformedPoints[1]), ('c4B',[250,250,250,255]*(transformedPoints[0])))
 
 		if self.showHUD:
 			self.drawHUD(third_batch)
@@ -2208,13 +2212,16 @@ def on_key_press(symbol, modifiers):
 	if symbol == key.ESCAPE:
 		exit()
 	elif symbol == key.LEFT:
-		Nirn.player.keyStates['left'] = True
-		Nirn.player.keyStates['face direction'] = None
+		if self.player is not None:
+			Nirn.player.keyStates['left'] = True
+			Nirn.player.keyStates['face direction'] = None
 	elif symbol == key.RIGHT:
-		Nirn.player.keyStates['right'] = True
-		Nirn.player.keyStates['face direction'] = None
+		if self.player is not None:
+			Nirn.player.keyStates['right'] = True
+			Nirn.player.keyStates['face direction'] = None
 	elif symbol == key.UP:
-		Nirn.player.keyStates['up'] = True
+		if self.player is not None:
+			Nirn.player.keyStates['up'] = True
 	elif symbol == key.P:
 		Nirn.paused = not Nirn.paused
 	elif symbol == key.EQUAL:
@@ -2246,7 +2253,8 @@ def on_key_press(symbol, modifiers):
 				Nirn.availableModules.append(Nirn.buildDraggingModule)
 				Nirn.buildDraggingModule = None
 		else:
-			Nirn.player.keyStates['face direction'] = 'zenith'
+			if self.player is not None:
+				Nirn.player.keyStates['face direction'] = 'zenith'
 			
 	elif symbol == key.E:
 		if Nirn.buildMenu:
@@ -2267,25 +2275,31 @@ def on_key_press(symbol, modifiers):
 			Nirn.viewpointObjectIndex = len(Nirn.actors)-1
 		Nirn.viewpointObject = Nirn.actors[Nirn.viewpointObjectIndex]
 	elif symbol == key.SPACE:
-		Nirn.player.keyStates['Fire'] = True
+		if self.player is not None:
+			Nirn.player.keyStates['Fire'] = True
 	elif symbol == key.S:
 		if modifiers & key.MOD_CTRL:
 			if Nirn.buildMenu:
 				saveShipFromBuildMenu()
 		else:
-			Nirn.player.keyStates['face direction'] = 'retrograde'
+			if self.player is not None:
+				Nirn.player.keyStates['face direction'] = 'retrograde'
 	elif symbol == key.W:
-		Nirn.player.keyStates['face direction'] = 'prograde'
+		if self.player is not None:
+			Nirn.player.keyStates['face direction'] = 'prograde'
 	elif symbol == key.A:
-		Nirn.player.keyStates['face direction'] = 'nadir'
+		if self.player is not None:
+			Nirn.player.keyStates['face direction'] = 'nadir'
 	elif symbol == key.T:
-		Nirn.player.autoPilotActive = not Nirn.player.autoPilotActive
+		if self.player is not None:
+			Nirn.player.autoPilotActive = not Nirn.player.autoPilotActive
 	elif symbol == key.L:
 		if modifiers & key.MOD_CTRL:
 			if Nirn.buildMenu:
 				loadShipIntoBuildMenu()
 	elif symbol == key.J:
-		Nirn.player.keyStates['J'] = True
+		if self.player is not None:
+			Nirn.player.keyStates['J'] = True
 	elif symbol == key.M:
 		Nirn.mapView = not Nirn.mapView
 	elif symbol == key.R:
@@ -2297,40 +2311,44 @@ def on_key_press(symbol, modifiers):
 				Nirn.playerTargetIndex = None
 
 		if Nirn.playerTargetIndex is not None:
-			if Nirn.actors[Nirn.playerTargetIndex] is Nirn.player:
-				Nirn.playerTargetIndex += 1
-			Nirn.player.target = Nirn.actors[Nirn.playerTargetIndex]
+			if self.player is not None:
+				if Nirn.actors[Nirn.playerTargetIndex] is Nirn.player:
+					Nirn.playerTargetIndex += 1
+				Nirn.player.target = Nirn.actors[Nirn.playerTargetIndex]
 		else:
-			Nirn.player.target = None
+			if self.player is not None:
+				Nirn.player.target = None
 
 	elif symbol == key.BACKSLASH:
-		if Nirn.hyperjumpDestinationIndex == None:
-			Nirn.hyperjumpDestinationIndex = 0
-		else:
-			Nirn.hyperjumpDestinationIndex += 1
-			if Nirn.hyperjumpDestinationIndex > len(Nirn.currentSystem.links) - 1:
-				Nirn.hyperjumpDestinationIndex = None
-
-		if Nirn.hyperjumpDestinationIndex is not None:
-			if Nirn.currentSystem.links[Nirn.hyperjumpDestinationIndex]  is Nirn.currentSystem:
+		if self.player is not None:
+			if Nirn.hyperjumpDestinationIndex == None:
+				Nirn.hyperjumpDestinationIndex = 0
+			else:
 				Nirn.hyperjumpDestinationIndex += 1
-			Nirn.player.hyperdriveDestination =Nirn.galaxy[Nirn.currentSystem.links[Nirn.hyperjumpDestinationIndex]]
-		else:
-			Nirn.player.hyperdriveDestination = None
+				if Nirn.hyperjumpDestinationIndex > len(Nirn.currentSystem.links) - 1:
+					Nirn.hyperjumpDestinationIndex = None
 
-		# print(Nirn.currentSystem.links)
-
+			if Nirn.hyperjumpDestinationIndex is not None:
+				if Nirn.currentSystem.links[Nirn.hyperjumpDestinationIndex]  is Nirn.currentSystem:
+					Nirn.hyperjumpDestinationIndex += 1
+				Nirn.player.hyperdriveDestination =Nirn.galaxy[Nirn.currentSystem.links[Nirn.hyperjumpDestinationIndex]]
+			else:
+				Nirn.player.hyperdriveDestination = None
 
 @window.event
 def on_key_release(symbol, modifiers):
     if symbol == key.LEFT:
-    	Nirn.player.keyStates['left'] = False
+    	if self.player is not None:
+	    	Nirn.player.keyStates['left'] = False
     elif symbol == key.RIGHT:
-    	Nirn.player.keyStates['right'] = False
+    	if self.player is not None:
+	    	Nirn.player.keyStates['right'] = False
     elif symbol == key.UP:
-    	Nirn.player.keyStates['up'] = False		
+    	if self.player is not None:
+	    	Nirn.player.keyStates['up'] = False		
     elif symbol == key.J:
-    	Nirn.player.keyStates['J'] = False		
+    	if self.player is not None:
+	    	Nirn.player.keyStates['J'] = False		
 
 def stepWithBatch(dt):
 	pass
