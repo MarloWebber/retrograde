@@ -1,5 +1,11 @@
 from retrograde import *
 
+'''
+Modules are the granular parts of ships and buildings and other actors in the game.
+They each consume, store, and produce resources, and the resources can be used for many things.
+
+The module class is arranged like a factory that can produce many individual module objects, because there very many in the game world and some are of the same type as each other, but are still different individuals.
+'''
 
 class ModuleEffect(): # a ModuleEffect is just a polygon that is visually displayed when a module is active.
 	def __init__(self, effectType, offset=[0,0]):

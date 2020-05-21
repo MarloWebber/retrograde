@@ -1456,7 +1456,7 @@ class World():
 
 		self.generateBackgroundStars()
 
-		for module in lothar:
+		for module in shipyard('playerStartingModules'):
 			self.availableModules.append(copy.deepcopy(module))
 
 		# Procyon = SolarSystem("Procyon", self.gravitationalConstant)
@@ -1486,7 +1486,7 @@ class World():
 		# 	print(module.points)
 
 
-		ida_frigate_instance = Actor('NPC lothar', ida_frigate,(1, 121000), [17000,0], 0.6 * math.pi, True)
+		ida_frigate_instance = Actor('player ida_frigate', shipyard('ida_frigate'),(1, 121000), [17000,0], 0.6 * math.pi, True)
 		self.add(ida_frigate_instance)
 
 		self.viewpointObject = self._getPlayer()
