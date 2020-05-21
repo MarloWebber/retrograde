@@ -63,6 +63,16 @@ def mass_of_a_sphere(density, radius):
 def mass_of_a_circle(density, radius):
 	return density * 2 * math.pi * radius**2
 
+
+def addRadians(a, b):
+	return (a + b + math.pi) % (2*math.pi) - math.pi
+
+def mirror_polygon(polygon):
+	for point in polygon:
+		point = [point[0] * -1, point[1]]
+	return polygon
+
+
 class Atmosphere():
 	def __init__(self, radius, height, bottomDensity, topDensity, color, outerColor):
 

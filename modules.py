@@ -27,34 +27,34 @@ class ModuleEffect(): # a ModuleEffect is just a polygon that is visually displa
 
 class Module():
 	def __init__(self, moduleType, offset=[0,0], angle=0):
-		self.enabled = True # whether or not the module has enough available resources to function.
-		self.active = False # if the module is specifically turned on, for example, an engine firing when the player pushes the up arrow key.
-		self.offset = offset # x,y position on the ship
+		self.enabled = True 									# whether or not the module has enough available resources to function.
+		self.active = False 									# if the module is specifically turned on, for example, an engine firing when the player pushes the up arrow key.
+		self.offset = offset 									# x,y position on the ship
 		self.moduleType = moduleType
-		self.angle = angle
-		self.effect = None
-		self.mass = 1
+		self.angle = angle										# the angle by which the module is slanted compared to the ships forward direction.
+		self.effect = None										# a polygon drawn when the module is active, also can come with lights.
+		self.mass = 1											# how much it weighs. The actor's mass is a sum of all its modules.
 
 		if self.moduleType == 'generator':
 			self.mass = 1
 			self.active = True
 			self.quiescent = {}
 			self.resources = {
-				'electricity': 1,
-				'fuel': -0.001
+				'electricity': 1,								# positive valued resources are produced by the module.
+				'fuel': -0.001									# negative valued resources are consumed by the module.
 			}
 			self.stores = {
-				'fuel': 500,
+				'fuel': 500,									# the stores field is the maximum amount the module can hold.
 				'electricity': 500
 			}
 			self.initialStores = {
-				'fuel': 500,
+				'fuel': 500,									# initialStores is how much the module comes with when it is created.
 				'electricity': 50
 			}
-			self.radius = 5
+			self.radius = 5										# radius is used to simplify physical calculations, for example with lighting, and as a baseline for the module's points.
 			self.points = [[-self.radius, -self.radius], [-self.radius, self.radius], [self.radius,self.radius], [self.radius, -self.radius]]
-			self.color = [75,10,10,255]
-			self.outlineColor = [200,70,70,255]
+			self.color = [75,10,10,255]							# the color fill of the module.
+			self.outlineColor = [200,70,70,255]					# the outline color of the module, the outlines are also what receive illumination.
 
 		elif self.moduleType == 'engine 10':
 			self.mass = 1
@@ -89,7 +89,7 @@ class Module():
 			self.points = [[-self.radius, -self.radius], [-self.radius, self.radius], [self.radius,self.radius], [self.radius, -self.radius]]
 			self.color = [120,100,100,255]
 			self.outlineColor = [170,150,150,255]
-			self.momentArm = self.radius
+			self.momentArm = self.radius						# moment arm is the leverage by which this module can apply torque to the spacecraft. It is a distance.
 
 		elif self.moduleType == 'spar 10':
 			self.mass = 1
@@ -157,7 +157,7 @@ class Module():
 			self.points = [[-self.radius, -self.radius], [-self.radius, self.radius], [self.radius,self.radius], [self.radius, -self.radius]]
 			self.color = [255,230,200,255]
 			self.outlineColor = [255,235,225,255]
-			self.lifetime = 100 # the shell lasts for 1000 somethings and then explodes.
+			self.lifetime = 100 										# the shell lasts for 1000 somethings and then explodes.
 
 		elif self.moduleType == 'cannon 10':
 			self.mass = 2
@@ -180,9 +180,9 @@ class Module():
 			self.color = [30,30,30,255]
 			self.outlineColor = [100,100,30,255]
 
-			self.barrelHole = [0,-self.radius + 1.5]
-			self.muzzleVelocity = 250000
-			self.cooldownTime = 100
+			self.barrelHole = [0,-self.radius + 1.5]					# the location that bullets are emitted from this module.
+			self.muzzleVelocity = 250000								# the speed that bullets come out at.
+			self.cooldownTime = 100										# how long it takes before the gun fires again.
 			self.cooldownValue = 0
 			self.effect = ModuleEffect('cannon 10 flash', [0,-self.radius])
 
@@ -206,4 +206,17 @@ class Module():
 			self.points = [[-size*1.5, -size*2], [-size*1.5, size*2], [size*1.5,size*2], [size*1.5, -size*2]]
 			self.color = [50,50,50,255]
 			self.outlineColor = [100,100,100,255]
+			self.momentArm = self.radius
+
+		elif self.moduleType == 'starbridge armor':
+			self.mass = 2
+			self.quiescent = {}
+			self.resources = {}
+			self.stores = {'armor':10}
+			self.initialStores = {'armor':10}
+			self.radius = 5
+			size = self.radius
+			self.points = [[-size*2, -size], [-size*2, size*2], [size*2,size*2], [size*2, -size*2]]
+			self.color = [200,200,200,255]
+			self.outlineColor = [240,240,240,255]
 			self.momentArm = self.radius

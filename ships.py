@@ -68,7 +68,13 @@ def shipyard(shipType):
 			Module('engine 10',[0,0]),
 			Module('RCS',[0,0]),
 			Module('hyperdrive 10',[0,-75]),
-			Module('cannon 10',[0,-10])
+			Module('cannon 10',[0,-10]),
 			Module('box 10',[0,10]),
-			Module('spar 10',[0,-100],(0.5* math.pi))
+			Module('spar 10',[0,-100],(0.5* math.pi)),
+			Module('starbridge armor',[0,10]),
+			Module('starbridge armor',[0,10]),
+			Module('starbridge armor',[0,10]),
+			Module('starbridge armor',[0,10]),
+			Module('starbridge armor',[0,10]),
+			Module('starbridge armor',[0,10]),
 			]

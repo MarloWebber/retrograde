@@ -95,8 +95,6 @@ def pointInRect(point,rect):
             return True
     return False
 
-def addRadians(a, b):
-	return (a + b + math.pi) % (2*math.pi) - math.pi
 
 def differenceBetweenAngles(a, b):
 	return math.pi - abs(abs( a - b) - math.pi); 
@@ -419,6 +417,12 @@ def renderAConvexPolygon(batch, polygon, viewpointObjectPosition, zoom, resoluti
 			else:
 				transformedPoints = transformPolygonForLines(polygon)
 				batch.add(transformedPoints[0], pyglet.gl.GL_LINES, None, ('v2i',transformedPoints[1]), ('c4B',outlineColor*transformedPoints[0]))
+
+
+class SavedGame():
+	def __init__(actors, currentSystem):
+		self.actors = actors
+		self.currentSystem = currentSystem
 
 
 
@@ -801,15 +805,26 @@ class World():
 		renderAConvexPolygon(main_batch, transformedPoints, self.viewpointObject.body.position, self.zoom, resolution, module.color, module.outlineColor)
 
 	def drawModuleForDrag(self,main_batch, module, position):
+		# rotatedPoints = rotate_polygon(module.points, module.angle)
+		# transformedPoints = []
+
+		# for index, rotatedPoint in enumerate(rotatedPoints):
+		# 	rotatedPoint[0] = (rotatedPoint[0] * self.zoom ) + position[0]
+		# 	rotatedPoint[1] = (rotatedPoint[1] * self.zoom ) + position[1]
+		# 	transformedPoint = rotatedPoint # transformForView does operations like zooming and mapping 0 to the center of the screen. 
+		# 	transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
+		# renderAConvexPolygon(main_batch, transformedPoints,self.viewpointObject.body.position, self.zoom, resolution,  module.color, module.outlineColor)
+
 		rotatedPoints = rotate_polygon(module.points, module.angle)
 		transformedPoints = []
 
 		for index, rotatedPoint in enumerate(rotatedPoints):
-			rotatedPoint[0] = (rotatedPoint[0] * self.zoom ) + position[0]
-			rotatedPoint[1] = (rotatedPoint[1] * self.zoom ) + position[1]
+			rotatedPoint = self.transformForBuild(rotatedPoint)
+			rotatedPoint[0] += position[0] - resolution_half[0]
+			rotatedPoint[1] += position[1] - resolution_half[1]
 			transformedPoint = rotatedPoint # transformForView does operations like zooming and mapping 0 to the center of the screen. 
 			transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
-		renderAConvexPolygon(main_batch, transformedPoints,self.viewpointObject.body.position, self.zoom, resolution,  module.color, module.outlineColor)
+		renderAConvexPolygon(main_batch, transformedPoints, self.viewpointObject.body.position, self.zoom, resolution, module.color, module.outlineColor)
 
 	def drawModuleForBuild(self, main_batch, module):
 		rotatedPoints = rotate_polygon(module.points, module.angle)
@@ -1501,14 +1516,20 @@ def loadShipIntoBuildMenu():
 	Nirn.modulesInUse = dill.load(open('ships/playerShip', 'rb'))
 
 def save():
-	dill.dump(Nirn,open('save', 'wb'))
+	newSave = SavedGame(Nirn.actors, Nirn.currentSystem, Nirn.availableModules, Nirn.player)
+	dill.dump(newSave,open('save', 'wb'))
 
 
 def load():
-	Nirn=dill.load(open('save', 'rb'))
+	
+	newSave=dill.load(open('save', 'rb'))
 
-
-
+	# exit the current system and load the one from the file
+	Nirn.hyperspaceJump(newSave.currentSystem.solarSystemName, Nirn.player)
+	Nirn.actors = newSave.actors
+	Nirn.availableModules = newSave.availableModules
+	Nirn.player = Nirn._getPlayer()
+	Nirn.viewpointObject = Nirn.player
 
 Nirn = World()
 
@@ -1639,6 +1660,9 @@ def on_key_press(symbol, modifiers):
 				Nirn.player.hyperdriveDestination =Nirn.galaxy[Nirn.currentSystem.links[Nirn.hyperjumpDestinationIndex]]
 			else:
 				Nirn.player.hyperdriveDestination = None
+	elif symbol == key.X:
+		if Nirn.buildMenu:
+			Nirn.buildDraggingModule.points = mirror_polygon(Nirn.buildDraggingModule.points)
 
 @window.event
 def on_key_release(symbol, modifiers):
