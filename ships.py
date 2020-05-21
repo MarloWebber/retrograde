@@ -1,5 +1,5 @@
 from retrograde import *
-
+from modules import *
 # shipyard
 dinghy = [
 	Module('generator',[0,0]),
