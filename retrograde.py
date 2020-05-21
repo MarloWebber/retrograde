@@ -121,7 +121,7 @@ class Module():
 		self.effect = None
 		self.mass = 1
 
-		if self.moduleType is 'generator':
+		if self.moduleType == 'generator':
 			self.mass = 1
 			self.active = True
 			self.quiescent = {}
@@ -142,7 +142,7 @@ class Module():
 			self.color = [75,10,10,255]
 			self.outlineColor = [200,70,70,255]
 
-		elif self.moduleType is 'engine 10':
+		elif self.moduleType == 'engine 10':
 			self.mass = 1
 			self.quiescent = {
 				'electricity':0.001
@@ -161,7 +161,7 @@ class Module():
 			self.outlineColor = [100,100,100,255]
 			self.effect = ModuleEffect('engine 10 flame', [0,size*3])
 
-		elif self.moduleType is 'RCS':
+		elif self.moduleType == 'RCS':
 			self.mass = 0.2
 			self.quiescent = {
 				'electricity':0.001
@@ -179,7 +179,7 @@ class Module():
 			self.outlineColor = [170,150,150,255]
 			self.momentArm = self.radius
 
-		elif self.moduleType is 'spar 10':
+		elif self.moduleType == 'spar 10':
 			self.mass = 1
 			self.quiescent = {}
 			self.resources = {}
@@ -192,7 +192,7 @@ class Module():
 			self.outlineColor = [100,100,100,255]
 			self.momentArm = self.radius
 
-		elif self.moduleType is 'box 10':
+		elif self.moduleType == 'box 10':
 			self.mass = 2
 			self.quiescent = {}
 			self.resources = {}
@@ -205,7 +205,7 @@ class Module():
 			self.outlineColor = [100,100,100,255]
 			self.momentArm = self.radius
 
-		elif self.moduleType is 'box 100':
+		elif self.moduleType == 'box 100':
 			self.mass = 100
 			self.quiescent = {}
 			self.resources = {}
@@ -218,7 +218,7 @@ class Module():
 			self.outlineColor = [100,100,100,255]
 			self.momentArm = self.radius
 
-		elif self.moduleType is 'spar 100':
+		elif self.moduleType == 'spar 100':
 			self.mass = 1
 			self.quiescent = {}
 			self.resources = {}
@@ -231,7 +231,7 @@ class Module():
 			self.outlineColor = [100,100,100,255]
 			self.momentArm = self.radius
 
-		elif self.moduleType is 'cannonshell 10':
+		elif self.moduleType == 'cannonshell 10':
 			self.mass = 0.1
 			self.active = True
 			self.resources = {}
@@ -248,7 +248,7 @@ class Module():
 			self.outlineColor = [255,235,225,255]
 			self.lifetime = 100 # the shell lasts for 1000 somethings and then explodes.
 
-		elif self.moduleType is 'cannon 10':
+		elif self.moduleType == 'cannon 10':
 			self.mass = 2
 			self.active = False
 			self.quiescent = {
@@ -275,7 +275,7 @@ class Module():
 			self.cooldownValue = 0
 			self.effect = ModuleEffect('cannon 10 flash', [0,-self.radius])
 
-		elif self.moduleType is 'hyperdrive 10':
+		elif self.moduleType == 'hyperdrive 10':
 			self.mass = 5
 			self.quiescent = {
 				'electricity':0.001
@@ -759,12 +759,13 @@ class BackgroundStar():
 
 
 
-# shipyard
-dinghy = [Module('generator',[0,0]), Module('engine 10',[0,15]), Module('RCS',[0,-10]) ]
-lothar = [Module('generator',[0,0]), Module('engine 10',[-13,8], 0.6/math.pi), Module('engine 10',[13,8],-0.6/math.pi), Module('RCS',[-13,-10]), Module('RCS',[13,-10]) , Module('cannon 10',[0,-10]) ]
-boldang = [Module('spar 10',[0,-100], (0.5* math.pi)), Module('box 10',[0,0])]
-bigmolly = [Module('box 100',[0,0]), Module('spar 100',[1000,0], 0.5 * math.pi),Module('box 100',[-1000,0]),Module('box 100',[2000,0]), Module('box 100',[-2000,0]),  Module('box 100',[3000,0])]
-derelict_hyperunit = [Module('hyperdrive 10',[0,0])]
-ida_frigate = [Module('generator',[0,50]), Module('engine 10',[-13,58], 0.6/math.pi), Module('engine 10',[13,58],-0.6/math.pi), Module('RCS',[-13,40]), Module('RCS',[13,40]) , Module('box 10',[0,10]), Module('box 10',[0,-40]), Module('hyperdrive 10',[0,-75]), Module('RCS',[-13,-70]), Module('RCS',[13,-70]) ]
+# # shipyard
+# dinghy = [Module('generator',[0,0]), Module('engine 10',[0,15]), Module('RCS',[0,-10]) ]
+# lothar = [Module('generator',[0,0]), Module('engine 10',[-13,8], 0.6/math.pi), Module('engine 10',[13,8],-0.6/math.pi), Module('RCS',[-13,-10]), Module('RCS',[13,-10]) , Module('cannon 10',[0,-10]) ]
+# boldang = [Module('spar 10',[0,-100], (0.5* math.pi)), Module('box 10',[0,0])]
+# bigmolly = [Module('box 100',[0,0]), Module('spar 100',[1000,0], 0.5 * math.pi),Module('box 100',[-1000,0]),Module('box 100',[2000,0]), Module('box 100',[-2000,0]),  Module('box 100',[3000,0])]
+# derelict_hyperunit = [Module('hyperdrive 10',[0,0])]
+# ida_frigate = [Module('generator',[0,50]), Module('engine 10',[-13,58], 0.6/math.pi), Module('engine 10',[13,58],-0.6/math.pi), Module('RCS',[-13,40]), Module('RCS',[13,40]) , Module('box 10',[0,10]), Module('box 10',[0,-40]), Module('hyperdrive 10',[0,-75]), Module('RCS',[-13,-70]), Module('RCS',[13,-70]) ]
 
 
+# ida_frigate_instance = Actor('NPC lothar', ida_frigate,(1, 121000), [17000,0], 0.6 * math.pi, True)
