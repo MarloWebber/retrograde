@@ -1006,12 +1006,12 @@ class World():
 		actorB = self.getActorFromBody(bodyB)
 
 		if actorA is not None and actorB is not None:
-			if (actorA.isPlayer and len(actorB.modules) == 1):
+			if (actorA.isPlayer and len(actorB.modules) == 1) and actorB.modules[0].moduleType != 'nano orbital':
 				self.availableModules.append(actorB.modules[0])
 				self.destroyActor(actorB)
 				return
 
-			if (actorB.isPlayer and len(actorA.modules) == 1):
+			if (actorB.isPlayer and len(actorA.modules) == 1) and actorA.modules[0].moduleType != 'nano orbital':
 				self.availableModules.append(actorA.modules[0])
 				self.destroyActor(actorA)
 				return
@@ -1511,7 +1511,7 @@ class World():
 		for solar_system in solarSystems:
 			self.addSolarSystem(solar_system)
 			
-		self.currentSystem = self.galaxy['Sol III']
+		self.currentSystem = self.galaxy['Mehrangarh']
 		print(self.currentSystem)
 
 		for thing in self.currentSystem.contents:

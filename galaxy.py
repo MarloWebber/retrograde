@@ -3,6 +3,7 @@
 # import SolarSystem
 
 from retrograde import *
+from ships import *
 
 solarSystems = []
 
@@ -71,7 +72,7 @@ mars = Attractor(
 sol_IV = SolarSystem(
 		'Sol IV',												
 		[mars],											
-		[0,0],													
+		[10,10],													
 		[200,50,10,255],										
 		[255,255,255,255],									
 		['Sol III', 'Procyon'],									
@@ -101,12 +102,49 @@ yhivi = Attractor(
 procyon = SolarSystem(
 		'Procyon',												
 		[yhivi],											
-		[0,0],													
+		[-20,100],													
 		[10,200,50,255],										
 		[255,255,255,255],									
-		['Sol IV'],									
+		['Sol IV', 'Mehrangarh'],									
 		2000000												
 		)
 solarSystems.append(procyon)
+
+
+# Yhivi system
+moti_mahal = Attractor(
+		'Moti Mahal',
+		100000,
+		50,
+		0.1,
+		[60,150,255,255],
+		[150,200,255,255],
+		None,
+		[1,1]
+		)
+
+n_mahal_units = 32
+mahal_array = []
+mahal_array_height = 200000
+mahal_array_speed = 45000
+mehrangarh_contents = []
+stepSize = 2*math.pi/n_mahal_units
+for i in range(0,n_mahal_units):
+	mahal_unit = shipyard('nano orbital section')
+	mahal_unit_instance = Actor('nano orbital section', mahal_unit,(mahal_array_height * math.cos(stepSize* i), mahal_array_height * math.sin(stepSize* i)), [mahal_array_speed * math.cos((stepSize* i) + (0.5* math.pi) ),mahal_array_speed * math.sin((stepSize* i) + (0.5 * math.pi))], stepSize*i)
+	mehrangarh_contents.append(mahal_unit_instance)
+
+mehrangarh_contents.append(moti_mahal)
+
+mehrangarh = SolarSystem(
+		'Mehrangarh',												
+		mehrangarh_contents,											
+		[1000,-200],													
+		[0,120,255,255],										
+		[255,255,255,255],									
+		['Procyon'],									
+		2000000												
+		)
+solarSystems.append(mehrangarh)
 
 

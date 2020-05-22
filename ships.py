@@ -110,3 +110,11 @@ def shipyard(shipType):
 
 			]
 
+	elif shipType == 'nano orbital section':
+		return [
+			Module('nano orbital',[0,0],(0))
+			
+
+
+			]
+
