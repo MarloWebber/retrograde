@@ -288,14 +288,14 @@ class Module():
 			self.firingArc = 1/3* 2*math.pi
 
 		elif self.moduleType == 'nano orbital':
-			self.mass = 1000000000
+			self.mass = 10000000
 			self.quiescent = {}
 			self.resources = {}
 			self.stores = {}
 			self.initialStores = {}
 			self.radius = 5
 			size = self.radius
-			self.points = [[-size*500, -size*2000], [-size*500, size*2000], [size*500,size*2000], [size*500, -size*2000]]
+			self.points = [[-size*1000, -size*5000], [-size*1000, size*5000], [size*1000,size*5000], [size*1000, -size*5000]]
 			self.color = [60,150,255,255]
 			self.outlineColor = [150,200,255,255]
 			self.momentArm = self.radius

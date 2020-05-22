@@ -123,7 +123,7 @@ moti_mahal = Attractor(
 		[1,1]
 		)
 
-n_mahal_units = 32
+n_mahal_units = 16
 mahal_array = []
 mahal_array_height = 200000
 mahal_array_speed = 45000
