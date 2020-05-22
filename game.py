@@ -928,7 +928,7 @@ class World():
 			rendering = unwrapAtmosphereForGradient(actor.n_points, transformedInnerPoints, transformedOuterPoints, actor.color, actor.outerColor)
 			main_batch.add(rendering[0], pyglet.gl.GL_TRIANGLE_STRIP, None, ('v2i',rendering[1]), ('c4B',rendering[2]))
 		
-		if actor.__class__ is Attractor:
+		if actor.__class__ is Attractor or actor.__class__ is Cloud:
 			transformedPoints = []
 		
 			# work backwards to figure out what coordinates in the game world correspond to being offscreen in the view.
@@ -1318,8 +1318,12 @@ class World():
 
 		for attractor in self.attractors:
 			self.drawActor(attractor, main_batch)
+			if attractor.clouds is not None and len(attractor.clouds) > 0:
+				for cloud in attractor.clouds:
+					self.drawActor(cloud, main_batch)
 		for actor in self.actors:
 			self.drawActor(actor, main_batch)
+			
 
 		main_batch.draw()
 		
@@ -1477,6 +1481,9 @@ class World():
 		self.createHUDNavCircle()
 
 		self.generateBackgroundStars()
+
+
+		# make_clouds()
 
 		for module in shipyard('smallParts'):
 			self.availableModules.append(copy.deepcopy(module))

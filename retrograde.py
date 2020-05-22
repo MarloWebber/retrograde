@@ -624,8 +624,88 @@ class Actor():
 			if len(self.maneuverQueue) > 0:
 				self.maneuverQueue[0].perform(self)
 
+
+class FakeBody():
+	def __init__(self, position):
+		self.position = position
+
+class Cloud():
+	def __init__(self, points, color, outlineColor, position):
+		self.points = points
+		self.color = color
+		self.outlineColor = outlineColor
+		self.body = FakeBody(position)
+
+
+def make_clouds(cloudlineRadius, attractorPosition ):
+
+
+	n_points = 1000
+	fluffyness = 1000
+	# cloudlineRadius = 100000
+
+	# returns an array of cloud polygons that are wrapped around a planet.
+	innerLine = []
+	outerline = []
+
+	innerRandomWalk = 0
+	outerRandomWalk = 0
+
+	for i in range(0,n_points):
+		innerRandomWalk += random.randint(-fluffyness,fluffyness)
+		outerRandomWalk += random.randint(-fluffyness,fluffyness)
+
+		innerLine.append(innerRandomWalk)
+		outerline.append(outerRandomWalk)
+
+	clouds = []
+	workingCloud = []
+	workingOnACloud = False
+	workingCloudStartIndex = 0
+
+	sliceSize = (2 * math.pi) / n_points
+
+	for i in range(1,n_points-1):
+		# print(i)
+		if outerline[i-1] < innerLine[i-1] and outerline[i] > innerLine[i] and not workingOnACloud:
+			# the beginning of a cloud
+			# print('the beginngin of a cldoueg')
+			workingOnACloud = True
+			workingCloudStartIndex = i
+
+		if workingOnACloud:
+			workingCloud.append([ (outerline[i] + cloudlineRadius * math.cos(i * sliceSize)),( outerline[i] + cloudlineRadius * math.sin(i * sliceSize))])
+				 
+
+		if outerline[i-1] > innerLine[i-1] and outerline[i] < innerLine[i]:
+			# the end of a cloud
+			# print('the genege of a cllosuef')
+			workingOnACloud = False
+
+			diffulence = i - workingCloudStartIndex
+
+
+			for k in range(0, diffulence):
+				j = i-k
+				# print(j)
+				workingCloud.append( [( innerLine[j] + cloudlineRadius * math.cos(j * sliceSize)),( innerLine[j] + cloudlineRadius * math.sin(j * sliceSize))])
+			clouds.append( Cloud( workingCloud, [200,200,200,255], [250,250,250,255],attractorPosition ) )
+			workingCloud = []
+
+	return clouds
+
+			
+
+	# print(clouds)
+	# return Cloudset(clouds, [200,200,200,255], [250,250,250,255],attractorPosition )
+
+
+
+
+
+
 class Attractor():
-	def __init__(self,planetName,radius,density,friction,color,outlineColor,atmosphere, position):
+	def __init__(self,planetName,radius,density,friction,color,outlineColor,atmosphere, position, clouds=None):
 		self.planetName = planetName
 		self.radius = radius
 		self.density = density
@@ -646,6 +726,8 @@ class Attractor():
 
 		# create astropynamics orbit-able body
 		self.APBody = APBody(self.planetName, self.mass * gravitationalConstant * 0.163, self.radius)
+
+		self.clouds = clouds
 
 class buildMenuItem():
 	# a buildMenuItem is literally the tiles in the build menu you can click and drag to add modules to your ship.

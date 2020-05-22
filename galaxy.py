@@ -24,7 +24,8 @@ earth = Attractor(
 		[180,170,145,255],										# color
 		[200,190,155,255],										# outline color
 		earthAtmosphere,										# atmosphere object
-		[1,1]													# position
+		[1,1],													# position
+		make_clouds(650000, [1,1])										# clouds
 		)
 moon = Attractor(
 		'Munus',
