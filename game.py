@@ -666,7 +666,7 @@ class World():
 
 					if module.moduleType == 'RCS':
 						module.active = actor.keyStates['left'] or actor.keyStates['right']
-					elif  module.moduleType == 'engine 10':
+					elif  module.moduleType == 'engine 10' or module.moduleType == 'engine 100':
 						module.active = actor.keyStates['up']
 
 
@@ -1471,7 +1471,7 @@ class World():
 
 		self.generateBackgroundStars()
 
-		for module in shipyard('playerStartingModules'):
+		for module in shipyard('smallParts'):
 			self.availableModules.append(copy.deepcopy(module))
 
 		# Procyon = SolarSystem("Procyon", self.gravitationalConstant)
@@ -1488,8 +1488,9 @@ class World():
 
 		for solar_system in solarSystems:
 			self.addSolarSystem(solar_system)
-			self.currentSystem = solar_system
-			print(self.currentSystem)
+			
+		self.currentSystem = self.galaxy['Sol III']
+		print(self.currentSystem)
 
 		for thing in self.currentSystem.contents:
 			self.add(thing)
@@ -1499,9 +1500,11 @@ class World():
 		# for module in dinghy:
 		# 	print(module.moduleType)
 		# 	print(module.points)
+		loaddedbrige =  shipyard('rocket_2')
+		print(loaddedbrige)
 
-
-		ida_frigate_instance = Actor('player ida_frigate', shipyard('ida_frigate'),(1, 121000), [17000,0], 0.6 * math.pi, True)
+		# ida_frigate_instance = Actor('player ida_frigate', loaddedbrige,(1, 121000), [17000,0], 0.6 * math.pi, True)
+		ida_frigate_instance = Actor('player ida_frigate', loaddedbrige,(1, 800000), [27000,0], 0.6 * math.pi, True)
 		self.add(ida_frigate_instance)
 
 		self.viewpointObject = self._getPlayer()

@@ -223,7 +223,85 @@ class Maneuver():
 						self.completed = True
 
 			if self.maneuverType == 'transfer':
-				pass
+
+				# parameter1 is the object we're leaving
+				# parameter2 is the one we're heading toward
+
+				
+				#event1 is announcement
+				if not self.event1:
+					print('transfer')
+					self.event1 = True
+
+					# 
+					positionDifference = [ self.parameter2.body.position[0]- self.parameter1.body.position[0], self.parameter2.body.position[1]- self.parameter1.body.position[1]]
+					ejectionPointAngle = math.atan2(positionDifference[1] , positionDifference[0])
+
+				# event2 is arrival at burn point to leave orbit.
+				if (actor.orbit.tAn > ejectionPointAngle -0.1 and actor.orbit.tAn < ejectionPointAngle + 0.1) and not self.event2 and not self.evet3:
+					self.event2 = True
+
+				if self.event2 and not self.event3:
+					actor.setPoint = actor.prograde + math.pi * 0.5
+
+					desiredPeriapsis = positionDifference + self.parameter2.radius
+					if self.parameter2.atmosphere is not None:
+						desiredPeriapsis += self.parameter2.atmosphere.height
+
+					angleDifference = actor.setPoint - actor.body.angle
+					if (angleDifference < 0.1 and angleDifference > 0) or angleDifference > (2*math.pi - 0.1): # only fire engines if the ship is pointing vaguely in the right direction
+						actor.keyStates['up'] = True
+					else:
+						actor.keyStates['up'] = False
+
+					if actor.orbit.getPeriapsis() > desiredPeriapsis:
+						self.event3
+
+				#event3 is periapsis reaching desired altitude above target
+				if self.event3: 
+					# actor.setPoint = actor.prograde + math.pi * 0.5
+					actor.keyStates['up'] = False
+
+
+				# event4 is entering target SoI and adjusting orbit to not miss or crash
+				if (actor.orbiting is self.parameter2) and self.event2 and self.event3 and not self.event4:
+					if actor.orbit is not None:
+						if actor.orbit.crashing :
+							actor.setPoint = actor.nadir + (math.pi * 0.5) +( math.pi * 0.5)
+								angleDifference = actor.setPoint - actor.body.angle
+								if (angleDifference < 0.1 and angleDifference > 0) or angleDifference > (2*math.pi - 0.1): # only fire engines if the ship is pointing vaguely in the right direction
+									actor.keyStates['up'] = True
+								else:
+									actor.keyStates['up'] = False
+						elif  actor.orbit.getPeriapsis < 2 * self.parameter2.radius:
+							actor.setPoint = actor.prograde +( math.pi * 0.5)
+							angleDifference = actor.setPoint - actor.body.angle
+								if (angleDifference < 0.1 and angleDifference > 0) or angleDifference > (2*math.pi - 0.1): # only fire engines if the ship is pointing vaguely in the right direction
+									actor.keyStates['up'] = True
+								else:
+									actor.keyStates['up'] = False
+
+						else:
+							#event5 is circularization around target
+							actor.keyStates['up'] = False
+							self.completed = True
+							actor.maneuverQueue.remove(self)
+							actor.maneuverQueue.append(Maneuver('circularize', 2 * self.parameter2.radius))
+
+
+					else:
+						actor.setPoint = actor.retrograde + math.pi * 0.5
+						angleDifference = actor.setPoint - actor.body.angle
+						if (angleDifference < 0.1 and angleDifference > 0) or angleDifference > (2*math.pi - 0.1): # only fire engines if the ship is pointing vaguely in the right direction
+							actor.keyStates['up'] = True
+						else:
+							actor.keyStates['up'] = False
+
+
+				
+
+				
+
 
 			if self.maneuverType == 'circularize':
 				# true to circ at periapsis. false to circ at apoapsis.

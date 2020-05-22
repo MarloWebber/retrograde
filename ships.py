@@ -1,6 +1,7 @@
 from retrograde import *
 from modules import *
 
+import os
 ''' 
 Ships and buildings are the actors in the game world. They are composed of a list of modules that support each other and add their own abilities.
 They can also be used to store module lists, for instance to gift to the player in a certain scenario.
@@ -14,6 +15,16 @@ They are wrapped in an actor class when they are put into the game world. This i
 def shipyard(shipType):
 	# first, search through serialised files to find one matching the name.
 
+
+	directoryString = "ships/"
+	directory = os.fsencode(directoryString)
+
+	for file in os.listdir(directory):
+	     filename = os.fsdecode(file)
+	     if filename == shipType:
+	         print(filename)
+	         return dill.load(open(directoryString+shipType, 'rb'))
+	    
 	# if there was no user definition of it, load it from the defaults.
 	if shipType == 'rocket_1':
  		return [
@@ -61,13 +72,15 @@ def shipyard(shipType):
 			Module('RCS',[-13,-70]),
 			Module('RCS',[13,-70]) ]
 
-	elif shipType == 'playerStartingModules':
+	elif shipType == 'smallParts':
 		return [
+			Module('generator',[0,0]),
 			Module('generator',[0,0]),
 			Module('engine 10',[0,0]),
 			Module('engine 10',[0,0]),
 			Module('RCS',[0,0]),
 			Module('hyperdrive 10',[0,-75]),
+			Module('cannon 10',[0,-10]),
 			Module('cannon 10',[0,-10]),
 			Module('box 10',[0,10]),
 			Module('spar 10',[0,-100],(0.5* math.pi)),
@@ -77,4 +90,23 @@ def shipyard(shipType):
 			Module('starbridge armor',[0,10]),
 			Module('starbridge armor',[0,10]),
 			Module('starbridge armor',[0,10]),
+			Module('box 5',[0,10]),
+			Module('turret 10',[0,-100],(0.5* math.pi)),
+			Module('turret 10',[0,-100],(0.5* math.pi)),
+			
+
+
 			]
+
+	elif shipType == 'bigParts':
+		return [
+			Module('spar 100',[0,-100],(0.5* math.pi)),
+			Module('spar 100',[0,-100],(0.5* math.pi)),
+			Module('box 100',[0,-100],(0.5* math.pi)),
+			Module('engine 100',[0,-100],(0.5* math.pi)),
+			Module('engine 100',[0,-100],(0.5* math.pi)),
+			
+
+
+			]
+

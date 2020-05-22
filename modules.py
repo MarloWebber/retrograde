@@ -17,6 +17,12 @@ class ModuleEffect(): # a ModuleEffect is just a polygon that is visually displa
 			self.color = [255,255,255,255]
 			self.outlineColor = [255,220,150,255]
 			self.illuminator = Illuminator(offset, 1500, self.outlineColor, 3)
+		if effectType == 'engine 100 flame':
+			self.radius = 9
+			self.points = [[-self.radius, -self.radius], [self.radius, -self.radius], [0,2*self.radius]]
+			self.color = [255,255,255,255]
+			self.outlineColor = [255,220,150,255]
+			self.illuminator = Illuminator(offset, 2500, self.outlineColor, 3)
 
 		if effectType == 'cannon 10 flash':
 			self.radius = 1
@@ -74,6 +80,24 @@ class Module():
 			self.outlineColor = [100,100,100,255]
 			self.effect = ModuleEffect('engine 10 flame', [0,self.radius*3])
 
+		elif self.moduleType == 'engine 100':
+			self.mass = 10
+			self.quiescent = {
+				'electricity':0.01
+			}
+			self.resources = {
+				'thrust': 1000,
+				'fuel': -10,
+				'electricity':10
+			}
+			self.stores = {}
+			self.initialStores = {}
+			self.radius = 15
+			self.points = [[-self.radius, -self.radius*2], [-self.radius, self.radius*2], [self.radius,self.radius*2], [self.radius, -self.radius*2]]
+			self.color = [50,50,50,255]
+			self.outlineColor = [100,100,100,255]
+			self.effect = ModuleEffect('engine 100 flame', [0,self.radius*3])
+
 		elif self.moduleType == 'RCS':
 			self.mass = 0.2
 			self.quiescent = {
@@ -99,6 +123,19 @@ class Module():
 			self.initialStores = {}
 			self.radius = 5
 			self.points = [[-self.radius, -self.radius*10], [-self.radius, self.radius*10], [self.radius,self.radius*10], [self.radius, -self.radius*10]]
+			self.color = [50,50,50,255]
+			self.outlineColor = [100,100,100,255]
+			self.momentArm = self.radius
+
+		elif self.moduleType == 'box 5':
+			self.mass = 2
+			self.quiescent = {}
+			self.resources = {}
+			self.stores = {'cargo':5}
+			self.initialStores = {'cargo':0}
+			self.radius = 5
+			size = self.radius
+			self.points = [[-size, -size], [-size, size], [size,size], [size, -size]]
 			self.color = [50,50,50,255]
 			self.outlineColor = [100,100,100,255]
 			self.momentArm = self.radius
@@ -220,3 +257,32 @@ class Module():
 			self.color = [200,200,200,255]
 			self.outlineColor = [240,240,240,255]
 			self.momentArm = self.radius
+
+		elif self.moduleType == 'turret 10':
+			self.mass = 5
+			self.active = False
+			self.quiescent = {
+				'electricity':0.01
+			}
+			self.resources = {
+				'cannonshell 10': 1,
+				'electricity':20
+			}
+			self.stores = {
+				'cannonshell 10': 20
+			}
+			self.initialStores = {
+				'cannonshell 10': 20
+			}
+			self.radius = 5
+			self.points = [[-1*self.radius, -self.radius], [-2*self.radius, self.radius], [2*self.radius,self.radius], [1*self.radius, -self.radius]]
+			self.color = [30,30,30,255]
+			self.outlineColor = [100,100,30,255]
+
+			self.barrelHole = [0,-self.radius + 1.5]					# the location that bullets are emitted from this module.
+			self.muzzleVelocity = 250000								# the speed that bullets come out at.
+			self.cooldownTime = 100										# how long it takes before the gun fires again.
+			self.cooldownValue = 0
+			self.effect = ModuleEffect('cannon 10 flash', [0,-self.radius])
+
+			self.firingArc = 1/3* 2*math.pi
