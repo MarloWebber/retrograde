@@ -692,6 +692,22 @@ def make_clouds(cloudlineRadius, attractorPosition ):
 			clouds.append( Cloud( workingCloud, [200,200,200,255], [250,250,250,255],attractorPosition ) )
 			workingCloud = []
 
+		elif workingOnACloud and i > workingCloudStartIndex + 10:
+			# the end of a cloud
+			# print('the genege of a cllosuef')
+			# workingOnACloud = False
+
+			diffulence = i - workingCloudStartIndex
+
+
+			for k in range(0, diffulence):
+				j = i-k+1
+				# print(j)
+				workingCloud.append( [( innerLine[j] + cloudlineRadius * math.cos(j * sliceSize)),( innerLine[j] + cloudlineRadius * math.sin(j * sliceSize))])
+			clouds.append( Cloud( workingCloud, [200,200,200,255], [250,250,250,255],attractorPosition ) )
+			workingCloud = []
+			workingCloudStartIndex = i-1
+
 	return clouds
 
 			
