@@ -268,18 +268,18 @@ class Maneuver():
 					if actor.orbit is not None:
 						if actor.orbit.crashing :
 							actor.setPoint = actor.nadir + (math.pi * 0.5) +( math.pi * 0.5)
-								angleDifference = actor.setPoint - actor.body.angle
-								if (angleDifference < 0.1 and angleDifference > 0) or angleDifference > (2*math.pi - 0.1): # only fire engines if the ship is pointing vaguely in the right direction
-									actor.keyStates['up'] = True
-								else:
-									actor.keyStates['up'] = False
+							angleDifference = actor.setPoint - actor.body.angle
+							if (angleDifference < 0.1 and angleDifference > 0) or angleDifference > (2*math.pi - 0.1): # only fire engines if the ship is pointing vaguely in the right direction
+								actor.keyStates['up'] = True
+							else:
+								actor.keyStates['up'] = False
 						elif  actor.orbit.getPeriapsis < 2 * self.parameter2.radius:
 							actor.setPoint = actor.prograde +( math.pi * 0.5)
 							angleDifference = actor.setPoint - actor.body.angle
-								if (angleDifference < 0.1 and angleDifference > 0) or angleDifference > (2*math.pi - 0.1): # only fire engines if the ship is pointing vaguely in the right direction
-									actor.keyStates['up'] = True
-								else:
-									actor.keyStates['up'] = False
+							if (angleDifference < 0.1 and angleDifference > 0) or angleDifference > (2*math.pi - 0.1): # only fire engines if the ship is pointing vaguely in the right direction
+								actor.keyStates['up'] = True
+							else:
+								actor.keyStates['up'] = False
 
 						else:
 							#event5 is circularization around target
@@ -561,8 +561,12 @@ class Actor():
 								torqueAmount = sign * giveQuantity * timestepSize * 100
 
 								# apply two impulses, pushing in opposite directions, an equal distance from the center to create torque
-								self.body.apply_impulse_at_local_point([-torqueAmount,0], [0,-module.momentArm])
-								self.body.apply_impulse_at_local_point([torqueAmount,0], [0,module.momentArm])
+								if timestepSize  * 3 * 100 < 50:
+									self.body.apply_impulse_at_local_point([-torqueAmount,0], [0,-module.momentArm])
+									self.body.apply_impulse_at_local_point([torqueAmount,0], [0,module.momentArm])
+								# else:
+									# self.body.angle = self.setPoint
+									# self.body._set_angular_velocity(0)
 							else:
 								module.active = False
 

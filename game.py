@@ -196,6 +196,7 @@ def transformPolygonForLines(polygon):
 		return [n,points]
 
 def transformForView( position ,viewpointObjectPosition, zoom, resolution):
+
 	transformedPosition = position - viewpointObjectPosition 					# offset everything by the position of the viewpointObject, so the viewpoint is at 0,0
 	transformedPosition = transformedPosition * zoom  							# shrink or expand everything around the 0,0 point
 	transformedPosition[0] = int(transformedPosition[0] + resolution_half[0]) 	# add half the width of the screen, to get to the middle. 0,0 is naturally on the corner.
@@ -572,6 +573,16 @@ class World():
 		self.time += self.timestepSize
 
 		for actor in self.actors:
+
+			print()
+			if self.timestepSize  * 3 * 100 > 50:
+				actor.body.angle = actor.setPoint
+				actor.body._set_angular_velocity(0)
+
+
+			if math.isnan(mag(actor.body.position)):
+				self.destroyActor(actor)
+				continue
 
 			# explode all the projectiles
 			destroyed = False
@@ -1281,7 +1292,7 @@ class World():
 		window.clear()
 
 		if self.viewpointObject is None:
-			self.viewpointObject = self.actors[len(self.actors)-1]
+			self.viewpointObject = self.actors[0]
 
 		first_batch = pyglet.graphics.Batch()
 		pyglet.gl.glLineWidth(2)
