@@ -74,6 +74,14 @@ def mirror_polygon(polygon):
 	return transformedPoints
 
 
+def mag(x):
+	return numpy.sqrt(x.dot(x))
+
+def differenceBetweenAngles(a, b):
+	return math.pi - abs(abs( a - b) - math.pi); 
+
+
+
 class Atmosphere():
 	def __init__(self, radius, height, bottomDensity, topDensity, color, outerColor):
 
@@ -108,7 +116,7 @@ class Maneuver():
 	# description of an AI behaviour item.
 	def __init__(self, maneuverType, parameter1=None, parameter2=None, parameter3=None):
 		self.maneuverType = maneuverType
-		self.parameter1 = parameter1 # parameters can be used to mean different things depending on what kind of manuever it is.
+		self.parameter1 = parameter1 # parameters can be used to mean different things depending on what kind of maneuver it is.
 		self.parameter2 = parameter2
 		self.parameter3 = parameter3
 		self.completed = False
@@ -234,39 +242,56 @@ class Maneuver():
 					self.event1 = True
 
 					# 
-					positionDifference = [ self.parameter2.body.position[0]- self.parameter1.body.position[0], self.parameter2.body.position[1]- self.parameter1.body.position[1]]
-					ejectionPointAngle = math.atan2(positionDifference[1] , positionDifference[0])
+				
 
 				# event2 is arrival at burn point to leave orbit.
-				if (actor.orbit.tAn > ejectionPointAngle -0.1 and actor.orbit.tAn < ejectionPointAngle + 0.1) and not self.event2 and not self.evet3:
-					self.event2 = True
+				if self.event1 and not self.event2 and not self.event3:
+					positionDifference = [ self.parameter1.body.position[0]- self.parameter2.body.position[0], self.parameter1.body.position[1]- self.parameter2.body.position[1]]
+					ejectionPointAngle = math.atan2(positionDifference[1] , positionDifference[0]) 
+					# if ejectionPointAngle > 2 * math.pi:
+					# 	ejectionPointAngle -= 2 * math.pi
+
+					print('ejectionPointAngle: '+str(ejectionPointAngle))
+					print('addRadians(actor.orbit.tAn ,actor.orbit.aPe): '+str(addRadians(actor.orbit.tAn ,actor.orbit.aPe)))
+					# print(addRadians(actor.orbit.tAn ,actor.orbit.aPe))
+
+					if (actor.orbit.tAn > ejectionPointAngle -0.1 and actor.orbit.tAn < ejectionPointAngle + 0.1):
+						print('reached burn point')
+						self.event2 = True
 
 				if self.event2 and not self.event3:
 					actor.setPoint = actor.prograde + math.pi * 0.5
 
-					desiredPeriapsis = positionDifference + self.parameter2.radius
+					positionDifference = [ self.parameter1.body.position[0]- self.parameter2.body.position[0], self.parameter1.body.position[1]- self.parameter2.body.position[1]]
+					desiredPeriapsis = mag(numpy.array(positionDifference)) + self.parameter2.radius
 					if self.parameter2.atmosphere is not None:
 						desiredPeriapsis += self.parameter2.atmosphere.height
 
-					angleDifference = actor.setPoint - actor.body.angle
-					if (angleDifference < 0.1 and angleDifference > 0) or angleDifference > (2*math.pi - 0.1): # only fire engines if the ship is pointing vaguely in the right direction
+					angleDifference = differenceBetweenAngles(actor.setPoint,actor.body.angle)
+					if (angleDifference < 0.5 and angleDifference > -0.5): # only fire engines if the ship is pointing vaguely in the right direction
 						actor.keyStates['up'] = True
 					else:
 						actor.keyStates['up'] = False
 
-					if actor.orbit.getPeriapsis() > desiredPeriapsis:
-						self.event3
+					print(actor.orbit.getApoapsis())
+					print(desiredPeriapsis)
+					if actor.orbit.getApoapsis() > desiredPeriapsis:
+						self.event3 = True
+						print('raised trajectory to target, ready to cruise')
+						actor.keyStates['up'] = False
 
 				#event3 is periapsis reaching desired altitude above target
-				if self.event3: 
+				# if self.event3: 
 					# actor.setPoint = actor.prograde + math.pi * 0.5
-					actor.keyStates['up'] = False
+					
+
 
 
 				# event4 is entering target SoI and adjusting orbit to not miss or crash
 				if (actor.orbiting is self.parameter2) and self.event2 and self.event3 and not self.event4:
 					if actor.orbit is not None:
 						if actor.orbit.crashing :
+							# print('crashing. need to raise orbit')
 							actor.setPoint = actor.nadir + (math.pi * 0.5) +( math.pi * 0.5)
 							angleDifference = actor.setPoint - actor.body.angle
 							if (angleDifference < 0.1 and angleDifference > 0) or angleDifference > (2*math.pi - 0.1): # only fire engines if the ship is pointing vaguely in the right direction
@@ -283,6 +308,8 @@ class Maneuver():
 
 						else:
 							#event5 is circularization around target
+							print('arrived at target. adding circularization to queue.')
+
 							actor.keyStates['up'] = False
 							self.completed = True
 							actor.maneuverQueue.remove(self)
@@ -456,7 +483,7 @@ class Actor():
 		self.combatantType = 'defender' # defenders will shoot at you while still doing what they're doing. attackers will pursue you. missiles will pursue you with the intent to ram.
 		self.autoPilotActive = False
 
-		self.autoPilotGoals = [] # a list of goals which the ai will use sequences of manuevers to accomplish.
+		self.autoPilotGoals = [] # a list of goals which the ai will use sequences of maneuvers to accomplish.
 
 		self.target = None # another actor that this one can lock with radar and scanners.
 		self.selectedWeapon = None
@@ -592,7 +619,7 @@ class Actor():
 			if self.keyStates['face direction'] == 'zenith': self.setPoint = self.zenith +  0.5 * math.pi
 			if str.isnumeric(self.keyStates['face direction']): self.setpoint = float(self.keyStates['face direction'])
 
-		# perform autopilot manuevers for the player and for NPCs
+		# perform autopilot maneuvers for the player and for NPCs
 		if self.autoPilotActive:
 			if len(self.maneuverQueue) > 0:
 				self.maneuverQueue[0].perform(self)

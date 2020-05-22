@@ -60,8 +60,6 @@ color_point = [0,0]
 
 
 
-def mag(x):
-	return numpy.sqrt(x.dot(x))
 
 def sign(x):
 	return x * abs(x)
@@ -96,8 +94,6 @@ def pointInRect(point,rect):
     return False
 
 
-def differenceBetweenAngles(a, b):
-	return math.pi - abs(abs( a - b) - math.pi); 
 
 # def rotate_point(point, angle_rad, center_point=(0, 0)):
 #     """Rotates a point around center_point(origin by default)
@@ -556,7 +552,7 @@ class World():
 					self.add(Actor(actor.name + ' fragment', [module], fragmentPosition, actor.body.velocity, True))
 					self.player = self._getPlayer()
 					self.viewpointObject = self.player
-					print('added player fragment')
+					# print('added player fragment')
 					addAPlayerFragment = False
 				else:
 					self.add(Actor(actor.name + ' fragment', [module], fragmentPosition, actor.body.velocity, False))
@@ -574,7 +570,7 @@ class World():
 
 		for actor in self.actors:
 
-			print()
+			# print()
 			if self.timestepSize  * 3 * 100 > 50:
 				actor.body.angle = actor.setPoint
 				actor.body._set_angular_velocity(0)
@@ -1511,11 +1507,14 @@ class World():
 		# for module in dinghy:
 		# 	print(module.moduleType)
 		# 	print(module.points)
-		loaddedbrige =  shipyard('rocket_2')
-		print(loaddedbrige)
+		loaddedbrige =  shipyard('starbridge')
+		# print(loaddedbrige)
 
 		# ida_frigate_instance = Actor('player ida_frigate', loaddedbrige,(1, 121000), [17000,0], 0.6 * math.pi, True)
-		ida_frigate_instance = Actor('player ida_frigate', loaddedbrige,(1, 800000), [27000,0], 0.6 * math.pi, True)
+		ida_frigate_instance = Actor('player ida_frigate', loaddedbrige,(-800000, -1), [1,50000], 0.6 * math.pi, True)
+
+		ida_frigate_instance.maneuverQueue.append(Maneuver('transfer',earth, moon))
+
 		self.add(ida_frigate_instance)
 
 		self.viewpointObject = self._getPlayer()
