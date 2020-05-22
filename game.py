@@ -59,7 +59,9 @@ white = [255]*4
 color_point = [0,0]
 
 
-
+previousHUDlistQuantities = [None]*100
+previousHUDstrings = [None]*100
+previousHUDlabels = [None]*100
 
 def sign(x):
 	return x * abs(x)
@@ -1095,6 +1097,24 @@ class World():
 		if quantity is None and len(string) == 0:
 			return index + 1
 
+		# if the label has already been prepared in an earlier turn, use that label.
+		print(previousHUDstrings)
+		print(index)
+
+		# if index is not None:
+		# if index is None:
+		# 	return
+
+		if previousHUDstrings[index] is not None:
+			if previousHUDstrings[index] == string:
+				if quantity is not None:
+					if previousHUDlistQuantities[index] == quantity:
+						previousHUDlabels[index].draw()
+						return index + 1
+				else:
+					previousHUDlabels[index].draw()
+					return index + 1
+
 		if listCorner is 'bottom left':
 			label = pyglet.text.Label(string + str(quantity),
 	                      font_name='Times New Roman',
@@ -1124,6 +1144,9 @@ class World():
 	                      color=color,
 	                      align="right")
 
+		previousHUDstrings[index] = string
+		previousHUDlistQuantities[index] = quantity
+		previousHUDlabels[index] = label
 		label.draw()
 
 		return index + 1
