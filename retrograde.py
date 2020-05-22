@@ -68,9 +68,10 @@ def addRadians(a, b):
 	return (a + b + math.pi) % (2*math.pi) - math.pi
 
 def mirror_polygon(polygon):
+	transformedPoints = []
 	for point in polygon:
-		point = [point[0] * -1, point[1]]
-	return polygon
+		transformedPoints.append( [point[0] * -1, point[1]] )
+	return transformedPoints
 
 
 class Atmosphere():

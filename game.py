@@ -1662,6 +1662,9 @@ def on_key_press(symbol, modifiers):
 				Nirn.player.hyperdriveDestination = None
 	elif symbol == key.X:
 		if Nirn.buildMenu:
+			# print('flip module')
+			# print(Nirn.buildDraggingModule.points)
+			# print(mirror_polygon(Nirn.buildDraggingModule.points))
 			Nirn.buildDraggingModule.points = mirror_polygon(Nirn.buildDraggingModule.points)
 
 @window.event
