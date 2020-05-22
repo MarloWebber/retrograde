@@ -1317,10 +1317,18 @@ class World():
 			illuminator.transformedPosition = transformForView( illuminator.position ,self.viewpointObject.body.position, self.zoom, resolution)
 
 		for attractor in self.attractors:
-			self.drawActor(attractor, main_batch)
 			if attractor.clouds is not None and len(attractor.clouds) > 0:
 				for cloud in attractor.clouds:
 					self.drawActor(cloud, main_batch)
+
+		main_batch.draw()
+
+		main_batch = pyglet.graphics.Batch()
+		pyglet.gl.glLineWidth(2)
+
+		for attractor in self.attractors:
+			self.drawActor(attractor, main_batch)
+			
 		for actor in self.actors:
 			self.drawActor(actor, main_batch)
 			

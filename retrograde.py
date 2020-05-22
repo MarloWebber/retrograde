@@ -40,9 +40,20 @@ def area_of_annulus(inner, outer):
 def make_circle(radius, points, noise):
 	# returns a list of points defining a circle.
 	circle = []
+	randomnesses = []
 	angleStep = 2*math.pi / points
+
 	for i in range(0,points):
-		circle.append([(radius * math.cos(i * angleStep) + random.randint(0,noise)),(radius * math.sin(i * angleStep) ) + random.randint(0,noise) ])
+		randomnesses.append((random.randint(0,noise)  ))
+
+	# for i in range(0,points):
+	# 	if randomnesses[i] > 0:
+	# 		randomnesses[i] = randomnesses[i] **2
+	# 	else:
+	# 		randomnesses[i] = (abs(randomnesses[i]) **2 )* -1
+
+	for i in range(0,points):
+		circle.append([((randomnesses[i] + radius)* math.cos(i * angleStep) ),(( randomnesses[i]+ radius)* math.sin(i * angleStep) )  ])
 	return circle
 
 def rotate_point(point, angle_rad, center_point=(0, 0)):
@@ -637,11 +648,11 @@ class Cloud():
 		self.body = FakeBody(position)
 
 
-def make_clouds(cloudlineRadius, attractorPosition ):
+def make_clouds(cloudlineRadius, attractorPosition, fluffyness, n_points, atmosphereDepth, planetRadius):
 
 
-	n_points = 1000
-	fluffyness = 1000
+	n_points = n_points
+	fluffyness = fluffyness
 	# cloudlineRadius = 100000
 
 	# returns an array of cloud polygons that are wrapped around a planet.
@@ -654,6 +665,22 @@ def make_clouds(cloudlineRadius, attractorPosition ):
 	for i in range(0,n_points):
 		innerRandomWalk += random.randint(-fluffyness,fluffyness)
 		outerRandomWalk += random.randint(-fluffyness,fluffyness)
+
+		# if innerRandomWalk+cloudlineRadius> planetRadius + (atmosphereDepth * 0.9):
+		# 	innerRandomWalk -=random.randint(0,fluffyness)
+		# elif innerRandomWalk> cloudlineRadius + atmosphereDepth * 0.5:
+		# 	innerRandomWalk -=random.randint(0,0.5*fluffyness)
+
+		# if innerRandomWalk<planetRadius:
+		# 	innerRandomWalk +=random.randint(0,2*fluffyness)
+
+
+		# if outerRandomWalk+cloudlineRadius> planetRadius + (atmosphereDepth * 0.9):
+		# 	outerRandomWalk -=random.randint(0,fluffyness)
+		# elif outerRandomWalk> cloudlineRadius + atmosphereDepth * 0.5:
+		# 	outerRandomWalk -=random.randint(0,0.5*fluffyness)
+		# if outerRandomWalk<planetRadius:
+		# 	outerRandomWalk +=random.randint(0,2*fluffyness)
 
 		innerLine.append(innerRandomWalk)
 		outerline.append(outerRandomWalk)
@@ -675,12 +702,27 @@ def make_clouds(cloudlineRadius, attractorPosition ):
 
 		if workingOnACloud:
 			workingCloud.append([ (outerline[i] + cloudlineRadius * math.cos(i * sliceSize)),( outerline[i] + cloudlineRadius * math.sin(i * sliceSize))])
-				 
 
 		if outerline[i-1] > innerLine[i-1] and outerline[i] < innerLine[i]:
 			# the end of a cloud
 			# print('the genege of a cllosuef')
 			workingOnACloud = False
+
+			diffulence = i - workingCloudStartIndex
+
+			for k in range(0, diffulence):
+				j = i-k
+				# print(j)
+				workingCloud.append( [( innerLine[j] + cloudlineRadius * math.cos(j * sliceSize)),( innerLine[j] + cloudlineRadius * math.sin(j * sliceSize))])
+			clouds.append( Cloud( workingCloud, [200,200,200,255], [250,250,250,255],attractorPosition ) )
+			workingCloud = []
+			workingCloudStartIndex = i
+			i-=1
+
+		if workingOnACloud and i >= workingCloudStartIndex + 50:
+			# the end of a cloud
+			# print('the genege of a cllosuef')
+			# workingOnACloud = False
 
 			diffulence = i - workingCloudStartIndex
 
@@ -691,22 +733,8 @@ def make_clouds(cloudlineRadius, attractorPosition ):
 				workingCloud.append( [( innerLine[j] + cloudlineRadius * math.cos(j * sliceSize)),( innerLine[j] + cloudlineRadius * math.sin(j * sliceSize))])
 			clouds.append( Cloud( workingCloud, [200,200,200,255], [250,250,250,255],attractorPosition ) )
 			workingCloud = []
-
-		elif workingOnACloud and i > workingCloudStartIndex + 10:
-			# the end of a cloud
-			# print('the genege of a cllosuef')
-			# workingOnACloud = False
-
-			diffulence = i - workingCloudStartIndex
-
-
-			for k in range(0, diffulence):
-				j = i-k+1
-				# print(j)
-				workingCloud.append( [( innerLine[j] + cloudlineRadius * math.cos(j * sliceSize)),( innerLine[j] + cloudlineRadius * math.sin(j * sliceSize))])
-			clouds.append( Cloud( workingCloud, [200,200,200,255], [250,250,250,255],attractorPosition ) )
-			workingCloud = []
-			workingCloudStartIndex = i-1
+			workingCloudStartIndex = i
+			i-=1
 
 	return clouds
 
@@ -721,7 +749,7 @@ def make_clouds(cloudlineRadius, attractorPosition ):
 
 
 class Attractor():
-	def __init__(self,planetName,radius,density,friction,color,outlineColor,atmosphere, position, clouds=None):
+	def __init__(self,planetName,radius,density,friction,color,outlineColor,atmosphere, position, clouds=None, noise=0):
 		self.planetName = planetName
 		self.radius = radius
 		self.density = density
@@ -733,7 +761,7 @@ class Attractor():
 		# create pymunk physical body and shape
 		self.mass = mass_of_a_sphere(self.density, self.radius)
 		size = self.radius
-		self.points = make_circle(self.radius, 120, 0)
+		self.points = make_circle(self.radius, 120, noise)
 		inertia = pymunk.moment_for_poly(self.mass, self.points, (0,0))
 		self.body = pymunk.Body(self.mass, inertia)
 		self.body.position = position

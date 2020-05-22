@@ -10,7 +10,7 @@ solarSystems = []
 # Earth and Moon system
 earthAtmosphere = Atmosphere(
 		640000,													# planet radius
-		15000,													# atmosphere depth
+		35000,													# atmosphere depth
 		1,														# density at the bottom
 		0,														# density at the top
 		[70,145,220,255],										# color at the bottom
@@ -21,11 +21,12 @@ earth = Attractor(
 		640000,													# radius
 		1,														# density
 		0.9,													# surface friction
-		[180,170,145,255],										# color
+		[150,150,150,255],										# color
 		[200,190,155,255],										# outline color
 		earthAtmosphere,										# atmosphere object
 		[1,1],													# position
-		make_clouds(650000, [1,1])										# clouds
+		make_clouds(650000, [1,1], 1000, 300, 30000, 640000),	# clouds
+		0
 		)
 moon = Attractor(
 		'Munus',
