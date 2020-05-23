@@ -1174,14 +1174,14 @@ class World():
 		# 	return
 
 		# if previousHUDstrings[index] is not None:
-		# 	if previousHUDstrings[index] == string:
-		# 		if quantity is not None:
-		# 			if previousHUDlistQuantities[index] == quantity:
-		# 				previousHUDlabels[index].draw()
-		# 				return index + 1
-		# 		else:
-		# 			previousHUDlabels[index].draw()
-		# 			return index + 1
+			# if previousHUDstrings[index] == string:
+		# if quantity is not None:
+		# 	if previousHUDlistQuantities[index] == quantity:
+		# 		# previousHUDlabels[index].draw()
+		# 		return index + 1
+		# 	# else:
+			# 	previousHUDlabels[index].draw()
+			# 	return index + 1
 
 		if listCorner is 'bottom left':
 			label = pyglet.text.Label(str(quantity) ,
@@ -1551,6 +1551,8 @@ class World():
 		# self.hudbatch_render()
 		self.hudbatch.draw()
 
+		self.drawBackgroundStars(first_batch)
+
 	
 		for attractor in self.attractors:
 			if attractor.atmosphere != None:
@@ -1695,14 +1697,31 @@ class World():
 
 	def generateBackgroundStars(self):
 		self.backgroundStars = []
-		n_stars = 50
+		self.backgroundStarColorstream = []
+		n_stars = 250
 		for i in range(n_stars):
 			position = [random.randint(0,resolution[0]), random.randint(0,resolution[1])]
-			color = [255,200,255,255]
-			color[0] -= random.randint(0,55)
-			color[2] -= random.randint(0,55)
-			self.backgroundStars.append(BackgroundStar(position, color, random.randint(1,2)))
+			color = [155,155,155,255]
+			color[0] += random.randint(0,100)
+			color[2] += random.randint(0,100)
 
+			brightness = random.randint(0,10)
+
+			color[0] = int(color[0] * (brightness/10))
+			color[1] = int(color[1] * (brightness/10))
+			color[2] = int(color[2] * (brightness/10))
+
+			# self.backgroundStars.append(BackgroundStar(position, color, random.randint(1,2)))
+			self.backgroundStars.append(position[0])
+			self.backgroundStars.append(position[1])
+			self.backgroundStarColorstream.append(color[0])
+			self.backgroundStarColorstream.append(color[1])
+			self.backgroundStarColorstream.append(color[2])
+			self.backgroundStarColorstream.append(255)
+
+	def drawBackgroundStars(self, main_batch):
+		print(self.backgroundStars)
+		main_batch.add( 250, pyglet.gl.GL_POINTS, None, ('v2i', self.backgroundStars), ('c4B',self.backgroundStarColorstream))
 		
 	def hyperspaceJump(self, actor) :
 		# teleports the player across space, by removing all the other actors and stuff and replacing them with new stuff.
