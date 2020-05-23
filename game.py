@@ -946,8 +946,8 @@ class World():
 		fillTriangles = [100,0, 100,0, 100,resolution[1], 200,resolution[1], 200,0, 100,0, 100,0 ]
 		main_batch.add(7, pyglet.gl.GL_TRIANGLE_STRIP, None, ('v2i',fillTriangles), ('c4B',hudBackgroundColor*7))
 
-		xRightLimit = resolution[0] - 200
-		fillTriangles = [resolution[0]-100,0, resolution[0]-100,0, resolution[0]-100,resolution[1], xRightLimit,resolution[1], xRightLimit,0,  resolution[0]-100,0,  resolution[0]-100,0 ]
+		xRightLimit = resolution[0] - 100
+		fillTriangles = [resolution[0],0, resolution[0],0, resolution[0],resolution[1], xRightLimit,resolution[1], xRightLimit,0,  resolution[0],0,  resolution[0],0 ]
 		main_batch.add(7, pyglet.gl.GL_TRIANGLE_STRIP, None, ('v2i',fillTriangles), ('c4B',hudBackgroundColor*7))
 
 		# self.drawHUDpermanentComponents(nastybatch)
@@ -1195,7 +1195,7 @@ class World():
 			label = pyglet.text.Label(str(quantity) ,
 	                      font_name='Times New Roman',
 	                      font_size=fontSize,
-	                      x=resolution[0]-listXPosition - 100, y=resolution[1]-(HUDlistItemSpacing * index),
+	                      x=resolution[0] - 100, y=resolution[1]-(HUDlistItemSpacing * index),
 	                      color=color,
 	                      align="right",
 	                      batch=main_batch)
@@ -1211,7 +1211,7 @@ class World():
 			label = pyglet.text.Label(str(quantity) ,
 	                      font_name='Times New Roman',
 	                      font_size=fontSize,
-	                      x=resolution[0]-listXPosition - 100, y=HUDlistItemSpacing * index,
+	                      x=resolution[0] - 100, y=HUDlistItemSpacing * index,
 	                      color=color,
 	                      align="right",
 	                      batch=main_batch)
@@ -1230,7 +1230,7 @@ class World():
 		listXPosition = 10 
 		fontSize = 12
 
-		color = (200,200,200,255)
+		color = (100,100,100,255)
 
 		if len(string) == 0:
 			return index + 1
@@ -1265,7 +1265,7 @@ class World():
 			label = pyglet.text.Label(string ,
 	                      font_name='Times New Roman',
 	                      font_size=fontSize,
-	                      x=resolution[0]-listXPosition - 100, y=resolution[1]-(HUDlistItemSpacing * index),
+	                      x=resolution[0] - 200 + listXPosition, y=resolution[1]-(HUDlistItemSpacing * index),
 	                      color=color,
 	                      align="right",
 	                      batch=main_batch)
@@ -1281,7 +1281,7 @@ class World():
 			label = pyglet.text.Label(string ,
 	                      font_name='Times New Roman',
 	                      font_size=fontSize,
-	                      x=resolution[0]-listXPosition - 100, y=HUDlistItemSpacing * index,
+	                      x=resolution[0] - 200+ listXPosition, y=HUDlistItemSpacing * index,
 	                      color=color,
 	                      align="right",
 	                      batch=main_batch)
@@ -1431,7 +1431,8 @@ class World():
 
 		i = 1
 
-		i = self.drawHUDListItemQuantity(self.player.hyperdriveDestination, i, 'bottom right', main_batch)
+		if self.player.hyperdriveDestination is not None:
+			i = self.drawHUDListItemQuantity(self.player.hyperdriveDestination.solarSystemName, i, 'bottom right', main_batch)
 		# i = self.drawHUDListItem('weapon: ', self.player.selectedWeapon, i, 'top right')		
 
 	def shootABullet(self, gunModule, actor):
