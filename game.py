@@ -1854,14 +1854,19 @@ class World():
 		# 	print(module.moduleType)
 		# 	print(module.points)
 		loaddedbrige =  shipyard('starbridge')
+
+		rockeyt =  shipyard('rocket_1')
 		# print(loaddedbrige)
 
 		# ida_frigate_instance = Actor('player ida_frigate', loaddedbrige,(1, 121000), [17000,0], 0.6 * math.pi, True)
 		ida_frigate_instance = Actor('player ida_frigate', loaddedbrige,(-800000, -1), [1,50000], 0.6 * math.pi, True)
 
+		fojgesogj = Actor('psefse', rockeyt,(-800000, -100), [1,50000], 0.6 * math.pi)
+
 		ida_frigate_instance.maneuverQueue.append(Maneuver('transfer',earth, moon))
 
 		self.add(ida_frigate_instance)
+		self.add(fojgesogj)
 
 		self.viewpointObject = self._getPlayer()
 
@@ -2037,22 +2042,40 @@ def on_key_press(symbol, modifiers):
 			# print(mirror_polygon(Nirn.buildDraggingModule.points))
 			Nirn.buildDraggingModule.points = mirror_polygon(Nirn.buildDraggingModule.points)
 	elif symbol == key.I:
-		pass
+		Nirn.player.keyStates['strafe forward'] = True
+	elif symbol == key.J:
+		Nirn.player.keyStates['strafe left'] = True
+	elif symbol == key.K:
+		Nirn.player.keyStates['strafe back'] = True
+	elif symbol == key.L:
+		Nirn.player.keyStates['strafe right'] = True
 
 @window.event
 def on_key_release(symbol, modifiers):
-    if symbol == key.LEFT:
-    	if Nirn.player is not None:
-	    	Nirn.player.keyStates['left'] = False
-    elif symbol == key.RIGHT:
-    	if Nirn.player is not None:
-	    	Nirn.player.keyStates['right'] = False
-    elif symbol == key.UP:
-    	if Nirn.player is not None:
-	    	Nirn.player.keyStates['up'] = False		
-    elif symbol == key.V:
-    	if Nirn.player is not None:
-	    	Nirn.player.keyStates['J'] = False		
+	if symbol == key.LEFT:
+		if Nirn.player is not None:
+			Nirn.player.keyStates['left'] = False
+	elif symbol == key.RIGHT:
+		if Nirn.player is not None:
+			Nirn.player.keyStates['right'] = False
+	elif symbol == key.UP:
+		if Nirn.player is not None:
+			Nirn.player.keyStates['up'] = False		
+	elif symbol == key.V:
+		if Nirn.player is not None:
+			Nirn.player.keyStates['J'] = False	
+	elif symbol == key.I:
+		if Nirn.player is not None:
+			Nirn.player.keyStates['strafe forward'] = False
+	elif symbol == key.J:
+		if Nirn.player is not None:
+			Nirn.player.keyStates['strafe left'] = False
+	elif symbol == key.K:
+		if Nirn.player is not None:
+			Nirn.player.keyStates['strafe back'] = False
+	elif symbol == key.L:
+		if Nirn.player is not None:
+			Nirn.player.keyStates['strafe right'] = False	
 
 def stepWithBatch(dt):
 	pass

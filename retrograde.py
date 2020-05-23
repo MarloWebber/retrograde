@@ -516,7 +516,11 @@ class Actor():
 			'right': False,
 			'Fire': False,
 			'face direction': None,
-			'J':False
+			'J':False,
+			'strafe forward':False,
+			'strafe back':False,
+			'strafe left':False,
+			'strafe right':False
 		}
 		self.orbiting = None
 		self.stepsToFreefall = 1 # After an object has collided or accelerated, it doesn't return to freefall straight away. It waits 1 or 0 turns. 
@@ -626,6 +630,28 @@ class Actor():
 			if module.enabled:
 				for giveResource, giveQuantity in list(module.resources.items()):
 					if giveResource == 'thrust':
+
+							# thruster control is provided by engines, fuckin deal with it
+							if self.keyStates['strafe forward']:
+								# print('strafe forward')
+								force = [0 , giveQuantity * timestepSize * 5  ]
+								self.body.apply_impulse_at_local_point(force, (0,0))
+								ifThrustHasBeenApplied = True
+							if self.keyStates['strafe back']:
+								force = [0 , -(giveQuantity * timestepSize * 5 )]
+								self.body.apply_impulse_at_local_point(force, (0,0))
+								ifThrustHasBeenApplied = True
+							if self.keyStates['strafe left']:
+								# print('strafe left')
+								force = [-(giveQuantity * timestepSize * 5 ) , 0]
+								self.body.apply_impulse_at_local_point(force, (0,0))
+								ifThrustHasBeenApplied = True
+							if self.keyStates['strafe right']:
+								force = [giveQuantity * timestepSize * 5 , 0]
+								self.body.apply_impulse_at_local_point(force, (0,0))
+								ifThrustHasBeenApplied = True
+
+
 							if module.active:
 								force = [(giveQuantity * timestepSize * 500 * math.cos(addRadians(module.angle, math.pi * 0.5))), -giveQuantity * timestepSize * 500 * math.sin(addRadians(module.angle, math.pi * 0.5) )]
 								self.body.apply_impulse_at_local_point(force, (0,0))
