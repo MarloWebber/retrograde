@@ -53,7 +53,8 @@ xCompensation = 200					# how big the HUD menus on the left and right are.
 
 topLimit = [0,0]
 bottomLimit = [0,0]
-window = pyglet.window.Window(width=1600, height=900, fullscreen=True)
+# window = pyglet.window.Window(width=1600, height=900, fullscreen=True)
+window = pyglet.window.Window(width=1600, height=900)
 label = pyglet.text.Label('Abc', x=5, y=5)
 
 white = [255]*4 
@@ -66,6 +67,37 @@ previousHUDstrings = [None]*100
 previousHUDlabels = [None]*100
 
 previousHUDQuantityLabels = [None]*100
+
+def bv2rgb(bv):
+  if bv < -0.4: bv = -0.4
+  if bv > 2.0: bv = 2.0
+  if bv >= -0.40 and bv < 0.00:
+    t = (bv + 0.40) / (0.00 + 0.40)
+    r = 0.61 + 0.11 * t + 0.1 * t * t
+    g = 0.70 + 0.07 * t + 0.1 * t * t
+    b = 1.0
+  elif bv >= 0.00 and bv < 0.40:
+    t = (bv - 0.00) / (0.40 - 0.00)
+    r = 0.83 + (0.17 * t)
+    g = 0.87 + (0.11 * t)
+    b = 1.0
+  elif bv >= 0.40 and bv < 1.60:
+    t = (bv - 0.40) / (1.60 - 0.40)
+    r = 1.0
+    g = 0.98 - 0.16 * t
+  else:
+    t = (bv - 1.60) / (2.00 - 1.60)
+    r = 1.0
+    g = 0.82 - 0.5 * t * t
+  if bv >= 0.40 and bv < 1.50:
+    t = (bv - 0.40) / (1.50 - 0.40)
+    b = 1.00 - 0.47 * t + 0.1 * t * t
+  elif bv >= 1.50 and bv < 1.951:
+    t = (bv - 1.50) / (1.94 - 1.50)
+    b = 0.63 - 0.6 * t * t
+  else:
+    b = 0.0
+  return (r, g, b)
 
 def sign(x):
 	return x * abs(x)
@@ -526,7 +558,7 @@ class World():
 			self.attractors.append(thing)
 
 		self.player = self._getPlayer()
-		self.viewpointObject = self.player
+		# self.viewpointObject = self.player
 
 	def destroyActor(self, actor):
 		# 
@@ -559,7 +591,7 @@ class World():
 				if addAPlayerFragment:
 					self.add(Actor(actor.name + ' fragment', [module], fragmentPosition, actor.body.velocity, True))
 					self.player = self._getPlayer()
-					self.viewpointObject = self.player
+					# self.viewpointObject = self.player
 					# print('added player fragment')
 					addAPlayerFragment = False
 				else:
@@ -1702,14 +1734,28 @@ class World():
 		for i in range(n_stars):
 			position = [random.randint(0,resolution[0]), random.randint(0,resolution[1])]
 			color = [155,155,155,255]
-			color[0] += random.randint(0,100)
-			color[2] += random.randint(0,100)
+			# color[0] += random.randint(0,100)
+			# color[2] += random.randint(0,100)
 
 			brightness = random.randint(0,10)
 
-			color[0] = int(color[0] * (brightness/10))
-			color[1] = int(color[1] * (brightness/10))
-			color[2] = int(color[2] * (brightness/10))
+			# color[0] = int(color[0] * (brightness/10))
+			# color[1] = int(color[1] * (brightness/10))
+			# color[2] = int(color[2] * (brightness/10))
+
+			bv_key = random.randint(0,173)
+			bv_key -= 33
+			bv_key = bv_key/100
+			decodedcolor = bv2rgb(bv_key)
+
+			print(bv_key)
+			print(decodedcolor)
+
+
+			color[0] = int(decodedcolor[0] * (brightness/10) * 255)
+			color[1] = int(decodedcolor[1] * (brightness/10) * 255)
+			color[2] = int(decodedcolor[2] * (brightness/10) * 255)
+
 
 			# self.backgroundStars.append(BackgroundStar(position, color, random.randint(1,2)))
 			self.backgroundStars.append(position[0])
@@ -1720,7 +1766,7 @@ class World():
 			self.backgroundStarColorstream.append(255)
 
 	def drawBackgroundStars(self, main_batch):
-		print(self.backgroundStars)
+		# print(self.backgroundStars)
 		main_batch.add( 350, pyglet.gl.GL_POINTS, None, ('v2i', self.backgroundStars), ('c4B',self.backgroundStarColorstream))
 		
 	def hyperspaceJump(self, actor) :
@@ -1760,7 +1806,10 @@ class World():
 				self.physics()
 
 			self.player = self._getPlayer()
-			self.viewpointObject = self.player
+
+
+			if self.viewpointObject is None:
+				self.viewpointObject = self.player
 
 			self.graphics()
 
@@ -1793,7 +1842,7 @@ class World():
 		for solar_system in solarSystems:
 			self.addSolarSystem(solar_system)
 			
-		self.currentSystem = self.galaxy['Mehrangarh']
+		self.currentSystem = self.galaxy['Sol III']
 		print(self.currentSystem)
 
 		for thing in self.currentSystem.contents:
@@ -1944,7 +1993,7 @@ def on_key_press(symbol, modifiers):
 		if modifiers & key.MOD_CTRL:
 			if Nirn.buildMenu:
 				loadShipIntoBuildMenu()
-	elif symbol == key.J:
+	elif symbol == key.V:
 		if Nirn.player is not None:
 			Nirn.player.keyStates['J'] = True
 	elif symbol == key.M:
@@ -1987,6 +2036,8 @@ def on_key_press(symbol, modifiers):
 			# print(Nirn.buildDraggingModule.points)
 			# print(mirror_polygon(Nirn.buildDraggingModule.points))
 			Nirn.buildDraggingModule.points = mirror_polygon(Nirn.buildDraggingModule.points)
+	elif symbol == key.I:
+		pass
 
 @window.event
 def on_key_release(symbol, modifiers):
@@ -1999,7 +2050,7 @@ def on_key_release(symbol, modifiers):
     elif symbol == key.UP:
     	if Nirn.player is not None:
 	    	Nirn.player.keyStates['up'] = False		
-    elif symbol == key.J:
+    elif symbol == key.V:
     	if Nirn.player is not None:
 	    	Nirn.player.keyStates['J'] = False		
 

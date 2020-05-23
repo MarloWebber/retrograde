@@ -17,19 +17,27 @@ class ModuleEffect(): # a ModuleEffect is just a polygon that is visually displa
 			self.color = [255,255,255,255]
 			self.outlineColor = [255,220,150,255]
 			self.illuminator = Illuminator(offset, 1500, self.outlineColor, 3)
-		if effectType == 'engine 100 flame':
+		elif effectType == 'engine 100 flame':
 			self.radius = 9
 			self.points = [[-self.radius, -self.radius], [self.radius, -self.radius], [0,2*self.radius]]
 			self.color = [255,255,255,255]
 			self.outlineColor = [255,220,150,255]
 			self.illuminator = Illuminator(offset, 2500, self.outlineColor, 3)
 
-		if effectType == 'cannon 10 flash':
+		elif effectType == 'cannon 10 flash':
 			self.radius = 1
 			self.points = [[-self.radius, self.radius], [self.radius, self.radius], [0,-2*self.radius]]
 			self.color = [255,255,255,255]
 			self.outlineColor = [245,250,255,255]
 			self.illuminator = Illuminator(offset, 100, self.outlineColor, 20)
+
+		elif effectType == 'docking ring':
+			self.radius = 10
+			self.points = [[-self.radius, self.radius], [self.radius, self.radius], [0,-2*self.radius]]
+			self.color = [255,255,255,255]
+			self.outlineColor = [245,250,255,255]
+			self.illuminator = Illuminator(offset, 100, self.outlineColor, 20)
+
 
 class Module():
 	def __init__(self, moduleType, offset=[0,0], angle=0):
@@ -299,3 +307,36 @@ class Module():
 			self.color = [60,150,255,255]
 			self.outlineColor = [150,200,255,255]
 			self.momentArm = self.radius
+
+		elif self.moduleType == 'docking port':
+			self.mass = 1
+			self.quiescent = {
+				'electricity':0.001
+			}
+			self.resources = {}
+			self.stores = {}
+			self.initialStores = {}
+			self.radius = 5
+			self.points = [[-self.radius*3, -self.radius], [-self.radius*3, self.radius], [self.radius*3,self.radius], [self.radius*3, -self.radius]]
+			self.color = [50,50,50,255]
+			self.outlineColor = [100,100,100,255]
+			self.effect = ModuleEffect('docking ring', [0,self.radius*3])
+
+
+		if self.moduleType == 'solar panel':
+			self.mass = 1
+			self.active = True
+			self.quiescent = {}
+			self.resources = {
+				'electricity': 1,								
+			}
+			self.stores = {
+				'electricity': 500
+			}
+			self.initialStores = {
+				'electricity': 50
+			}
+			self.radius = 5										
+			self.points = [[-self.radius, -self.radius*10], [-self.radius, self.radius*10], [self.radius,self.radius*10], [self.radius, -self.radius*10]]
+			self.color = [0,75,180,255]							
+			self.outlineColor = [50,200,255,255]		

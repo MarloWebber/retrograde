@@ -46,14 +46,18 @@ def shipyard(shipType):
 			Module('spar 10',[0,-100],(0.5* math.pi)),
 			Module('box 10',[0,0])]
 
-	elif shipType == 'building_2':
+	elif shipType == 'space_station_1':
 		return [
 			Module('box 100',[0,0]),
 			Module('spar 100',[1000,0],0.5 * math.pi),
 			Module('box 100',[-1000,0]),
 			Module('box 100',[2000,0]),
 			Module('box 100',[-2000,0]),
-			Module('box 100',[3000,0])]
+			Module('box 100',[3000,0]),
+			Module('docking port',[0,507.5]),
+			Module('solar panel',[0,-550]),
+			Module('solar panel',[200,-550]),
+			Module('solar panel',[-200,-550])]
 
 	elif shipType == 'derelict_hyperunit':
 		return [

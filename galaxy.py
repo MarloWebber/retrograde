@@ -29,6 +29,8 @@ earth = Attractor(
 		make_clouds(650000, [1,1], 1000, 300, 30000, 640000),	# clouds
 		0
 		)
+chikmagathur = shipyard('space_station_1')
+chikmagathur_instance = Actor('Chikmagathur', chikmagathur,[0,-700000], [51500,0], 0)
 moon = Attractor(
 		'Munus',
 		160000,		
@@ -41,7 +43,7 @@ moon = Attractor(
 		)
 sol_III = SolarSystem(
 		'Sol III',												# name
-		[earth, moon],											# contents
+		[earth, moon,chikmagathur_instance ],											# contents
 		[0,0],													# map position
 		[10,50,200,255],										# map color
 		[255,255,255,255],										# map outline color
