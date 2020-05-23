@@ -47,11 +47,12 @@ from ships import *
 from galaxy import *
 
 
-resolution = (1280,780)
-resolution_half = (1280/2,780/2)
+resolution = (1600,900)
+resolution_half = (1600/2,900/2)
+xCompensation = 200
 topLimit = [0,0]
 bottomLimit = [0,0]
-window = pyglet.window.Window(width=1280, height=780)
+window = pyglet.window.Window(width=1600, height=900, fullscreen=True)
 label = pyglet.text.Label('Abc', x=5, y=5)
 
 white = [255]*4 
@@ -221,7 +222,7 @@ def isPointIlluminated(point, color, illuminators,viewpointObjectPosition, zoom,
 	# for each illuminator, see if it is close enough to the point to light it up.
 	for illuminator in illuminators:
 		illuminator.isItLightingThisPoint = False
-		illuminator.distanceVector = [point[0] - illuminator.transformedPosition[0],point[1] - illuminator.transformedPosition[1]]
+		illuminator.distanceVector = point - illuminator.transformedPosition #[point[0] - illuminator.transformedPosition[0],point[1] - illuminator.transformedPosition[1]]
 		illuminator.distanceScalar = (illuminator.distanceVector[0] ** 2 + illuminator.distanceVector[1] ** 2) ** 0.5 # just like mag(), but doesn't need an numpy vector.
 		if illuminator.distanceScalar < illuminator.radius :
 			illuminator.isItLightingThisPoint = True
@@ -445,6 +446,8 @@ class World():
 		self.rotate = 0
 		self.timestepSize = 0.2/60.0 #1.0/60.0
 		self.showHUD = False
+		self.hudbatch  = pyglet.graphics.Batch()
+		# pyglet.gl.glLineWidth(2)# None # used to hold a precooked copy of the HUD so it doesn't need recomputed all the time.
 		self.paused = True
 
 		self.buildMenu = False				# used to toggle between the game and the build screen
@@ -715,7 +718,7 @@ class World():
 						# generate the orbit points once only.
 						if actor.orbit is not None:
 							actor.orbitPoints = []
-							n_points = 100
+							n_points = 64
 							sliceSize =  (2 * math.pi / n_points)
 							onMirrorHalf = False
 							for i in range(0,n_points):
@@ -909,8 +912,29 @@ class World():
 	
 	def drawScreenFill(self, main_batch):
 		# this function is used to fill the build menu with a white backdrop.
+		color= [0,0,0,255]
+		if self.buildMenu:
+			color = [220,220,220,255]
+
+
 		fillTriangles = [0,0, 0,0, 0,resolution[1], resolution[0],resolution[1], resolution[0],0, 0,0, 0,0 ]
-		main_batch.add(7, pyglet.gl.GL_TRIANGLE_STRIP, None, ('v2i',fillTriangles), ('c4B',[255,255,255,255]*7))
+		main_batch.add(7, pyglet.gl.GL_TRIANGLE_STRIP, None, ('v2i',fillTriangles), ('c4B',color*7))
+
+	# def drawHUDFill(self):
+
+		# fillTriangles = [0,0, 0,0, 0,resolution[1], 200,resolution[1], 200,0, 0,0, 0,0 ]
+		# self.hudbatch.add(7, pyglet.gl.GL_TRIANGLE_STRIP, None, ('v2i',fillTriangles), ('c4B',[255,255,255,255]*7))
+
+
+		# fillTriangles = [0,0, 0,0, 0,resolution[1], resolution[0],resolution[1], resolution[0],0, 0,0, 0,0 ]
+		# main_batch.add(7, pyglet.gl.GL_TRIANGLE_STRIP, None, ('v2i',fillTriangles), ('c4B',[255,255,255,255]*7))
+	# def hudbatch_render(self):
+	# 	# self.drawHUDFill()
+	# 	self.hudbatch  = pyglet.graphics.Batch()
+	# 	fillTriangles = [0,0, 0,0, 0,resolution[1], 200,resolution[1], 200,0, 0,0, 0,0 ]
+	# 	self.hudbatch.add(7, pyglet.gl.GL_TRIANGLE_STRIP, None, ('v2i',fillTriangles), ('c4B',[255,255,255,255]*7))
+
+	# 	self.hudbatch.draw()
 
 	def drawActor(self, actor, main_batch):
 		if actor.__class__ is Actor:
@@ -1089,7 +1113,7 @@ class World():
 
 	def drawHUDListItem(self,string, quantity, index, listCorner):
 		HUDlistItemSpacing = 15
-		listXPosition = 10
+		listXPosition = 10 + 200
 		fontSize = 12
 
 		color = (200,200,200,255)
@@ -1098,8 +1122,8 @@ class World():
 			return index + 1
 
 		# if the label has already been prepared in an earlier turn, use that label.
-		print(previousHUDstrings)
-		print(index)
+		# print(previousHUDstrings)
+		# print(index)
 
 		# if index is not None:
 		# if index is None:
@@ -1154,14 +1178,18 @@ class World():
 	def createHUDNavCircle(self): # this function predraws the nav circle. because it is just static lines, it does not need to be recalculated every frame.
 		for n in range(0,self.n_navcircle_lines):
 			angle = n * (2 * math.pi / self.n_navcircle_lines)
-			start = ((self.navcircleInnerRadius * math.cos(angle)) + (resolution[0]*0.5) , (self.navcircleInnerRadius* math.sin(angle)) +(resolution[1] * 0.5) )
-			end = ((self.navcircleInnerRadius + self.navcircleLinesLength) * math.cos(angle)+ (resolution[0]*0.5), (self.navcircleInnerRadius + self.navcircleLinesLength) * math.sin(angle)+ (resolution[1]*0.5))
+			start = ((self.navcircleInnerRadius * math.cos(angle)) + (resolution[0]*0.5) + 200 , (self.navcircleInnerRadius* math.sin(angle)) +(resolution[1] * 0.5) )
+			end = ((self.navcircleInnerRadius + self.navcircleLinesLength) * math.cos(angle)+ (resolution[0]*0.5) + 200, (self.navcircleInnerRadius + self.navcircleLinesLength) * math.sin(angle)+ (resolution[1]*0.5))
 			self.navCircleLines.append([start, end])
 		
 	def drawHUD(self, main_batch):
 		if self.player is None:
 			return
 		# show the player what resources are available
+
+		# layout = pyglet.text.layout.TextLayout(document, width, height, multiline=True)
+		# if 
+
 		i = 1
 		hudList = {}
 		for resource, quantity in list(self.viewpointObject.availableResources.items()):
@@ -1308,18 +1336,34 @@ class World():
 		mapBatch.draw()
 
 	def graphics(self):
-		window.clear()
-
+		# window.clear()
+		
 		if self.viewpointObject is None:
 			self.viewpointObject = self.actors[0]
 
 		first_batch = pyglet.graphics.Batch()
 		pyglet.gl.glLineWidth(2)
+
+		self.drawScreenFill(first_batch)
+		# self.hudbatch_render()
+
+	
 		for attractor in self.attractors:
 			if attractor.atmosphere != None:
 				self.drawActor(attractor.atmosphere, first_batch)
 
 		first_batch.draw()
+
+		nastybatch = pyglet.graphics.Batch()
+		pyglet.gl.glLineWidth(2)
+		# self.hudbatch  = pyglet.graphics.Batch()
+		fillTriangles = [0,0, 0,0, 0,resolution[1], 200,resolution[1], 200,0, 0,0, 0,0 ]
+		nastybatch.add(7, pyglet.gl.GL_TRIANGLE_STRIP, None, ('v2i',fillTriangles), ('c4B',[255,255,255,255]*7))
+
+		nastybatch.draw()
+
+
+
 
 		second_batch = pyglet.graphics.Batch()
 		pyglet.gl.glLineWidth(1)
@@ -1607,6 +1651,17 @@ def on_key_press(symbol, modifiers):
 		Nirn.zoom = round_to_n(Nirn.zoom - (Nirn.zoom * 0.5), 2)
 	elif symbol == key.H:
 		Nirn.showHUD = not Nirn.showHUD
+
+		if Nirn.showHUD:
+			resolution = (1400,900)
+			resolution_half = (1400/2,900/2)
+			# Nirn.hudbatch_render()
+
+			# xCompensation = 200
+		else:
+			resolution = (1600,900)
+			resolution_half = (1600/2,900/2)
+			# xCompensation = 200
 	elif symbol == key.COMMA:
 		Nirn.timestepSize = round_to_n(Nirn.timestepSize + (Nirn.timestepSize * 0.5), 2)
 	elif symbol == key.PERIOD:
