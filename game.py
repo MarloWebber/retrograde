@@ -46,10 +46,11 @@ from retrograde import *
 from ships import *
 from galaxy import *
 
+absolute_resolution = (1600,900) 	# stays the same even when the hud changes the view size
+resolution = (1600,900)			 	# current resolution for the view of the in-game world
+resolution_half = (1600/2,900/2)	
+xCompensation = 200					# how big the HUD menus on the left and right are.
 
-resolution = (1600,900)
-resolution_half = (1600/2,900/2)
-xCompensation = 200
 topLimit = [0,0]
 bottomLimit = [0,0]
 window = pyglet.window.Window(width=1600, height=900, fullscreen=True)
@@ -916,9 +917,13 @@ class World():
 		if self.buildMenu:
 			color = [220,220,220,255]
 
+		if self.showHUD:
+			fillTriangles = [xCompensation,0, xCompensation,0, xCompensation,resolution[1], resolution[0]-xCompensation,resolution[1], resolution[0]-xCompensation,0, xCompensation,0, xCompensation,0 ]
+			main_batch.add(7, pyglet.gl.GL_TRIANGLE_STRIP, None, ('v2i',fillTriangles), ('c4B',color*7))
 
-		fillTriangles = [0,0, 0,0, 0,resolution[1], resolution[0],resolution[1], resolution[0],0, 0,0, 0,0 ]
-		main_batch.add(7, pyglet.gl.GL_TRIANGLE_STRIP, None, ('v2i',fillTriangles), ('c4B',color*7))
+		else:
+			fillTriangles = [0,0, 0,0, 0,resolution[1], resolution[0],resolution[1], resolution[0],0, 0,0, 0,0 ]
+			main_batch.add(7, pyglet.gl.GL_TRIANGLE_STRIP, None, ('v2i',fillTriangles), ('c4B',color*7))
 
 	# def drawHUDFill(self):
 
@@ -928,13 +933,29 @@ class World():
 
 		# fillTriangles = [0,0, 0,0, 0,resolution[1], resolution[0],resolution[1], resolution[0],0, 0,0, 0,0 ]
 		# main_batch.add(7, pyglet.gl.GL_TRIANGLE_STRIP, None, ('v2i',fillTriangles), ('c4B',[255,255,255,255]*7))
-	# def hudbatch_render(self):
-	# 	# self.drawHUDFill()
-	# 	self.hudbatch  = pyglet.graphics.Batch()
-	# 	fillTriangles = [0,0, 0,0, 0,resolution[1], 200,resolution[1], 200,0, 0,0, 0,0 ]
-	# 	self.hudbatch.add(7, pyglet.gl.GL_TRIANGLE_STRIP, None, ('v2i',fillTriangles), ('c4B',[255,255,255,255]*7))
+	def hudbatch_render(self):
+		# self.drawHUDFill()
+		# self.hudbatch  = pyglet.graphics.Batch()
+		# fillTriangles = [0,0, 0,0, 0,resolution[1], 200,resolution[1], 200,0, 0,0, 0,0 ]
+		# self.hudbatch.add(7, pyglet.gl.GL_TRIANGLE_STRIP, None, ('v2i',fillTriangles), ('c4B',[255,255,255,255]*7))
 
-	# 	self.hudbatch.draw()
+
+		hudBackgroundColor = (25,25,25,255)
+
+		# self.hudbatch.draw()
+		nastybatch = pyglet.graphics.Batch()
+		pyglet.gl.glLineWidth(2)
+		# self.hudbatch  = pyglet.graphics.Batch()
+		fillTriangles = [0,0, 0,0, 0,resolution[1], 200,resolution[1], 200,0, 0,0, 0,0 ]
+		nastybatch.add(7, pyglet.gl.GL_TRIANGLE_STRIP, None, ('v2i',fillTriangles), ('c4B',hudBackgroundColor*7))
+
+		xRightLimit = resolution[0] - 200
+		fillTriangles = [resolution[0],0, resolution[0],0, resolution[0],resolution[1], xRightLimit,resolution[1], xRightLimit,0,  resolution[0],0,  resolution[0],0 ]
+		nastybatch.add(7, pyglet.gl.GL_TRIANGLE_STRIP, None, ('v2i',fillTriangles), ('c4B',hudBackgroundColor*7))
+
+		nastybatch.draw()
+
+
 
 	def drawActor(self, actor, main_batch):
 		if actor.__class__ is Actor:
@@ -1178,8 +1199,8 @@ class World():
 	def createHUDNavCircle(self): # this function predraws the nav circle. because it is just static lines, it does not need to be recalculated every frame.
 		for n in range(0,self.n_navcircle_lines):
 			angle = n * (2 * math.pi / self.n_navcircle_lines)
-			start = ((self.navcircleInnerRadius * math.cos(angle)) + (resolution[0]*0.5) + 200 , (self.navcircleInnerRadius* math.sin(angle)) +(resolution[1] * 0.5) )
-			end = ((self.navcircleInnerRadius + self.navcircleLinesLength) * math.cos(angle)+ (resolution[0]*0.5) + 200, (self.navcircleInnerRadius + self.navcircleLinesLength) * math.sin(angle)+ (resolution[1]*0.5))
+			start = ((self.navcircleInnerRadius * math.cos(angle)) + (resolution[0]*0.5) , (self.navcircleInnerRadius* math.sin(angle)) +(resolution[1] * 0.5) )
+			end = ((self.navcircleInnerRadius + self.navcircleLinesLength) * math.cos(angle)+ (resolution[0]*0.5) , (self.navcircleInnerRadius + self.navcircleLinesLength) * math.sin(angle)+ (resolution[1]*0.5))
 			self.navCircleLines.append([start, end])
 		
 	def drawHUD(self, main_batch):
@@ -1354,15 +1375,7 @@ class World():
 
 		first_batch.draw()
 
-		nastybatch = pyglet.graphics.Batch()
-		pyglet.gl.glLineWidth(2)
-		# self.hudbatch  = pyglet.graphics.Batch()
-		fillTriangles = [0,0, 0,0, 0,resolution[1], 200,resolution[1], 200,0, 0,0, 0,0 ]
-		nastybatch.add(7, pyglet.gl.GL_TRIANGLE_STRIP, None, ('v2i',fillTriangles), ('c4B',[255,255,255,255]*7))
-
-		nastybatch.draw()
-
-
+		# self.hudbatch_render()
 
 
 		second_batch = pyglet.graphics.Batch()
@@ -1655,7 +1668,7 @@ def on_key_press(symbol, modifiers):
 		if Nirn.showHUD:
 			resolution = (1400,900)
 			resolution_half = (1400/2,900/2)
-			# Nirn.hudbatch_render()
+			Nirn.hudbatch_render()
 
 			# xCompensation = 200
 		else:
