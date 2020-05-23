@@ -65,6 +65,8 @@ previousHUDlistQuantities = [None]*100
 previousHUDstrings = [None]*100
 previousHUDlabels = [None]*100
 
+previousHUDQuantityLabels = [None]*100
+
 def sign(x):
 	return x * abs(x)
 
@@ -933,6 +935,25 @@ class World():
 
 		# fillTriangles = [0,0, 0,0, 0,resolution[1], resolution[0],resolution[1], resolution[0],0, 0,0, 0,0 ]
 		# main_batch.add(7, pyglet.gl.GL_TRIANGLE_STRIP, None, ('v2i',fillTriangles), ('c4B',[255,255,255,255]*7))
+
+	def drawHUDmask(self, main_batch):
+		hudBackgroundColor = (25,25,25,255)
+
+		# self.hudbatch.draw()
+		# nastybatch = pyglet.graphics.Batch()
+		# pyglet.gl.glLineWidth(2)
+		# self.hudbatch  = pyglet.graphics.Batch()
+		fillTriangles = [100,0, 100,0, 100,resolution[1], 200,resolution[1], 200,0, 100,0, 100,0 ]
+		main_batch.add(7, pyglet.gl.GL_TRIANGLE_STRIP, None, ('v2i',fillTriangles), ('c4B',hudBackgroundColor*7))
+
+		xRightLimit = resolution[0] - 200
+		fillTriangles = [resolution[0]-100,0, resolution[0]-100,0, resolution[0]-100,resolution[1], xRightLimit,resolution[1], xRightLimit,0,  resolution[0]-100,0,  resolution[0]-100,0 ]
+		main_batch.add(7, pyglet.gl.GL_TRIANGLE_STRIP, None, ('v2i',fillTriangles), ('c4B',hudBackgroundColor*7))
+
+		# self.drawHUDpermanentComponents(nastybatch)
+
+		# nastybatch.draw()
+
 	def hudbatch_render(self):
 		# self.drawHUDFill()
 		# self.hudbatch  = pyglet.graphics.Batch()
@@ -952,6 +973,8 @@ class World():
 		xRightLimit = resolution[0] - 200
 		fillTriangles = [resolution[0],0, resolution[0],0, resolution[0],resolution[1], xRightLimit,resolution[1], xRightLimit,0,  resolution[0],0,  resolution[0],0 ]
 		nastybatch.add(7, pyglet.gl.GL_TRIANGLE_STRIP, None, ('v2i',fillTriangles), ('c4B',hudBackgroundColor*7))
+
+		self.drawHUDpermanentComponents(nastybatch)
 
 		nastybatch.draw()
 
@@ -1132,14 +1155,14 @@ class World():
 
 		self.drawModuleForList(main_batch, listItem.module, iconSize, [buildListSpacing, index * buildListSpacing] )
 
-	def drawHUDListItem(self,string, quantity, index, listCorner):
+	def drawHUDListItemQuantity(self,quantity, index, listCorner, main_batch):
 		HUDlistItemSpacing = 15
-		listXPosition = 10 + 200
+		listXPosition = 10 + 100
 		fontSize = 12
 
 		color = (200,200,200,255)
 
-		if quantity is None and len(string) == 0:
+		if quantity is None:
 			return index + 1
 
 		# if the label has already been prepared in an earlier turn, use that label.
@@ -1150,49 +1173,124 @@ class World():
 		# if index is None:
 		# 	return
 
-		if previousHUDstrings[index] is not None:
-			if previousHUDstrings[index] == string:
-				if quantity is not None:
-					if previousHUDlistQuantities[index] == quantity:
-						previousHUDlabels[index].draw()
-						return index + 1
-				else:
-					previousHUDlabels[index].draw()
-					return index + 1
+		# if previousHUDstrings[index] is not None:
+		# 	if previousHUDstrings[index] == string:
+		# 		if quantity is not None:
+		# 			if previousHUDlistQuantities[index] == quantity:
+		# 				previousHUDlabels[index].draw()
+		# 				return index + 1
+		# 		else:
+		# 			previousHUDlabels[index].draw()
+		# 			return index + 1
 
 		if listCorner is 'bottom left':
-			label = pyglet.text.Label(string + str(quantity),
+			label = pyglet.text.Label(str(quantity) ,
 	                      font_name='Times New Roman',
 	                      font_size=fontSize,
 	                      x=listXPosition, y=HUDlistItemSpacing * index,
 	                      color=color,
-	                      align="left")
+	                      align="left",
+	                      batch=main_batch)
 		elif listCorner is 'top right':
-			label = pyglet.text.Label(string + str(quantity),
+			label = pyglet.text.Label(str(quantity) ,
 	                      font_name='Times New Roman',
 	                      font_size=fontSize,
 	                      x=resolution[0]-listXPosition - 100, y=resolution[1]-(HUDlistItemSpacing * index),
 	                      color=color,
-	                      align="right")
+	                      align="right",
+	                      batch=main_batch)
 		elif listCorner is 'top left':
-			label = pyglet.text.Label(string + str(quantity),
+			label = pyglet.text.Label(str(quantity) ,
 	                      font_name='Times New Roman',
 	                      font_size=fontSize,
 	                      x=listXPosition, y=resolution[1]-(HUDlistItemSpacing * index),
 	                      color=color,
-	                      align="left")
+	                      align="left",
+	                      batch=main_batch)
 		elif listCorner is 'bottom right':
-			label = pyglet.text.Label(string + str(quantity),
+			label = pyglet.text.Label(str(quantity) ,
 	                      font_name='Times New Roman',
 	                      font_size=fontSize,
 	                      x=resolution[0]-listXPosition - 100, y=HUDlistItemSpacing * index,
 	                      color=color,
-	                      align="right")
+	                      align="right",
+	                      batch=main_batch)
+
+		# previousHUDstrings[index] = string
+		previousHUDlistQuantities[index] = quantity
+		# previousHUDlabels[index] = label
+		previousHUDQuantityLabels[index] = label
+		# label.draw()
+		# main_batch.add(label)
+
+		return index + 1
+
+	def drawHUDListItemLabel(self,string, index, listCorner, main_batch):
+		HUDlistItemSpacing = 15
+		listXPosition = 10 
+		fontSize = 12
+
+		color = (200,200,200,255)
+
+		if len(string) == 0:
+			return index + 1
+
+		# if the label has already been prepared in an earlier turn, use that label.
+		# print(previousHUDstrings)
+		# print(index)
+
+		# if index is not None:
+		# if index is None:
+		# 	return
+
+		# if previousHUDstrings[index] is not None:
+		# 	if previousHUDstrings[index] == string:
+		# 		if quantity is not None:
+		# 			if previousHUDlistQuantities[index] == quantity:
+		# 				previousHUDlabels[index].draw()
+		# 				return index + 1
+		# 		else:
+		# 			previousHUDlabels[index].draw()
+		# 			return index + 1
+
+		if listCorner is 'bottom left':
+			label = pyglet.text.Label(string ,
+	                      font_name='Times New Roman',
+	                      font_size=fontSize,
+	                      x=listXPosition, y=HUDlistItemSpacing * index,
+	                      color=color,
+	                      align="left",
+	                      batch=main_batch)
+		elif listCorner is 'top right':
+			label = pyglet.text.Label(string ,
+	                      font_name='Times New Roman',
+	                      font_size=fontSize,
+	                      x=resolution[0]-listXPosition - 100, y=resolution[1]-(HUDlistItemSpacing * index),
+	                      color=color,
+	                      align="right",
+	                      batch=main_batch)
+		elif listCorner is 'top left':
+			label = pyglet.text.Label(string ,
+	                      font_name='Times New Roman',
+	                      font_size=fontSize,
+	                      x=listXPosition, y=resolution[1]-(HUDlistItemSpacing * index),
+	                      color=color,
+	                      align="left",
+	                      batch=main_batch)
+		elif listCorner is 'bottom right':
+			label = pyglet.text.Label(string ,
+	                      font_name='Times New Roman',
+	                      font_size=fontSize,
+	                      x=resolution[0]-listXPosition - 100, y=HUDlistItemSpacing * index,
+	                      color=color,
+	                      align="right",
+	                      batch=main_batch)
 
 		previousHUDstrings[index] = string
-		previousHUDlistQuantities[index] = quantity
+		# previousHUDlistQuantities[index] = quantity
 		previousHUDlabels[index] = label
-		label.draw()
+		# label.draw()
+		# main_batch.add(label)
 
 		return index + 1
 
@@ -1202,6 +1300,54 @@ class World():
 			start = ((self.navcircleInnerRadius * math.cos(angle)) + (resolution[0]*0.5) , (self.navcircleInnerRadius* math.sin(angle)) +(resolution[1] * 0.5) )
 			end = ((self.navcircleInnerRadius + self.navcircleLinesLength) * math.cos(angle)+ (resolution[0]*0.5) , (self.navcircleInnerRadius + self.navcircleLinesLength) * math.sin(angle)+ (resolution[1]*0.5))
 			self.navCircleLines.append([start, end])
+
+	def drawHUDpermanentComponents(self,main_batch):
+		if self.player is None:
+			return
+		i = 1
+		hudList = {}
+		for resource, quantity in list(self.viewpointObject.availableResources.items()):
+			hudList[resource] = quantity
+		for resource, quantity in list(self.viewpointObject.storagePool.items()):
+			if resource in hudList:
+				hudList[resource] += self.viewpointObject.storagePool[resource]
+			else:
+				hudList[resource] = self.viewpointObject.storagePool[resource]
+
+		for availableResource, availableQuantity in list(hudList.items()):
+			i = self.drawHUDListItemLabel(str(availableResource) + ': ', i, 'top left', main_batch)
+
+
+
+		i = self.drawHUDListItemLabel('', i, 'top left', main_batch) # blank line as a separator
+		i = 1
+
+		printFreefalling = False
+		if self.viewpointObject.freefalling or self.viewpointObject.stepsToFreefall == 0:
+			printFreefalling = True
+
+		i = self.drawHUDListItemLabel('freefalling: ', i, 'bottom left', main_batch)
+		i = self.drawHUDListItemLabel('landed: ', i, 'bottom left', main_batch)
+		if self.player.orbiting is not None:
+			i = self.drawHUDListItemLabel('orbiting: ', i, 'bottom left', main_batch)
+		i = self.drawHUDListItemLabel('', i, 'bottom left', main_batch) # blank line as a separator
+
+		i = self.drawHUDListItemLabel('player: ', i, 'bottom left', main_batch)
+		i = self.drawHUDListItemLabel('time accel: ', i, 'bottom left', main_batch)
+		i = self.drawHUDListItemLabel('zoom: ', i, 'bottom left', main_batch)
+		i = self.drawHUDListItemLabel('paused: ', i, 'bottom left', main_batch)
+
+		i = 1
+
+		# if self.player.target is not None:
+		i = self.drawHUDListItemLabel('target: ', i, 'top right', main_batch)
+		i = self.drawHUDListItemLabel('weapon: ', i, 'top right', main_batch)
+
+		i = 1
+
+		i = self.drawHUDListItemLabel('hyperdrive: ', i, 'bottom right', main_batch)
+		i = self.drawHUDListItemLabel('weapon: ', i, 'top right', main_batch)
+
 		
 	def drawHUD(self, main_batch):
 		if self.player is None:
@@ -1210,6 +1356,8 @@ class World():
 
 		# layout = pyglet.text.layout.TextLayout(document, width, height, multiline=True)
 		# if 
+
+		self.drawHUDmask(main_batch)
 
 		i = 1
 		hudList = {}
@@ -1222,36 +1370,69 @@ class World():
 				hudList[resource] = self.viewpointObject.storagePool[resource]
 
 		for availableResource, availableQuantity in list(hudList.items()):
-			i = self.drawHUDListItem(str(availableResource) + ': ', availableQuantity, i, 'top left')
-		i = self.drawHUDListItem('', None, i, 'top left') # blank line as a separator
+			# i = self.drawHUDListItemLabel(str(availableResource) + ': ', i, 'top left')
+			i = self.drawHUDListItemQuantity(round(availableQuantity,2), i, 'top left', main_batch)
+
+
+		# i = self.drawHUDListItem('', None, i, 'top left') # blank line as a separator
+		# i = 1
+
+		# printFreefalling = False
+		# if self.viewpointObject.freefalling or self.viewpointObject.stepsToFreefall == 0:
+		# 	printFreefalling = True
+
+		# i = self.drawHUDListItem('freefalling: ', printFreefalling, i, 'bottom left')
+		# i = self.drawHUDListItem('landed: ', self.viewpointObject.exemptFromGravity, i, 'bottom left')
+		# if self.player.orbiting is not None:
+		# 	i = self.drawHUDListItem('orbiting: ', self.viewpointObject.orbiting.planetName, i, 'bottom left')
+		# i = self.drawHUDListItem('', None, i, 'bottom left') # blank line as a separator
+
+		# i = self.drawHUDListItem('player: ', self.viewpointObject.isPlayer, i, 'bottom left')
+		# i = self.drawHUDListItem('time accel: ', self.timestepSize * 3 * 100, i, 'bottom left')
+		# i = self.drawHUDListItem('zoom: ', self.zoom, i, 'bottom left')
+		# i = self.drawHUDListItem('paused: ', self.paused, i, 'bottom left')
+
+		# i = 1
+
+		# if self.player.target is not None:
+		# 	i = self.drawHUDListItem('target: ', self.player.target.name, i, 'top right')
+		# i = self.drawHUDListItem('weapon: ', self.player.selectedWeapon, i, 'top right')
+
+		# i = 1
+
+		# i = self.drawHUDListItem('hyperdrive: ', self.player.hyperdriveDestination, i, 'bottom right')
+		# # i = self.drawHUDListItem('weapon: ', self.player.selectedWeapon, i, 'top right')
+
+
+
+		i = self.drawHUDListItemQuantity( None, i, 'top left', main_batch) # blank line as a separator
 		i = 1
 
 		printFreefalling = False
 		if self.viewpointObject.freefalling or self.viewpointObject.stepsToFreefall == 0:
 			printFreefalling = True
 
-		i = self.drawHUDListItem('freefalling: ', printFreefalling, i, 'bottom left')
-		i = self.drawHUDListItem('landed: ', self.viewpointObject.exemptFromGravity, i, 'bottom left')
+		i = self.drawHUDListItemQuantity( printFreefalling, i, 'bottom left', main_batch)
+		i = self.drawHUDListItemQuantity( self.viewpointObject.exemptFromGravity, i, 'bottom left', main_batch)
 		if self.player.orbiting is not None:
-			i = self.drawHUDListItem('orbiting: ', self.viewpointObject.orbiting.planetName, i, 'bottom left')
-		i = self.drawHUDListItem('', None, i, 'bottom left') # blank line as a separator
+			i = self.drawHUDListItemQuantity( self.viewpointObject.orbiting.planetName, i, 'bottom left', main_batch)
+		i = self.drawHUDListItemQuantity( None, i, 'bottom left', main_batch) # blank line as a separator
 
-		i = self.drawHUDListItem('player: ', self.viewpointObject.isPlayer, i, 'bottom left')
-		i = self.drawHUDListItem('time accel: ', self.timestepSize * 3 * 100, i, 'bottom left')
-		i = self.drawHUDListItem('zoom: ', self.zoom, i, 'bottom left')
-		i = self.drawHUDListItem('paused: ', self.paused, i, 'bottom left')
+		i = self.drawHUDListItemQuantity( self.viewpointObject.isPlayer, i, 'bottom left', main_batch)
+		i = self.drawHUDListItemQuantity( self.timestepSize * 3 * 100, i, 'bottom left', main_batch)
+		i = self.drawHUDListItemQuantity(self.zoom, i, 'bottom left', main_batch)
+		i = self.drawHUDListItemQuantity( self.paused, i, 'bottom left', main_batch)
 
 		i = 1
 
 		if self.player.target is not None:
-			i = self.drawHUDListItem('target: ', self.player.target.name, i, 'top right')
-		i = self.drawHUDListItem('weapon: ', self.player.selectedWeapon, i, 'top right')
+			i = self.drawHUDListItemQuantity( self.player.target.name, i, 'top right', main_batch)
+		i = self.drawHUDListItemQuantity( self.player.selectedWeapon, i, 'top right', main_batch)
 
 		i = 1
 
-		i = self.drawHUDListItem('hyperdrive: ', self.player.hyperdriveDestination, i, 'bottom right')
-		# i = self.drawHUDListItem('weapon: ', self.player.selectedWeapon, i, 'top right')
-		
+		i = self.drawHUDListItemQuantity(self.player.hyperdriveDestination, i, 'bottom right', main_batch)
+		# i = self.drawHUDListItem('weapon: ', self.player.selectedWeapon, i, 'top right')		
 
 	def shootABullet(self, gunModule, actor):
 		if gunModule.enabled:
