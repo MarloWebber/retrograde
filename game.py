@@ -964,19 +964,19 @@ class World():
 		hudBackgroundColor = (25,25,25,255)
 
 		# self.hudbatch.draw()
-		nastybatch = pyglet.graphics.Batch()
+		self.hudbatch = pyglet.graphics.Batch()
 		pyglet.gl.glLineWidth(2)
 		# self.hudbatch  = pyglet.graphics.Batch()
 		fillTriangles = [0,0, 0,0, 0,resolution[1], 200,resolution[1], 200,0, 0,0, 0,0 ]
-		nastybatch.add(7, pyglet.gl.GL_TRIANGLE_STRIP, None, ('v2i',fillTriangles), ('c4B',hudBackgroundColor*7))
+		self.hudbatch.add(7, pyglet.gl.GL_TRIANGLE_STRIP, None, ('v2i',fillTriangles), ('c4B',hudBackgroundColor*7))
 
 		xRightLimit = resolution[0] - 200
 		fillTriangles = [resolution[0],0, resolution[0],0, resolution[0],resolution[1], xRightLimit,resolution[1], xRightLimit,0,  resolution[0],0,  resolution[0],0 ]
-		nastybatch.add(7, pyglet.gl.GL_TRIANGLE_STRIP, None, ('v2i',fillTriangles), ('c4B',hudBackgroundColor*7))
+		self.hudbatch.add(7, pyglet.gl.GL_TRIANGLE_STRIP, None, ('v2i',fillTriangles), ('c4B',hudBackgroundColor*7))
 
-		self.drawHUDpermanentComponents(nastybatch)
+		self.drawHUDpermanentComponents(self.hudbatch)
 
-		nastybatch.draw()
+		# nastybatch.draw()
 
 
 
@@ -1315,38 +1315,38 @@ class World():
 				hudList[resource] = self.viewpointObject.storagePool[resource]
 
 		for availableResource, availableQuantity in list(hudList.items()):
-			i = self.drawHUDListItemLabel(str(availableResource) + ': ', i, 'top left', main_batch)
+			i = self.drawHUDListItemLabel(str(availableResource) + ': ', i, 'top left', self.hudbatch)
 
 
 
-		i = self.drawHUDListItemLabel('', i, 'top left', main_batch) # blank line as a separator
+		i = self.drawHUDListItemLabel('', i, 'top left', self.hudbatch) # blank line as a separator
 		i = 1
 
 		printFreefalling = False
 		if self.viewpointObject.freefalling or self.viewpointObject.stepsToFreefall == 0:
 			printFreefalling = True
 
-		i = self.drawHUDListItemLabel('freefalling: ', i, 'bottom left', main_batch)
-		i = self.drawHUDListItemLabel('landed: ', i, 'bottom left', main_batch)
+		i = self.drawHUDListItemLabel('freefalling: ', i, 'bottom left', self.hudbatch)
+		i = self.drawHUDListItemLabel('landed: ', i, 'bottom left', self.hudbatch)
 		if self.player.orbiting is not None:
-			i = self.drawHUDListItemLabel('orbiting: ', i, 'bottom left', main_batch)
-		i = self.drawHUDListItemLabel('', i, 'bottom left', main_batch) # blank line as a separator
+			i = self.drawHUDListItemLabel('orbiting: ', i, 'bottom left', self.hudbatch)
+		i = self.drawHUDListItemLabel('', i, 'bottom left', self.hudbatch) # blank line as a separator
 
-		i = self.drawHUDListItemLabel('player: ', i, 'bottom left', main_batch)
-		i = self.drawHUDListItemLabel('time accel: ', i, 'bottom left', main_batch)
-		i = self.drawHUDListItemLabel('zoom: ', i, 'bottom left', main_batch)
-		i = self.drawHUDListItemLabel('paused: ', i, 'bottom left', main_batch)
+		i = self.drawHUDListItemLabel('player: ', i, 'bottom left', self.hudbatch)
+		i = self.drawHUDListItemLabel('time accel: ', i, 'bottom left', self.hudbatch)
+		i = self.drawHUDListItemLabel('zoom: ', i, 'bottom left', self.hudbatch)
+		i = self.drawHUDListItemLabel('paused: ', i, 'bottom left', self.hudbatch)
 
 		i = 1
 
 		# if self.player.target is not None:
-		i = self.drawHUDListItemLabel('target: ', i, 'top right', main_batch)
-		i = self.drawHUDListItemLabel('weapon: ', i, 'top right', main_batch)
+		i = self.drawHUDListItemLabel('target: ', i, 'top right', self.hudbatch)
+		i = self.drawHUDListItemLabel('weapon: ', i, 'top right', self.hudbatch)
 
 		i = 1
 
-		i = self.drawHUDListItemLabel('hyperdrive: ', i, 'bottom right', main_batch)
-		i = self.drawHUDListItemLabel('weapon: ', i, 'top right', main_batch)
+		i = self.drawHUDListItemLabel('hyperdrive: ', i, 'bottom right', self.hudbatch)
+		i = self.drawHUDListItemLabel('weapon: ', i, 'top right', self.hudbatch)
 
 		
 	def drawHUD(self, main_batch):
@@ -1549,6 +1549,7 @@ class World():
 
 		self.drawScreenFill(first_batch)
 		# self.hudbatch_render()
+		self.hudbatch.draw()
 
 	
 		for attractor in self.attractors:
