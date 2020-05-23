@@ -1698,7 +1698,7 @@ class World():
 	def generateBackgroundStars(self):
 		self.backgroundStars = []
 		self.backgroundStarColorstream = []
-		n_stars = 250
+		n_stars = 350
 		for i in range(n_stars):
 			position = [random.randint(0,resolution[0]), random.randint(0,resolution[1])]
 			color = [155,155,155,255]
@@ -1721,7 +1721,7 @@ class World():
 
 	def drawBackgroundStars(self, main_batch):
 		print(self.backgroundStars)
-		main_batch.add( 250, pyglet.gl.GL_POINTS, None, ('v2i', self.backgroundStars), ('c4B',self.backgroundStarColorstream))
+		main_batch.add( 350, pyglet.gl.GL_POINTS, None, ('v2i', self.backgroundStars), ('c4B',self.backgroundStarColorstream))
 		
 	def hyperspaceJump(self, actor) :
 		# teleports the player across space, by removing all the other actors and stuff and replacing them with new stuff.
