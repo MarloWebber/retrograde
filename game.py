@@ -1304,6 +1304,87 @@ class World():
 		if self.player.hyperdriveDestination is not None:
 			i = self.drawHUDListItemQuantity(self.player.hyperdriveDestination.solarSystemName, i, 'bottom right', main_batch)
 
+	def drawInstructions(self, main_batch):
+		# prints the help information to the screen.
+		i = 1
+
+		i = self.drawHUDListItemLabel('Game Commands', i, 'top left', main_batch)
+		i = self.drawHUDListItemLabel('unpause / pause and view instructions: p', i, 'top left', main_batch)
+		i = self.drawHUDListItemLabel('accelerate time: ,', i, 'top left', main_batch)
+		i = self.drawHUDListItemLabel('decelerate time: .', i, 'top left', main_batch)
+		i = self.drawHUDListItemLabel('zoom view in: =', i, 'top left', main_batch)
+		i = self.drawHUDListItemLabel('zoom view out: -', i, 'top left', main_batch)
+
+		i = self.drawHUDListItemLabel('look at next actor: ]', i, 'top left', main_batch)
+		i = self.drawHUDListItemLabel('look at previous actor: [', i, 'top left', main_batch)
+
+
+		i = self.drawHUDListItemLabel('show HUD: h', i, 'top left', main_batch)
+		i = self.drawHUDListItemLabel(' ', i, 'top left', main_batch)
+
+
+		i = self.drawHUDListItemLabel('Piloting', i, 'top left', main_batch)
+
+		i = self.drawHUDListItemLabel('accelerate: up arrow', i, 'top left', main_batch)
+
+		i = self.drawHUDListItemLabel('setpoint left: left arrow', i, 'top left', main_batch)
+		i = self.drawHUDListItemLabel('setpoint right: right arrow', i, 'top left', main_batch)
+		i = self.drawHUDListItemLabel('prograde: w', i, 'top left', main_batch)
+		i = self.drawHUDListItemLabel('retrograde: s ', i, 'top left', main_batch)
+		i = self.drawHUDListItemLabel('zenith: d', i, 'top left', main_batch)
+		i = self.drawHUDListItemLabel('nadir: a', i, 'top left', main_batch)
+		i = self.drawHUDListItemLabel('target: x', i, 'top left', main_batch)
+
+		i = self.drawHUDListItemLabel(' ', i, 'top left', main_batch)
+
+		i = self.drawHUDListItemLabel('Astral Navigation', i, 'top left', main_batch)
+		i = self.drawHUDListItemLabel('jump destination: \\', i, 'top left', main_batch) # backslash is an escape character, so it is doubled here in order to get a backslash character.
+		i = self.drawHUDListItemLabel('engage hyperdrive: v', i, 'top left', main_batch)
+		i = self.drawHUDListItemLabel('galaxy map: m', i, 'top left', main_batch)
+		i = self.drawHUDListItemLabel(' ', i, 'top left', main_batch)
+
+		i = self.drawHUDListItemLabel('Combat', i, 'top left', main_batch)
+		i = self.drawHUDListItemLabel('fire guns: space', i, 'top left', main_batch)
+		i = self.drawHUDListItemLabel('select target: r', i, 'top left', main_batch)
+
+
+		i = self.drawHUDListItemLabel(' ', i, 'top left', main_batch)
+
+		i = self.drawHUDListItemLabel('Build Menu', i, 'top left', main_batch)
+
+		i = self.drawHUDListItemLabel('toggle build menu: b', i, 'top left', main_batch)
+
+		i = self.drawHUDListItemLabel('save to file (ships/playerShip): s', i, 'top left', main_batch)
+
+		i = self.drawHUDListItemLabel('accept and fly ship: y', i, 'top left', main_batch)
+
+		i = self.drawHUDListItemLabel('select part: mouse left click', i, 'top left', main_batch)
+		i = self.drawHUDListItemLabel('rotate part left: q', i, 'top left', main_batch)
+		i = self.drawHUDListItemLabel('rotate part right: e', i, 'top left', main_batch)
+		i = self.drawHUDListItemLabel('mirror part: x', i, 'top left', main_batch)
+		i = self.drawHUDListItemLabel('put part back in inventory: d', i, 'top left', main_batch)
+
+		i = self.drawHUDListItemLabel(' ', i, 'top left', main_batch)
+		i = self.drawHUDListItemLabel(' ', i, 'top left', main_batch)
+		i = self.drawHUDListItemLabel(' ', i, 'top left', main_batch)
+		i = self.drawHUDListItemLabel(' ', i, 'top left', main_batch)
+		i = self.drawHUDListItemLabel(' ', i, 'top left', main_batch)
+		i = self.drawHUDListItemLabel(' ', i, 'top left', main_batch)
+		i = self.drawHUDListItemLabel(' ', i, 'top left', main_batch)
+		i = self.drawHUDListItemLabel(' ', i, 'top left', main_batch)
+		i = self.drawHUDListItemLabel(' ', i, 'top left', main_batch)
+		i = self.drawHUDListItemLabel(' ', i, 'top left', main_batch)
+		i = self.drawHUDListItemLabel(' ', i, 'top left', main_batch)
+		i = self.drawHUDListItemLabel(' ', i, 'top left', main_batch)
+
+
+		i = self.drawHUDListItemLabel('The object of the game is to explore space', i, 'top left', main_batch)
+
+		i = self.drawHUDListItemLabel('Spaceships are made up of many different modules stuck together. Each module provides and consumes resources, and has useful abilities.', i, 'top left', main_batch)
+		i = self.drawHUDListItemLabel('Vanquish enemies to smash them into parts. Collect single parts by flying into them. Add new parts to your ship in the build screen.', i, 'top left', main_batch)
+
+
+
 	def shootABullet(self, gunModule, actor):
 		if gunModule.enabled:
 			if gunModule.moduleType == 'cannon 10':
@@ -1562,6 +1643,9 @@ class World():
 					else:
 						self.drawColorIndicator([255,150,50,255], [rotatedPoint[0], rotatedPoint[1]], int(1*self.zoom), third_batch)
 
+		if self.paused:
+			self.drawInstructions(third_batch)
+
 		third_batch.draw()
 
 	def generateBackgroundStars(self):
@@ -1608,7 +1692,7 @@ class World():
 		
 	def hyperspaceJump(self, actor) :
 
-		print(self.attractors)
+		# print(self.attractors)
 
 		# teleports the player across space, by removing all the other actors and stuff and replacing them with new stuff.
 		if actor.hyperdriveDestination is None:
@@ -1640,6 +1724,10 @@ class World():
 		else:
 			self.destroyActor(actor)
 			self.actors.remove(actor)
+
+		
+		self.generateBackgroundStars()
+
 
 	def step(self):
 		if self.buildMenu:
