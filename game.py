@@ -848,7 +848,8 @@ class World():
 
 		for index, rotatedPoint in enumerate(rotatedPoints):
 			try:
-				transformedPoint = transformForView(rotatedPoint + actor.body.position + module.offset + module.effect.offset,self.viewpointObject.body.position, self.zoom, resolution ) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
+				transformedPoint = rotatedPoint + actor.body.position + module.offset + module.effect.offset
+				transformedPoint = transformForView(transformedPoint,self.viewpointObject.body.position, self.zoom, resolution ) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
 				transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
 			except:
 				pass
@@ -1765,6 +1766,37 @@ class World():
 
 		self.generateBackgroundStars()
 
+	def dock(self, actor):
+
+		# find the station's docking ring
+		for module in actor.target.modules:
+			if module.moduleType == 'docking port':
+				
+				dockingPoint = rotate_point(-module.effect.offset,module.angle)  # orient the polygon according to the body's current direction in space.
+				dockingPoint = rotate_point(rotatedPoints, actor.target.body.angle, [-(module.offset[0] + module.effect.offset[0]), -(module.offset[1] + module.effect.offset[1])])
+				dockingPoint = dockingPoint + actor.target.body.position + module.offset + module.effect.offset
+				
+				# self.drawColorIndicator()
+
+				# go through all the actors points and see if any of them are in the docking ring.
+				# allActorPoints = []
+				closeEnoughToDock = False
+				for module in actor.modules:
+					for point in module.points:
+						# pass
+						# allActorPoints.append(point)
+						# for box in boxes:
+						# 	if pointInRect(point, box):
+						# 		closeEnoughToDock = True
+						# rotatedPoints = module.points
+						rotatedPoint = rotate_point(point,module.angle)  # orient the polygon according to the body's current direction in space.
+						rotatedPoint = rotate_point(rotatedPoint, actor.body.angle, [-module.offset[0], -module.offset[1]])
+						rotatedPoint = rotatedPoint + actor.body.position + module.offset
+
+						if mag(rotatedPoint - dockingPoint) < 50:
+							# succcessss
+							pass
+
 
 	def step(self):
 		if self.buildMenu:
@@ -2008,6 +2040,9 @@ def on_key_press(symbol, modifiers):
 	elif symbol == key.NUM_DIVIDE:
 		# Nirn.targetfutureTime -= 0.5
 		Nirn.scrollLockTargetFutureTime = '-'
+	elif symbol == key.G:
+		Nirn.dock()
+		# dock the ship to a docking port that it is near
 
 @window.event
 def on_key_release(symbol, modifiers):
