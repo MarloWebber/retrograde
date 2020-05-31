@@ -243,7 +243,7 @@ class Module():
 			self.outlineColor = [100,100,30,255]
 
 			self.barrelHole = [0,-self.radius + 1.5]					# the location that bullets are emitted from this module.
-			self.muzzleVelocity = 250000								# the speed that bullets come out at.
+			self.muzzleVelocity = 2500								# the speed that bullets come out at.
 			self.cooldownTime = 100										# how long it takes before the gun fires again.
 			self.cooldownValue = 0
 			self.effect = ModuleEffect('cannon 10 flash', [0,-self.radius])

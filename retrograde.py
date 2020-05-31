@@ -662,7 +662,7 @@ class Actor():
 						if strafeForce[0] != 0 or strafeForce[1] != 0:
 							strafeForce[0] = strafeForce[0]  * timestepSize * 50
 							strafeForce[1] = strafeForce[1]  * timestepSize * 50
-							print(strafeForce)
+							# print(strafeForce)
 
 							# rotatedForce = Vec2d(strafeForce[0], strafeForce[1])
 							# rotatedForce = rotatedForce.rotated(-self.body.angle)

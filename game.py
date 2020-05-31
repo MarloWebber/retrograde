@@ -617,10 +617,23 @@ class World():
 					module.lifetime -= 1
 					if module.lifetime < 0:
 						self.destroyActor(actor)
+						self.actors.remove(actor)
 						destroyed = True
 						break
 			if destroyed:
 				continue
+
+			# shoot the guns
+			for module in actor.modules:
+				if module.moduleType == 'cannon 10':
+					if actor.keyStates['Fire']:
+						module.active= True
+						actor.keyStates['Fire'] = False
+					else:
+						module.active = False
+					
+					if module.active:
+						Nirn.shootABullet(module, Nirn.player)
 
 			actor.doResources(self.timestepSize)
 
@@ -667,17 +680,6 @@ class World():
 				actor.leaveFreefall(0)
 				actor.orbiting = strongestAttractor
 
-			# shoot the guns
-			for module in actor.modules:
-				if module.moduleType == 'cannon 10':
-					if actor.keyStates['Fire']:
-						module.active= True
-						actor.keyStates['Fire'] = False
-					else:
-						module.active = False
-					
-					if module.active:
-						Nirn.shootABullet(module, Nirn.player)
 
 			# figure out the angle to steer the ship.
 			if actor.isPlayer:
@@ -1769,33 +1771,42 @@ class World():
 	def dock(self, actor):
 
 		# find the station's docking ring
-		for module in actor.target.modules:
-			if module.moduleType == 'docking port':
-				
-				dockingPoint = rotate_point(-module.effect.offset,module.angle)  # orient the polygon according to the body's current direction in space.
-				dockingPoint = rotate_point(rotatedPoints, actor.target.body.angle, [-(module.offset[0] + module.effect.offset[0]), -(module.offset[1] + module.effect.offset[1])])
-				dockingPoint = dockingPoint + actor.target.body.position + module.offset + module.effect.offset
-				
-				# self.drawColorIndicator()
+		if actor.target is not None:
+			for module in actor.target.modules:
+				if module.moduleType == 'docking port':
+					
+					
+					dockingPoint = rotate_point(module.effect.offset,module.angle)  # orient the polygon according to the body's current direction in space.
+					dockingPoint = rotate_point(dockingPoint, actor.target.body.angle, [-(module.offset[0] + module.effect.offset[0]), -(module.offset[1] + module.effect.offset[1])])
+					dockingPoint = dockingPoint + actor.target.body.position + module.offset + module.effect.offset
+					
+					# self.drawColorIndicator()
 
-				# go through all the actors points and see if any of them are in the docking ring.
-				# allActorPoints = []
-				closeEnoughToDock = False
-				for module in actor.modules:
-					for point in module.points:
-						# pass
-						# allActorPoints.append(point)
-						# for box in boxes:
-						# 	if pointInRect(point, box):
-						# 		closeEnoughToDock = True
-						# rotatedPoints = module.points
-						rotatedPoint = rotate_point(point,module.angle)  # orient the polygon according to the body's current direction in space.
-						rotatedPoint = rotate_point(rotatedPoint, actor.body.angle, [-module.offset[0], -module.offset[1]])
-						rotatedPoint = rotatedPoint + actor.body.position + module.offset
+					# go through all the actors points and see if any of them are in the docking ring.
+					# allActorPoints = []
+					closeEnoughToDock = False
+					for module in actor.modules:
+						for point in module.points:
+							# pass
+							# allActorPoints.append(point)
+							# for box in boxes:
+							# 	if pointInRect(point, box):
+							# 		closeEnoughToDock = True
+							# rotatedPoints = module.points
+							rotatedPoint = rotate_point(point,module.angle)  # orient the polygon according to the body's current direction in space.
+							rotatedPoint = rotate_point(rotatedPoint, actor.body.angle, [-module.offset[0], -module.offset[1]])
+							rotatedPoint = rotatedPoint + actor.body.position + module.offset
 
-						if mag(rotatedPoint - dockingPoint) < 50:
-							# succcessss
-							pass
+							if mag(rotatedPoint - dockingPoint) < 50:
+								# succcessss
+								# print('docked!')
+								closeEnoughToDock = True
+
+					if closeEnoughToDock:
+						print('success')
+					else:
+						print('no')
+								
 
 
 	def step(self):
@@ -1843,12 +1854,12 @@ class World():
 		loaddedbrige =  shipyard('starbridge')
 
 		rockeyt =  shipyard('rocket_1')
-
-		ida_frigate_instance = Actor('player ida_frigate', loaddedbrige,(-800000, -1), [1,50000], 0.6 * math.pi, True)
+# [0,-700000], [-51500,0]
+		ida_frigate_instance = Actor('player ida_frigate', loaddedbrige,[0,-699000], [51500,0], 0.6 * math.pi, True)
 
 		fojgesogj = Actor('psefse', rockeyt,(-800000, -100), [1,50000], 0.6 * math.pi)
 
-		ida_frigate_instance.maneuverQueue.append(Maneuver('transfer',earth, moon))
+		# ida_frigate_instance.maneuverQueue.append(Maneuver('transfer',earth, moon))
 
 		self.add(ida_frigate_instance)
 		self.add(fojgesogj)
@@ -2041,7 +2052,7 @@ def on_key_press(symbol, modifiers):
 		# Nirn.targetfutureTime -= 0.5
 		Nirn.scrollLockTargetFutureTime = '-'
 	elif symbol == key.G:
-		Nirn.dock()
+		Nirn.dock(Nirn.player)
 		# dock the ship to a docking port that it is near
 
 @window.event
