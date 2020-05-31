@@ -498,6 +498,8 @@ class World():
 		self.hyperjumpDestinationIndex = 0
 
 		self.playerTargetIndex = None # index of which actor in the list the player is targeting.
+		self.targetfutureTime = 1
+		self.scrollLockTargetFutureTime = None
 
 	def gravityForce(self, actorPosition, attractorPosition, attractorMass):
 		# this function returns the force of gravity between an actor and an attractor.
@@ -1260,7 +1262,7 @@ class World():
 		# layout = pyglet.text.layout.TextLayout(document, width, height, multiline=True)
 		# if 
 
-		self.drawHUDmask(main_batch)
+		# self.drawHUDmask(main_batch)
 
 		i = 1
 		hudList = {}
@@ -1499,7 +1501,7 @@ class World():
 
 		self.drawScreenFill(first_batch)
 		# self.hudbatch_render()
-		self.hudbatch.draw()
+		# self.hudbatch.draw()
 
 		self.drawBackgroundStars(first_batch)
 
@@ -1522,6 +1524,31 @@ class World():
 			for actor in self.actors:
 				if actor.orbit is not None:
 					self.drawAPOrbit(second_batch, actor, actor.orbit, actor.orbiting, (100,100,100))
+
+		# # this part draws color dots on where you and your target will be some distance into the future. it's used as a pilot aid for rendezvous.
+		if self.player is not None and self.player.target is not None and self.player.target.orbiting is not None:
+			# self.futureTime 
+
+			if self.scrollLockTargetFutureTime == '+':
+				self.targetfutureTime += 0.5
+			elif self.scrollLockTargetFutureTime == '-':
+				self.targetfutureTime -= 0.5
+
+			playerFuturetAn = self.player.orbit.tAnAtTime(self.targetfutureTime)
+			playerFutureCoordinates = self.player.orbit.cartesianCoordinates(playerFuturetAn)	
+			playerFutureCoordinates = [playerFutureCoordinates[0], playerFutureCoordinates[1]]
+			playerFutureCoordinates[0] += self.player.orbiting.body.position[0]
+			playerFutureCoordinates[1] += self.player.orbiting.body.position[1]
+
+			targetFuturetAn = self.player.target.orbit.tAnAtTime(self.targetfutureTime)
+			targetFutureCoordinates = self.player.target.orbit.cartesianCoordinates(targetFuturetAn)	
+			targetFutureCoordinates = [targetFutureCoordinates[0], targetFutureCoordinates[1]]
+			targetFutureCoordinates[0] += self.player.target.orbiting.body.position[0]
+			targetFutureCoordinates[1] += self.player.target.orbiting.body.position[1]
+
+			self.drawColorIndicator([20,200,80,255], playerFutureCoordinates, int(2), second_batch)
+			self.drawColorIndicator([20,200,80,255], targetFutureCoordinates, int(2), second_batch)
+
 
 		second_batch.draw()
 
@@ -1554,6 +1581,8 @@ class World():
 		pyglet.gl.glLineWidth(2)
 
 		if self.showHUD:
+
+			self.hudbatch.draw()
 
 			# print the navcircle
 			for line in self.navCircleLines:
@@ -1643,6 +1672,8 @@ class World():
 					else:
 						self.drawColorIndicator([255,150,50,255], [rotatedPoint[0], rotatedPoint[1]], int(1*self.zoom), third_batch)
 
+
+
 		if self.paused:
 			self.drawInstructions(third_batch)
 
@@ -1725,7 +1756,7 @@ class World():
 			self.destroyActor(actor)
 			self.actors.remove(actor)
 
-		
+
 		self.generateBackgroundStars()
 
 
@@ -1756,6 +1787,8 @@ class World():
 		self.createHUDNavCircle()
 
 		self.generateBackgroundStars()
+
+
 
 		for module in shipyard('smallParts'):
 			self.availableModules.append(copy.deepcopy(module))
@@ -1835,13 +1868,14 @@ def on_key_press(symbol, modifiers):
 	elif symbol == key.H:
 		Nirn.showHUD = not Nirn.showHUD
 
-		if Nirn.showHUD:
-			resolution = (1400,900)
-			resolution_half = (1400/2,900/2)
-			Nirn.hudbatch_render()
-		else:
-			resolution = (1600,900)
-			resolution_half = (1600/2,900/2)
+		# if Nirn.showHUD:
+		# 	# resolution = (1400,900)
+		# 	# resolution_half = (1400/2,900/2)
+		Nirn.hudbatch_render()
+		# else:
+		# 	pass
+			# resolution = (1600,900)
+			# resolution_half = (1600/2,900/2)
 	elif symbol == key.COMMA:
 		Nirn.timestepSize = round_to_n(Nirn.timestepSize + (Nirn.timestepSize * 0.5), 2)
 	elif symbol == key.PERIOD:
@@ -1960,6 +1994,12 @@ def on_key_press(symbol, modifiers):
 		Nirn.player.keyStates['strafe back'] = True
 	elif symbol == key.L:
 		Nirn.player.keyStates['strafe right'] = True
+	elif symbol == key.NUM_MULTIPLY:
+		# Nirn.targetfutureTime += 0.5
+		Nirn.scrollLockTargetFutureTime = '+'
+	elif symbol == key.NUM_DIVIDE:
+		# Nirn.targetfutureTime -= 0.5
+		Nirn.scrollLockTargetFutureTime = '-'
 
 @window.event
 def on_key_release(symbol, modifiers):
@@ -1987,6 +2027,11 @@ def on_key_release(symbol, modifiers):
 	elif symbol == key.L:
 		if Nirn.player is not None:
 			Nirn.player.keyStates['strafe right'] = False	
+	elif symbol == key.NUM_MULTIPLY:
+		Nirn.scrollLockTargetFutureTime = None
+	elif symbol == key.NUM_DIVIDE:
+		Nirn.scrollLockTargetFutureTime = None
+
 
 def stepWithBatch(dt):
 	pass
