@@ -1861,6 +1861,9 @@ def on_key_press(symbol, modifiers):
 	elif symbol == key.X:
 		if Nirn.buildMenu:
 			Nirn.buildDraggingModule.points = mirror_polygon(Nirn.buildDraggingModule.points)
+		else:
+			Nirn.player.keyStates['face direction'] = 'target'
+
 	elif symbol == key.I:
 		Nirn.player.keyStates['strafe forward'] = True
 	elif symbol == key.J:

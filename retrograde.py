@@ -702,6 +702,8 @@ class Actor():
 			if self.keyStates['face direction'] == 'prograde': self.setPoint = self.prograde +  0.5 * math.pi
 			if self.keyStates['face direction'] == 'nadir': self.setPoint = self.nadir +  0.5 * math.pi
 			if self.keyStates['face direction'] == 'zenith': self.setPoint = self.zenith +  0.5 * math.pi
+			if self.target is not None:
+				if self.keyStates['face direction'] == 'target': self.setPoint = math.atan2(self.target.body.position[1] - self.body.position[1],(self.target.body.position[0] - self.body.position[0])) + 0.5 * math.pi
 			if str.isnumeric(self.keyStates['face direction']): self.setpoint = float(self.keyStates['face direction'])
 
 		# perform autopilot maneuvers for the player and for NPCs
