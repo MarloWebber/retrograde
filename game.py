@@ -1691,14 +1691,18 @@ class World():
 	def generateBackgroundStars(self):
 		self.backgroundStars = []
 		self.backgroundStarColorstream = []
-		n_stars = 350
+		n_stars = 500
 		for i in range(n_stars):
 			position = [random.randint(0,resolution[0]), random.randint(0,resolution[1])]
 			color = [155,155,155,255]
 			# color[0] += random.randint(0,100)
 			# color[2] += random.randint(0,100)
 
-			brightness = random.randint(0,10)
+			# brightness = random.randint(0,10)
+
+			#https://gamedev.stackexchange.com/questions/116832/random-number-in-a-range-biased-toward-the-low-end-of-the-range
+			brightness = 1 - math.sqrt(1 - random.uniform(0,1))
+			print(brightness)
 
 			# color[0] = int(color[0] * (brightness/10))
 			# color[1] = int(color[1] * (brightness/10))
@@ -1713,9 +1717,9 @@ class World():
 			# print(decodedcolor)
 
 
-			color[0] = int(decodedcolor[0] * (brightness/10) * 255)
-			color[1] = int(decodedcolor[1] * (brightness/10) * 255)
-			color[2] = int(decodedcolor[2] * (brightness/10) * 255)
+			color[0] = int(decodedcolor[0] * (brightness) * 255)
+			color[1] = int(decodedcolor[1] * (brightness) * 255)
+			color[2] = int(decodedcolor[2] * (brightness) * 255)
 
 
 			# self.backgroundStars.append(BackgroundStar(position, color, random.randint(1,2)))
@@ -1728,7 +1732,7 @@ class World():
 
 	def drawBackgroundStars(self, main_batch):
 		# print(self.backgroundStars)
-		main_batch.add( 350, pyglet.gl.GL_POINTS, None, ('v2i', self.backgroundStars), ('c4B',self.backgroundStarColorstream))
+		main_batch.add( 500, pyglet.gl.GL_POINTS, None, ('v2i', self.backgroundStars), ('c4B',self.backgroundStarColorstream))
 		
 	def hyperspaceJump(self, actor) :
 
