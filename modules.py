@@ -33,10 +33,10 @@ class ModuleEffect(): # a ModuleEffect is just a polygon that is visually displa
 
 		elif effectType == 'docking ring':
 			self.radius = 10
-			self.points = [[-self.radius, self.radius], [self.radius, self.radius], [0,-2*self.radius]]
+			self.points = [[-self.radius, self.radius], [self.radius, self.radius], [self.radius,-self.radius],  [-self.radius,-self.radius]]
 			self.color = [255,255,255,255]
 			self.outlineColor = [245,250,255,255]
-			self.illuminator = Illuminator(offset, 100, self.outlineColor, 20)
+			self.illuminator = None #Illuminator(offset, 100, self.outlineColor, 20)
 
 
 class Module():
@@ -327,6 +327,7 @@ class Module():
 
 		elif self.moduleType == 'docking port':
 			self.mass = 1
+			self.active = True
 			self.quiescent = {
 				'electricity':0.001
 			}
@@ -337,7 +338,7 @@ class Module():
 			self.points = [[-self.radius*3, -self.radius], [-self.radius*3, self.radius], [self.radius*3,self.radius], [self.radius*3, -self.radius]]
 			self.color = [50,50,50,255]
 			self.outlineColor = [100,100,100,255]
-			self.effect = ModuleEffect('docking ring', [0,self.radius*3])
+			self.effect = ModuleEffect('docking ring', [0,self.radius*5])
 
 
 		if self.moduleType == 'solar panel':
