@@ -114,6 +114,14 @@ def shipyard(shipType):
 
 			]
 
+	elif shipType == 'sport parts':
+		return [
+			Module('fighter RCS',[0,0]),
+			Module('fighter RCS',[0,0]),
+			Module('fighter RCS',[0,0]),
+			Module('fighter RCS',[0,0]),
+			]
+
 	elif shipType == 'nano orbital section':
 		return [
 			Module('nano orbital',[0,0],(0))

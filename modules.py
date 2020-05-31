@@ -123,6 +123,23 @@ class Module():
 			self.outlineColor = [170,150,150,255]
 			self.momentArm = self.radius						# moment arm is the leverage by which this module can apply torque to the spacecraft. It is a distance.
 
+		elif self.moduleType == 'fighter RCS': # ten times as powerful as a regular RCS unit, but uses fifteen times as much power. 
+			self.mass = 0.2
+			self.quiescent = {
+				'electricity':0.005
+			}
+			self.resources = {
+				'torque': 50,
+				'electricity': -3
+			}
+			self.stores = {}
+			self.initialStores = {}
+			self.radius = 5
+			self.points = [[-self.radius, -self.radius], [-self.radius, self.radius], [self.radius,self.radius], [self.radius, -self.radius]]
+			self.color = [0,130,200,255]
+			self.outlineColor = [30,200,150,255]
+			self.momentArm = self.radius	
+
 		elif self.moduleType == 'spar 10':
 			self.mass = 1
 			self.quiescent = {}

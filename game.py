@@ -1356,7 +1356,7 @@ class World():
 
 		i = self.drawHUDListItemLabel('toggle build menu: b', i, 'top left', main_batch)
 
-		i = self.drawHUDListItemLabel('save to file (ships/playerShip): s', i, 'top left', main_batch)
+		i = self.drawHUDListItemLabel('save to file (ships/playerShip): ctrl + s', i, 'top left', main_batch)
 
 		i = self.drawHUDListItemLabel('accept and fly ship: y', i, 'top left', main_batch)
 
@@ -1409,7 +1409,11 @@ class World():
 	def flyShipFromBuildMenu(self):
 		playersNewShip = Actor(self.player.name, self.modulesInUse, self.player.body.position, self.player.body.velocity, self.player.body.angle, True )
 		self.destroyActor(self.player)
+		self.actors.remove(self.player)
 		self.add(playersNewShip)
+
+		self.player = self._getPlayer()
+		self.viewpointObject = self.player
 
 	def dropModuleIntoBuildArea(self, module, position):
 		module.offset = self.antiTransformForBuild(position)
@@ -1790,7 +1794,7 @@ class World():
 
 
 
-		for module in shipyard('smallParts'):
+		for module in shipyard('sport parts'):
 			self.availableModules.append(copy.deepcopy(module))
 
 		for solar_system in solarSystems:
