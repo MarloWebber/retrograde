@@ -620,9 +620,11 @@ class Actor():
 								module.active = False
 
 		for resource, quantity in list(self.storagePool.items()):
-			if quantity > self.maximumStores[resource]: quantity = self.maximumStores[resource]			
+			if quantity > self.maximumStores[resource]: quantity = self.maximumStores[resource]		
 
-	def doModuleEffects(self, keyStates, timestepSize):
+		# print(self.keyStates)	
+
+	def doModuleEffects(self, timestepSize):
 		# doModuleEffects performs engine thrust and RCS torque. It reports whether or not the craft has been accelerated.
 
 		ifThrustHasBeenApplied = False
@@ -631,31 +633,48 @@ class Actor():
 				for giveResource, giveQuantity in list(module.resources.items()):
 					if giveResource == 'thrust':
 
-							# thruster control is provided by engines, fuckin deal with it
-							if self.keyStates['strafe forward']:
-								# print('strafe forward')
-								force = [0 , giveQuantity * timestepSize * 5  ]
-								self.body.apply_impulse_at_local_point(force, (0,0))
-								ifThrustHasBeenApplied = True
-							if self.keyStates['strafe back']:
-								force = [0 , -(giveQuantity * timestepSize * 5 )]
-								self.body.apply_impulse_at_local_point(force, (0,0))
-								ifThrustHasBeenApplied = True
-							if self.keyStates['strafe left']:
-								# print('strafe left')
-								force = [-(giveQuantity * timestepSize * 5 ) , 0]
-								self.body.apply_impulse_at_local_point(force, (0,0))
-								ifThrustHasBeenApplied = True
-							if self.keyStates['strafe right']:
-								force = [giveQuantity * timestepSize * 5 , 0]
-								self.body.apply_impulse_at_local_point(force, (0,0))
-								ifThrustHasBeenApplied = True
+						# thruster control is provided by engines, fuckin deal with it
+
+						strafeForce = [0,0]
+						if self.keyStates['strafe forward']:
+							# print('strafe forward')
+							strafeForce[1] -=  giveQuantity 
+							# strafeforwardforce = [0 , giveQuantity * timestepSize * 5  ]
+							# self.body.apply_impulse_at_local_point(strafeforwardforce, (0,0))
+							# ifThrustHasBeenApplied = True
+						if self.keyStates['strafe back']:
+							strafeForce[1] +=  giveQuantity
+							# strafebackforce = [0 , -(giveQuantity * timestepSize * 5 )]
+							# self.body.apply_impulse_at_local_point(strafebackforce, (0,0))
+							# ifThrustHasBeenApplied = True
+						if self.keyStates['strafe left']:
+							# print('strafe left')
+							strafeForce[0] -=  giveQuantity 
+							# strafeleftforce = [-(giveQuantity * timestepSize * 5 ) , 0]
+							# self.body.apply_impulse_at_local_point(strafeleftforce, (0,0))
+							# ifThrustHasBeenApplied = True
+						if self.keyStates['strafe right']:
+							strafeForce[0] +=  giveQuantity 
+							# straferightforce = [giveQuantity * timestepSize * 5 , 0]
+							# self.body.apply_impulse_at_local_point(straferightforce, (0,0))
+							# ifThrustHasBeenApplied = True
+
+						if strafeForce[0] != 0 or strafeForce[1] != 0:
+							strafeForce[0] = strafeForce[0]  * timestepSize * 50
+							strafeForce[1] = strafeForce[1]  * timestepSize * 50
+							print(strafeForce)
+
+							# rotatedForce = Vec2d(strafeForce[0], strafeForce[1])
+							# rotatedForce = rotatedForce.rotated(-self.body.angle)
+							self.body.apply_impulse_at_local_point(strafeForce, [0,0])
+							ifThrustHasBeenApplied = True
 
 
-							if module.active:
-								force = [(giveQuantity * timestepSize * 500 * math.cos(addRadians(module.angle, math.pi * 0.5))), -giveQuantity * timestepSize * 500 * math.sin(addRadians(module.angle, math.pi * 0.5) )]
-								self.body.apply_impulse_at_local_point(force, (0,0))
-								ifThrustHasBeenApplied = True
+
+						if module.active:
+							force = [(giveQuantity * timestepSize * 500 * math.cos(addRadians(module.angle, math.pi * 0.5))), -giveQuantity * timestepSize * 500 * math.sin(addRadians(module.angle, math.pi * 0.5) )]
+							self.body.apply_impulse_at_local_point(force, (0,0))
+							ifThrustHasBeenApplied = True
 					elif giveResource == 'torque':
 							self.setPoint = self.setPoint % (2*math.pi)
 							self.body.angle = self.body.angle % (2*math.pi)

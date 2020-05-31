@@ -456,7 +456,7 @@ class World():
 		self.time = 0 							# the number of timesteps that have passed in-universe. used for physics and orbital calculations.
 		self.space = pymunk.Space()				
 		self.space.gravity = (0.0, 0.0)			# pymunk's own gravity is turned off, so we can use our own.
-		self.gravitationalConstant = gravitationalConstant		# sets the strength of gravity
+		# self.gravitationalConstant = gravitationalConstant		# sets the strength of gravity
 		self.dragCoefficient = 0.005 			# Sets the strength of atmospheric drag
 		self.actors = []
 		self.attractors = []
@@ -505,10 +505,10 @@ class World():
 		# this function returns the force of gravity between an actor and an attractor.
 		distance = attractorPosition - actorPosition
 		magnitude = mag(distance)
-		gravity = self.gravitationalConstant * attractorMass
+		gravity = gravitationalConstant * attractorMass
 		appliedGravity = gravity/(magnitude**2)
 		components = numpy.divide(distance, magnitude)
-		force = components * appliedGravity * self.timestepSize
+		force = components * appliedGravity * self.timestepSize * 4.75
 		return force
 
 	def gravitate(self, actor, force):
@@ -712,24 +712,26 @@ class World():
 							position = rotate_point(position, actor.body.angle, actor.body.position)
 							module.effect.illuminator.position = position
 							self.illuminators.append(module.effect.illuminator)
-	
-			# figure out if the actor is freefalling by seeing if any engines or collisions have moved it.
-			if actor.doModuleEffects(actor.keyStates, self.timestepSize):
-				actor.leaveFreefall(0)
 
 				# turn the gun off until it has done a cooldown.
 				if module.moduleType == 'cannon 10':
 					module.active = False
+	
+			# figure out if the actor is freefalling by seeing if any engines or collisions have moved it.
+			if actor.doModuleEffects(self.timestepSize):
+				actor.leaveFreefall(0)
 
 			# if it is freefalling, move it along the orbital track.
-			actor.nadir = math.atan2( actor.orbiting.body.position[1] - actor.body.position[1], actor.orbiting.body.position[0] - actor.body.position[0] )
-			actor.zenith = actor.nadir + math.pi
+			if actor.orbiting is not None:
+				actor.nadir = math.atan2( actor.orbiting.body.position[1] - actor.body.position[1], actor.orbiting.body.position[0] - actor.body.position[0] )
+				actor.zenith = actor.nadir + math.pi
 			
 			if not actor.exemptFromGravity:
 				if not actor.freefalling:
 					# if it is not freefalling, add some gravity to it so that it moves naturally, and try to recalculate the orbit.
 					if not actor.exemptFromGravity:
-						self.gravitate(actor, strongestForce)
+						if strongestForce is not None:
+							self.gravitate(actor, strongestForce)
 
 					if actor.stepsToFreefall > 0:
 						actor.stepsToFreefall -= 1
@@ -1944,6 +1946,8 @@ def on_key_press(symbol, modifiers):
 		if Nirn.player is not None:
 			Nirn.player.autoPilotActive = not Nirn.player.autoPilotActive
 	elif symbol == key.L:
+		if not Nirn.buildMenu and not Nirn.mapView:
+			Nirn.player.keyStates['strafe right'] = True
 		if modifiers & key.MOD_CTRL:
 			if Nirn.buildMenu:
 				loadShipIntoBuildMenu()
@@ -1996,8 +2000,8 @@ def on_key_press(symbol, modifiers):
 		Nirn.player.keyStates['strafe left'] = True
 	elif symbol == key.K:
 		Nirn.player.keyStates['strafe back'] = True
-	elif symbol == key.L:
-		Nirn.player.keyStates['strafe right'] = True
+	# elif symbol == key.L:
+		# Nirn.player.keyStates['strafe right'] = True
 	elif symbol == key.NUM_MULTIPLY:
 		# Nirn.targetfutureTime += 0.5
 		Nirn.scrollLockTargetFutureTime = '+'

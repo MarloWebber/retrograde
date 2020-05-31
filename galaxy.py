@@ -22,7 +22,7 @@ earth = Attractor(
 		640000,													# radius
 		1,														# density
 		0.9,													# surface friction
-		[150,150,150,255],										# color
+		[200,180,120,255],										# color
 		[200,190,155,255],										# outline color
 		earthAtmosphere,										# atmosphere object
 		[1,1],													# position
