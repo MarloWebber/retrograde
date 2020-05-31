@@ -53,8 +53,8 @@ xCompensation = 200					# how big the HUD menus on the left and right are.
 
 topLimit = [0,0]
 bottomLimit = [0,0]
-# window = pyglet.window.Window(width=1600, height=900, fullscreen=True)
-window = pyglet.window.Window(width=1600, height=900)
+window = pyglet.window.Window(width=1600, height=900, fullscreen=True)
+# window = pyglet.window.Window(width=1600, height=900)
 label = pyglet.text.Label('Abc', x=5, y=5)
 
 white = [255]*4 
@@ -267,8 +267,6 @@ def isPointIlluminated(point, color, illuminators,viewpointObjectPosition, zoom,
 	# exit out of the function quickly if it is not.
 	if not thePointIsIlluminated:
 		return color
-	# else:
-	# 	print(n_lum)
 
 	# if it is lighting, figure out how bright the light is.
 	resultColor = copy.copy(color)
@@ -279,16 +277,8 @@ def isPointIlluminated(point, color, illuminators,viewpointObjectPosition, zoom,
 				amountOfLight = illuminator.brightness
 			else:
 				amountOfLight = illuminator.brightness/scaledDistance
-
-
 			
-			
-			# mix the light color into the point's original color.
-			# print('gagh')
-			# print(resultColor)
-			# print(amountOfLight)
-			# print(illuminator.color)
-
+			# mix the light color into the point's original color
 			resultColor[0] = int(resultColor[0] + amountOfLight * illuminator.color[0])
 			if resultColor[0] > 255: resultColor[0] = 255
 
@@ -591,8 +581,6 @@ class World():
 				if addAPlayerFragment:
 					self.add(Actor(actor.name + ' fragment', [module], fragmentPosition, actor.body.velocity, True))
 					self.player = self._getPlayer()
-					# self.viewpointObject = self.player
-					# print('added player fragment')
 					addAPlayerFragment = False
 				else:
 					self.add(Actor(actor.name + ' fragment', [module], fragmentPosition, actor.body.velocity, False))
@@ -609,8 +597,6 @@ class World():
 		self.time += self.timestepSize
 
 		for actor in self.actors:
-
-			# print()
 			if self.timestepSize  * 3 * 100 > 50:
 				actor.body.angle = actor.setPoint
 				actor.body._set_angular_velocity(0)
@@ -701,7 +687,6 @@ class World():
 			# all rotating actors experience a slight drag which slows their rotation. (it's more fun that way).
 			if actor.body.angular_velocity != 0:
 				correctionForce = actor.body.angular_velocity * 100 * actor.body.mass * self.timestepSize
-				# print(correctionForce)
 				actor.body.apply_impulse_at_local_point([-correctionForce,0], [0,-10]) # 10 is the moment arm, in reality it should be equal to the actor's radius.
 				actor.body.apply_impulse_at_local_point([correctionForce,0], [0,10])
 				if abs(actor.body.angular_velocity) < 1/100000:
@@ -758,35 +743,11 @@ class World():
 							onMirrorHalf = False
 							for i in range(0,n_points):
 								eccentricAnomaly =i *sliceSize
-
-								# if eccentricAnomaly > math.pi:
-								# 	mirrorAnomaly = n_points - i
-								# 	onMirrorHalf = True
-								# 	cos_e = numpy.cos(mirrorAnomaly)
-								# else:
-								# 	cos_e = numpy.cos(eccentricAnomaly)
-
-								# trueAnomaly = numpy.arccos( (cos_e - actor.orbit.e )/ ( 1- actor.orbit.e * cos_e) )
-
-
 								trueAnomaly = 2 * math.atan2(  math.sqrt((1 + actor.orbit.e))* math.sin(eccentricAnomaly/2) , math.sqrt((1 - actor.orbit.e)) * math .cos(eccentricAnomaly/2)  )
-
-								# trueAnomaly = math.atan2( math.cos(eccentricAnomaly) - actor.orbit.e,  math.sqrt(1 - actor.orbit.e ** 2) * math.sin(eccentricAnomaly) )
-
-								# trueAnomaly = math.atan2( math.sqrt(1 + actor.orbit.e**2 + actor.orbit.e**2 * math.cos(eccentricAnomaly)**2 ) , math.cos(eccentricAnomaly) - actor.orbit.e )
-
-								# print(trueAnomaly)
 								temp_vec3d = actor.orbit.cartesianCoordinates(trueAnomaly)	
 								actor.orbitPoints.append((temp_vec3d[0] + actor.orbiting.body.position[0], temp_vec3d[1] + actor.orbiting.body.position[1]))
-
-								# actor.orbitPoints.append((temp_vec3d[0] , temp_vec3d[1] ))
-							# actor.orbitPoints = rotate_polygon(actor.orbitPoints, math.pi, )
-							# for point in actor.orbitPoints:
-							# 	point[0] +=  actor.orbiting.body.position[0]
-							# 	point[1] +=  actor.orbiting.body.position[1]
 					except:
 						actor.orbit = None
-						# print('except')
 
 					if actor.orbit is not None:
 						futureSteptAn = actor.orbit.tAnAtTime(self.timestepSize)
@@ -852,16 +813,6 @@ class World():
 		renderAConvexPolygon(main_batch, transformedPoints, self.viewpointObject.body.position, self.zoom, resolution, module.color, module.outlineColor)
 
 	def drawModuleForDrag(self,main_batch, module, position):
-		# rotatedPoints = rotate_polygon(module.points, module.angle)
-		# transformedPoints = []
-
-		# for index, rotatedPoint in enumerate(rotatedPoints):
-		# 	rotatedPoint[0] = (rotatedPoint[0] * self.zoom ) + position[0]
-		# 	rotatedPoint[1] = (rotatedPoint[1] * self.zoom ) + position[1]
-		# 	transformedPoint = rotatedPoint # transformForView does operations like zooming and mapping 0 to the center of the screen. 
-		# 	transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
-		# renderAConvexPolygon(main_batch, transformedPoints,self.viewpointObject.body.position, self.zoom, resolution,  module.color, module.outlineColor)
-
 		rotatedPoints = rotate_polygon(module.points, module.angle)
 		transformedPoints = []
 
@@ -885,21 +836,6 @@ class World():
 		renderAConvexPolygon(main_batch, transformedPoints, self.viewpointObject.body.position, self.zoom, resolution, module.color, module.outlineColor)
 
 	def drawModuleEffects(self, main_batch, module, actor):
-		# rotatedPoints = rotate_polygon(module.effect.points, module.angle+actor.body.angle, [ -module.offset[0]-module.effect.position[0], -module.offset[1]-module.effect.position[1]] )
-
-		# rotatedPoints = []
-		# for point in module.effect.points: rotatedPoints.append( [point[0] + module.effect.offset[0] +module.offset[0], point[1] + module.effect.offset[1] + module.offset[1]])
-
-		# # rotatedPoints = rotate_polygon(rotatedPoints,module.angle, [ - module.effect.offset[0], - module.effect.offset[1]])  # orient the polygon according to the body's current direction in space.
-
-
-		# rotatedPoints = rotate_polygon(rotatedPoints, addRadians( actor.body.angle, module.angle), [-(module.offset[0] + module.effect.offset[0]), (module.offset[1] + module.effect.offset[1])])
-		# transformedPoints = []
-		# for index, rotatedPoint in enumerate(rotatedPoints):
-		# 	transformedPoint = transformForView(rotatedPoint + actor.body.position ,self.viewpointObject.body.position, self.zoom, resolution ) # transformForView does operations like zooming and mapping 0 to the center of the screen. 
-		# 	transformedPoints.append([int(transformedPoint[0]), int(transformedPoint[1])])
-		
-		# renderAConvexPolygon(main_batch, transformedPoints, self.viewpointObject.body.position, self.zoom, resolution,  module.effect.color, None, None)
 		rotatedPoints = module.effect.points
 		rotatedPoints = rotate_polygon(rotatedPoints,module.angle)  # orient the polygon according to the body's current direction in space.
 		rotatedPoints = rotate_polygon(rotatedPoints, actor.body.angle, [-(module.offset[0] + module.effect.offset[0]), -(module.offset[1] + module.effect.offset[1])])
@@ -913,7 +849,6 @@ class World():
 				pass
 			
 		renderAConvexPolygon(main_batch, transformedPoints, self.viewpointObject.body.position, self.zoom, resolution,  module.effect.color, module.effect.outlineColor)#, self.illuminators)
-
 
 	def drawColorIndicator(self, color,  position, size, main_batch):
 		# draw a simple colored square that can be used for visual indication.
@@ -959,22 +894,9 @@ class World():
 			fillTriangles = [0,0, 0,0, 0,resolution[1], resolution[0],resolution[1], resolution[0],0, 0,0, 0,0 ]
 			main_batch.add(7, pyglet.gl.GL_TRIANGLE_STRIP, None, ('v2i',fillTriangles), ('c4B',color*7))
 
-	# def drawHUDFill(self):
-
-		# fillTriangles = [0,0, 0,0, 0,resolution[1], 200,resolution[1], 200,0, 0,0, 0,0 ]
-		# self.hudbatch.add(7, pyglet.gl.GL_TRIANGLE_STRIP, None, ('v2i',fillTriangles), ('c4B',[255,255,255,255]*7))
-
-
-		# fillTriangles = [0,0, 0,0, 0,resolution[1], resolution[0],resolution[1], resolution[0],0, 0,0, 0,0 ]
-		# main_batch.add(7, pyglet.gl.GL_TRIANGLE_STRIP, None, ('v2i',fillTriangles), ('c4B',[255,255,255,255]*7))
-
 	def drawHUDmask(self, main_batch):
 		hudBackgroundColor = (25,25,25,255)
 
-		# self.hudbatch.draw()
-		# nastybatch = pyglet.graphics.Batch()
-		# pyglet.gl.glLineWidth(2)
-		# self.hudbatch  = pyglet.graphics.Batch()
 		fillTriangles = [100,0, 100,0, 100,resolution[1], 200,resolution[1], 200,0, 100,0, 100,0 ]
 		main_batch.add(7, pyglet.gl.GL_TRIANGLE_STRIP, None, ('v2i',fillTriangles), ('c4B',hudBackgroundColor*7))
 
@@ -982,17 +904,8 @@ class World():
 		fillTriangles = [resolution[0],0, resolution[0],0, resolution[0],resolution[1], xRightLimit,resolution[1], xRightLimit,0,  resolution[0],0,  resolution[0],0 ]
 		main_batch.add(7, pyglet.gl.GL_TRIANGLE_STRIP, None, ('v2i',fillTriangles), ('c4B',hudBackgroundColor*7))
 
-		# self.drawHUDpermanentComponents(nastybatch)
-
-		# nastybatch.draw()
 
 	def hudbatch_render(self):
-		# self.drawHUDFill()
-		# self.hudbatch  = pyglet.graphics.Batch()
-		# fillTriangles = [0,0, 0,0, 0,resolution[1], 200,resolution[1], 200,0, 0,0, 0,0 ]
-		# self.hudbatch.add(7, pyglet.gl.GL_TRIANGLE_STRIP, None, ('v2i',fillTriangles), ('c4B',[255,255,255,255]*7))
-
-
 		hudBackgroundColor = (25,25,25,255)
 
 		# self.hudbatch.draw()
@@ -1007,9 +920,6 @@ class World():
 		self.hudbatch.add(7, pyglet.gl.GL_TRIANGLE_STRIP, None, ('v2i',fillTriangles), ('c4B',hudBackgroundColor*7))
 
 		self.drawHUDpermanentComponents(self.hudbatch)
-
-		# nastybatch.draw()
-
 
 
 	def drawActor(self, actor, main_batch):
@@ -1197,25 +1107,7 @@ class World():
 		if quantity is None:
 			return index + 1
 
-		# if the label has already been prepared in an earlier turn, use that label.
-		# print(previousHUDstrings)
-		# print(index)
-
-		# if index is not None:
-		# if index is None:
-		# 	return
-
-		# if previousHUDstrings[index] is not None:
-			# if previousHUDstrings[index] == string:
-		# if quantity is not None:
-		# 	if previousHUDlistQuantities[index] == quantity:
-		# 		# previousHUDlabels[index].draw()
-		# 		return index + 1
-		# 	# else:
-			# 	previousHUDlabels[index].draw()
-			# 	return index + 1
-
-		if listCorner is 'bottom left':
+		if listCorner == 'bottom left':
 			label = pyglet.text.Label(str(quantity) ,
 	                      font_name='Times New Roman',
 	                      font_size=fontSize,
@@ -1223,7 +1115,7 @@ class World():
 	                      color=color,
 	                      align="left",
 	                      batch=main_batch)
-		elif listCorner is 'top right':
+		elif listCorner == 'top right':
 			label = pyglet.text.Label(str(quantity) ,
 	                      font_name='Times New Roman',
 	                      font_size=fontSize,
@@ -1231,7 +1123,7 @@ class World():
 	                      color=color,
 	                      align="right",
 	                      batch=main_batch)
-		elif listCorner is 'top left':
+		elif listCorner == 'top left':
 			label = pyglet.text.Label(str(quantity) ,
 	                      font_name='Times New Roman',
 	                      font_size=fontSize,
@@ -1239,7 +1131,7 @@ class World():
 	                      color=color,
 	                      align="left",
 	                      batch=main_batch)
-		elif listCorner is 'bottom right':
+		elif listCorner == 'bottom right':
 			label = pyglet.text.Label(str(quantity) ,
 	                      font_name='Times New Roman',
 	                      font_size=fontSize,
@@ -1267,25 +1159,7 @@ class World():
 		if len(string) == 0:
 			return index + 1
 
-		# if the label has already been prepared in an earlier turn, use that label.
-		# print(previousHUDstrings)
-		# print(index)
-
-		# if index is not None:
-		# if index is None:
-		# 	return
-
-		# if previousHUDstrings[index] is not None:
-		# 	if previousHUDstrings[index] == string:
-		# 		if quantity is not None:
-		# 			if previousHUDlistQuantities[index] == quantity:
-		# 				previousHUDlabels[index].draw()
-		# 				return index + 1
-		# 		else:
-		# 			previousHUDlabels[index].draw()
-		# 			return index + 1
-
-		if listCorner is 'bottom left':
+		if listCorner == 'bottom left':
 			label = pyglet.text.Label(string ,
 	                      font_name='Times New Roman',
 	                      font_size=fontSize,
@@ -1293,7 +1167,7 @@ class World():
 	                      color=color,
 	                      align="left",
 	                      batch=main_batch)
-		elif listCorner is 'top right':
+		elif listCorner == 'top right':
 			label = pyglet.text.Label(string ,
 	                      font_name='Times New Roman',
 	                      font_size=fontSize,
@@ -1301,7 +1175,7 @@ class World():
 	                      color=color,
 	                      align="right",
 	                      batch=main_batch)
-		elif listCorner is 'top left':
+		elif listCorner == 'top left':
 			label = pyglet.text.Label(string ,
 	                      font_name='Times New Roman',
 	                      font_size=fontSize,
@@ -1309,7 +1183,7 @@ class World():
 	                      color=color,
 	                      align="left",
 	                      batch=main_batch)
-		elif listCorner is 'bottom right':
+		elif listCorner == 'bottom right':
 			label = pyglet.text.Label(string ,
 	                      font_name='Times New Roman',
 	                      font_size=fontSize,
@@ -1319,10 +1193,7 @@ class World():
 	                      batch=main_batch)
 
 		previousHUDstrings[index] = string
-		# previousHUDlistQuantities[index] = quantity
 		previousHUDlabels[index] = label
-		# label.draw()
-		# main_batch.add(label)
 
 		return index + 1
 
@@ -1348,7 +1219,6 @@ class World():
 
 		for availableResource, availableQuantity in list(hudList.items()):
 			i = self.drawHUDListItemLabel(str(availableResource) + ': ', i, 'top left', self.hudbatch)
-
 
 
 		i = self.drawHUDListItemLabel('', i, 'top left', self.hudbatch) # blank line as a separator
@@ -1402,40 +1272,7 @@ class World():
 				hudList[resource] = self.viewpointObject.storagePool[resource]
 
 		for availableResource, availableQuantity in list(hudList.items()):
-			# i = self.drawHUDListItemLabel(str(availableResource) + ': ', i, 'top left')
 			i = self.drawHUDListItemQuantity(round(availableQuantity,2), i, 'top left', main_batch)
-
-
-		# i = self.drawHUDListItem('', None, i, 'top left') # blank line as a separator
-		# i = 1
-
-		# printFreefalling = False
-		# if self.viewpointObject.freefalling or self.viewpointObject.stepsToFreefall == 0:
-		# 	printFreefalling = True
-
-		# i = self.drawHUDListItem('freefalling: ', printFreefalling, i, 'bottom left')
-		# i = self.drawHUDListItem('landed: ', self.viewpointObject.exemptFromGravity, i, 'bottom left')
-		# if self.player.orbiting is not None:
-		# 	i = self.drawHUDListItem('orbiting: ', self.viewpointObject.orbiting.planetName, i, 'bottom left')
-		# i = self.drawHUDListItem('', None, i, 'bottom left') # blank line as a separator
-
-		# i = self.drawHUDListItem('player: ', self.viewpointObject.isPlayer, i, 'bottom left')
-		# i = self.drawHUDListItem('time accel: ', self.timestepSize * 3 * 100, i, 'bottom left')
-		# i = self.drawHUDListItem('zoom: ', self.zoom, i, 'bottom left')
-		# i = self.drawHUDListItem('paused: ', self.paused, i, 'bottom left')
-
-		# i = 1
-
-		# if self.player.target is not None:
-		# 	i = self.drawHUDListItem('target: ', self.player.target.name, i, 'top right')
-		# i = self.drawHUDListItem('weapon: ', self.player.selectedWeapon, i, 'top right')
-
-		# i = 1
-
-		# i = self.drawHUDListItem('hyperdrive: ', self.player.hyperdriveDestination, i, 'bottom right')
-		# # i = self.drawHUDListItem('weapon: ', self.player.selectedWeapon, i, 'top right')
-
-
 
 		i = self.drawHUDListItemQuantity( None, i, 'top left', main_batch) # blank line as a separator
 		i = 1
@@ -1465,11 +1302,10 @@ class World():
 
 		if self.player.hyperdriveDestination is not None:
 			i = self.drawHUDListItemQuantity(self.player.hyperdriveDestination.solarSystemName, i, 'bottom right', main_batch)
-		# i = self.drawHUDListItem('weapon: ', self.player.selectedWeapon, i, 'top right')		
 
 	def shootABullet(self, gunModule, actor):
 		if gunModule.enabled:
-			if gunModule.moduleType is 'cannon 10':
+			if gunModule.moduleType == 'cannon 10':
 				bulletPosition = [actor.body.position[0] + gunModule.offset[0] + gunModule.barrelHole[0], actor.body.position[1] + gunModule.offset[1] + gunModule.barrelHole[1]]
 				bulletPosition = rotate_point(bulletPosition, gunModule.angle, actor.body.position + gunModule.offset )
 				bulletPosition = rotate_point(bulletPosition, actor.body.angle, actor.body.position )
@@ -1748,8 +1584,8 @@ class World():
 			bv_key = bv_key/100
 			decodedcolor = bv2rgb(bv_key)
 
-			print(bv_key)
-			print(decodedcolor)
+			# print(bv_key)
+			# print(decodedcolor)
 
 
 			color[0] = int(decodedcolor[0] * (brightness/10) * 255)
@@ -1821,23 +1657,8 @@ class World():
 
 		self.generateBackgroundStars()
 
-
-		# make_clouds()
-
 		for module in shipyard('smallParts'):
 			self.availableModules.append(copy.deepcopy(module))
-
-		# Procyon = SolarSystem("Procyon", self.gravitationalConstant)
-		# Sol_III = SolarSystem("Sol III", self.gravitationalConstant)
-		# Sol_IV = SolarSystem("Sol IV", self.gravitationalConstant)
-
-		# self.addSolarSystem(Procyon)
-		# self.addSolarSystem(Sol_III)
-		# self.addSolarSystem(Sol_IV)
-
-		# self.currentSystem = self.galaxy["Procyon"]
-
-		# print(self.currentSystem)
 
 		for solar_system in solarSystems:
 			self.addSolarSystem(solar_system)
@@ -1848,17 +1669,10 @@ class World():
 		for thing in self.currentSystem.contents:
 			self.add(thing)
 
-		# print('doop boop')
-		# print(ida_frigate)
-		# for module in dinghy:
-		# 	print(module.moduleType)
-		# 	print(module.points)
 		loaddedbrige =  shipyard('starbridge')
 
 		rockeyt =  shipyard('rocket_1')
-		# print(loaddedbrige)
 
-		# ida_frigate_instance = Actor('player ida_frigate', loaddedbrige,(1, 121000), [17000,0], 0.6 * math.pi, True)
 		ida_frigate_instance = Actor('player ida_frigate', loaddedbrige,(-800000, -1), [1,50000], 0.6 * math.pi, True)
 
 		fojgesogj = Actor('psefse', rockeyt,(-800000, -100), [1,50000], 0.6 * math.pi)
@@ -1925,12 +1739,9 @@ def on_key_press(symbol, modifiers):
 			resolution = (1400,900)
 			resolution_half = (1400/2,900/2)
 			Nirn.hudbatch_render()
-
-			# xCompensation = 200
 		else:
 			resolution = (1600,900)
 			resolution_half = (1600/2,900/2)
-			# xCompensation = 200
 	elif symbol == key.COMMA:
 		Nirn.timestepSize = round_to_n(Nirn.timestepSize + (Nirn.timestepSize * 0.5), 2)
 	elif symbol == key.PERIOD:
@@ -2037,9 +1848,6 @@ def on_key_press(symbol, modifiers):
 				Nirn.player.hyperdriveDestination = None
 	elif symbol == key.X:
 		if Nirn.buildMenu:
-			# print('flip module')
-			# print(Nirn.buildDraggingModule.points)
-			# print(mirror_polygon(Nirn.buildDraggingModule.points))
 			Nirn.buildDraggingModule.points = mirror_polygon(Nirn.buildDraggingModule.points)
 	elif symbol == key.I:
 		Nirn.player.keyStates['strafe forward'] = True
