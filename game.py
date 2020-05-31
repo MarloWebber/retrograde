@@ -553,15 +553,17 @@ class World():
 	def destroyActor(self, actor):
 		# 
 		self.space.remove(actor.shape, actor.body)
-		if actor in self.actors:
-				self.actors.remove(actor)
+		# if actor in self.actors:
+		# 	print('removing actor: ' + str(actor.name))
+		# 	self.actors.remove(actor)
 
 	def destroyAttractor(self,attractor):
 		# self.space.remove(attractor.shape, attractor.body)
 		self.space.remove(attractor.shape, attractor.body)
 		# self.space.remove(attractor.body)
-		if attractor in self.attractors:
-				self.attractors.remove(attractor)
+		# if attractor in self.attractors:
+		# 	print('removing attractor: ' + str(attractor.planetName))
+		# 	self.attractors.remove(attractor)
 
 	def decomposeActor(self, actor, modules):
 		listLength = len(actor.modules)
@@ -779,7 +781,6 @@ class World():
 			# perform hyperspace travel.
 			if actor.jumping:
 				actor.jumping = False
-				actor.storagePool['warp energy'] = 0
 				self.hyperspaceJump(actor)
 
 	def rotatePolygon(self, points, angle):
@@ -1606,6 +1607,9 @@ class World():
 		main_batch.add( 350, pyglet.gl.GL_POINTS, None, ('v2i', self.backgroundStars), ('c4B',self.backgroundStarColorstream))
 		
 	def hyperspaceJump(self, actor) :
+
+		print(self.attractors)
+
 		# teleports the player across space, by removing all the other actors and stuff and replacing them with new stuff.
 		if actor.hyperdriveDestination is None:
 			return
@@ -1614,10 +1618,17 @@ class World():
 			self.currentSystem = actor.hyperdriveDestination
 
 			for otherActor in self.actors:
+				# print(otherActor)
 				if otherActor is not actor:
 					self.destroyActor(otherActor)
 			for attractor in self.attractors:
+				# print(attractor)
 				self.destroyAttractor(attractor)
+
+			self.actors = []
+			self.actors.append(actor)
+
+			self.attractors = []
 
 			for thing in self.currentSystem.contents:
 				self.add(thing)
@@ -1628,6 +1639,7 @@ class World():
 			self.viewpointObject = self._getPlayer()
 		else:
 			self.destroyActor(actor)
+			self.actors.remove(actor)
 
 	def step(self):
 		if self.buildMenu:
@@ -1811,7 +1823,7 @@ def on_key_press(symbol, modifiers):
 				loadShipIntoBuildMenu()
 	elif symbol == key.V:
 		if Nirn.player is not None:
-			Nirn.player.keyStates['J'] = True
+			Nirn.player.keyStates['hyperdrive engage'] = True
 	elif symbol == key.M:
 		Nirn.mapView = not Nirn.mapView
 	elif symbol == key.R:
@@ -1871,7 +1883,7 @@ def on_key_release(symbol, modifiers):
 			Nirn.player.keyStates['up'] = False		
 	elif symbol == key.V:
 		if Nirn.player is not None:
-			Nirn.player.keyStates['J'] = False	
+			Nirn.player.keyStates['hyperdrive engage'] = False	
 	elif symbol == key.I:
 		if Nirn.player is not None:
 			Nirn.player.keyStates['strafe forward'] = False

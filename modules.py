@@ -237,8 +237,8 @@ class Module():
 				'electricity':0.001
 			}
 			self.resources = {
-				'electricity':-1000,
-				'warp energy':1000
+				'electricity':-10000,
+				'warp energy':10000
 			}
 			self.stores = {
 				'warp energy':100

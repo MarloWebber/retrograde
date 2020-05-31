@@ -516,7 +516,7 @@ class Actor():
 			'right': False,
 			'Fire': False,
 			'face direction': None,
-			'J':False,
+			'hyperdrive engage':False,
 			'strafe forward':False,
 			'strafe back':False,
 			'strafe left':False,
@@ -681,9 +681,11 @@ class Actor():
 								module.active = False
 
 					elif giveResource == 'warp energy':
-						if self.keyStates['J'] and module.enabled:
+						if self.keyStates['hyperdrive engage'] and module.enabled:
+							self.storagePool['warp energy'] += giveQuantity * timestepSize
 							if self.storagePool['warp energy'] >= module.stores['warp energy']:
 								self.jumping = True
+								self.storagePool['warp energy'] = 0
 
 							module.active = True
 						else:
