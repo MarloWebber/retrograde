@@ -554,6 +554,7 @@ class World():
 
 	def destroyActor(self, actor):
 		# 
+		print(actor.modules)
 		self.space.remove(actor.shape, actor.body)
 		# if actor in self.actors:
 		# 	print('removing actor: ' + str(actor.name))
@@ -568,18 +569,20 @@ class World():
 		# 	self.attractors.remove(attractor)
 
 	def decomposeActor(self, actor, modules):
-		listLength = len(actor.modules)
-		if listLength == 1:
-			return # the actor is already fully decomposed, destroy it if you want
-		else:
+		if len(actor.modules) > 1:
 			# create a new actor, minus the module
+
+			# remove the actor from the space.
+			self.destroyActor(actor)
+			self.actors.remove(actor)
+
 			addAPlayerFragment = False
 			if actor.isPlayer:
 				addAPlayerFragment = True
 			for index, module in enumerate(actor.modules):
 
 				# create the module on it's own as a new actor
-				fragmentPosition = [actor.body.position[0] + (module.offset[0] * math.cos(actor.body.angle)), actor.body.position[1] +  (module.offset[1] * math.sin(actor.body.angle))]
+				fragmentPosition = [actor.body.position[0] + (1.1 * module.offset[0] * math.cos(actor.body.angle)), actor.body.position[1] +  ( 1.1 * module.offset[1] * math.sin(actor.body.angle))]
 				module.offset = [0,0]
 
 				if addAPlayerFragment:
@@ -589,8 +592,7 @@ class World():
 				else:
 					self.add(Actor(actor.name + ' fragment', [module], fragmentPosition, actor.body.velocity, False))
 
-			# remove the actor from the space.
-			self.destroyActor(actor)
+			
 
 	def physics(self):
 		for actor in self.actors:
@@ -607,6 +609,8 @@ class World():
 
 
 			if math.isnan(mag(actor.body.position)):
+				print(actor.body.position)
+				print(actor.modules[0].moduleType)
 				self.destroyActor(actor)
 				continue
 
@@ -1686,6 +1690,10 @@ class World():
 		if self.paused:
 			self.drawInstructions(third_batch)
 
+		if self.player is not None:
+			if self.player.dockedTo is not None:
+				self.displayDockMessage(self.player.dockedTo.dockMessage, third_batch)
+
 		third_batch.draw()
 
 	def generateBackgroundStars(self):
@@ -1772,6 +1780,26 @@ class World():
 
 		self.generateBackgroundStars()
 
+	def displayDockMessage(self, string, main_batch):
+		# print a message up on the screen
+		 # drawHUDListItemLabel(self,string, index, listCorner, main_batch):
+		# HUDlistItemSpacing = 15
+		# listXPosition = 10 
+		fontSize = 12
+
+		color = (100,100,100,255)
+
+		label = pyglet.text.Label(string ,
+                      font_name='Times New Roman',
+                      font_size=fontSize,
+                      x=resolution[0]/2,
+                      y=resolution[1]* 0.9,
+                      color=color,
+                      align="left",
+                      batch=main_batch)
+
+
+
 	def dock(self, actor):
 
 		# find the station's docking ring
@@ -1807,9 +1835,14 @@ class World():
 								closeEnoughToDock = True
 
 					if closeEnoughToDock:
-						print('success')
+						# print('success')
+						if actor is self.player:
+							# self.displayDockMessage(actor.target.dockMessage)
+							actor.dockedTo = actor.target
+							self.paused = True
 					else:
-						print('no')
+						# print('no')
+						pass
 								
 
 

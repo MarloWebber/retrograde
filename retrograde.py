@@ -551,6 +551,8 @@ class Actor():
 		self.hyperdriveDestination = None
 		self.jumping = False
 
+		self.dockedTo = None
+
 	def leaveFreefall(self, stepsToFreefall=1):
 		self.stepsToFreefall = stepsToFreefall
 		self.freefalling = False

@@ -18,7 +18,7 @@ earthAtmosphere = Atmosphere(
 		[0,0,0,255]												# color at the top
 		)
 earth = Attractor(
-		'Chikunipur',
+		'Chikundipur',
 		640000,													# radius
 		1,														# density
 		0.9,													# surface friction
@@ -29,8 +29,8 @@ earth = Attractor(
 		make_clouds(650000, [1,1], 1000, 300, 30000, 640000),	# clouds
 		0
 		)
-chikmagathur = shipyard('space_station_1')
-chikmagathur_instance = Actor('Chikmagathur', chikmagathur,[0,-700000], [51500,0], 0)
+
+chikmagathur_instance = Actor('Chikmagalur', shipyard('space_station_1'),[0,-700000], [51500,0], 0)
 moon = Attractor(
 		'Munus',
 		160000,		
@@ -107,7 +107,7 @@ procyon = SolarSystem(
 		[-20,100],													
 		[10,200,50,255],										
 		[255,255,255,255],									
-		['Sol IV', 'Mehrangarh'],									
+		['Sol IV', 'Noida'],									
 		2000000												
 		)
 solarSystems.append(procyon)
@@ -139,7 +139,7 @@ for i in range(0,n_mahal_units):
 mehrangarh_contents.append(moti_mahal)
 
 mehrangarh = SolarSystem(
-		'Mehrangarh',												
+		'Noida',												
 		mehrangarh_contents,											
 		[1000,-200],													
 		[0,120,255,255],										
