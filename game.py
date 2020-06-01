@@ -1891,7 +1891,7 @@ class World():
 		for solar_system in solarSystems:
 			self.addSolarSystem(solar_system)
 			
-		self.currentSystem = self.galaxy['Sol III']
+		self.currentSystem = self.galaxy['α Centauri']
 		print(self.currentSystem)
 
 		for thing in self.currentSystem.contents:
