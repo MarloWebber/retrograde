@@ -31,7 +31,10 @@ earth = Attractor(
 		)
 
 chikmagathur_instance = Actor('Chikmagalur', shipyard('space_station_1'),[0,-700000], [51500,0], 0)
-chikmagathur_instance.dockMessage = "The people who live above the desert world grow coffee in these huge metal cans."
+chikmagathur_instance.dockMessage = "Chikmagalur\nThe people who live above the desert world grow coffee in these huge metal cans.\nThey are happy to trade with you and to share their delicious food.\nOn your first visit here, you met a domestic cat, the first animal you had seen in your entire life."
+
+jellostation_instance = Actor('Jelly Pixel', shipyard('jellyStation'), [0,700000], [-51500,0], 0)
+jellostation_instance.dockMessage = "Jelly Pixel\nThe inhabitants of this beautiful station live in luxury, by unknown means.\nThey spend their time creating many forms of art.\n They have a symbiotic relationship with their more industrious neighbours."
 moon = Attractor(
 		'Munus',
 		160000,		
@@ -44,7 +47,7 @@ moon = Attractor(
 		)
 sol_III = SolarSystem(
 		'Sol III',												# name
-		[earth, moon,chikmagathur_instance ],											# contents
+		[earth, moon,chikmagathur_instance, jellostation_instance ],											# contents
 		[0,0],													# map position
 		[10,50,200,255],										# map color
 		[255,255,255,255],										# map outline color

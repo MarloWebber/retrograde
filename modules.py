@@ -30,6 +30,12 @@ class ModuleEffect(): # a ModuleEffect is just a polygon that is visually displa
 			self.color = [255,255,255,255]
 			self.outlineColor = [245,250,255,255]
 			self.illuminator = Illuminator(offset, 100, self.outlineColor, 20)
+		elif effectType == 'cannon 100 flash':
+			self.radius = 3
+			self.points = [[-self.radius, self.radius], [self.radius, self.radius], [0,-2*self.radius]]
+			self.color = [255,255,255,255]
+			self.outlineColor = [245,250,255,255]
+			self.illuminator = Illuminator(offset, 3000, self.outlineColor, 50)
 
 		elif effectType == 'docking ring':
 			self.radius = 10
@@ -122,6 +128,23 @@ class Module():
 			self.color = [120,100,100,255]
 			self.outlineColor = [170,150,150,255]
 			self.momentArm = self.radius						# moment arm is the leverage by which this module can apply torque to the spacecraft. It is a distance.
+
+		elif self.moduleType == 'RCS 100':
+			self.mass = 2
+			self.quiescent = {
+				'electricity':0.01
+			}
+			self.resources = {
+				'torque': 50,
+				'electricity': -2
+			}
+			self.stores = {}
+			self.initialStores = {}
+			self.radius = 15
+			self.points = [[-self.radius, -self.radius], [-self.radius, self.radius], [self.radius,self.radius], [self.radius, -self.radius]]
+			self.color = [120,100,100,255]
+			self.outlineColor = [170,150,150,255]
+			self.momentArm = self.radius	
 
 		elif self.moduleType == 'fighter RCS': # ten times as powerful as a regular RCS unit, but uses fifteen times as much power. 
 			self.mass = 0.2
@@ -220,6 +243,22 @@ class Module():
 			self.color = [255,230,200,255]
 			self.outlineColor = [255,235,225,255]
 			self.lifetime = 100 										# the shell lasts for 1000 somethings and then explodes.
+		elif self.moduleType == 'cannonshell 100':
+			self.mass = 1
+			self.active = True
+			self.resources = {}
+			self.quiescent = {}
+			self.stores = {
+				'high explosive': 100
+			}
+			self.initialStores = {
+				'high explosive': 100
+			}
+			self.radius = 1.5
+			self.points = [[-self.radius, -self.radius], [-self.radius, self.radius], [self.radius,self.radius], [self.radius, -self.radius]]
+			self.color = [255,230,200,255]
+			self.outlineColor = [255,235,225,255]
+			self.lifetime = 100 
 
 		elif self.moduleType == 'cannon 10':
 			self.mass = 2
@@ -247,6 +286,33 @@ class Module():
 			self.cooldownTime = 100										# how long it takes before the gun fires again.
 			self.cooldownValue = 0
 			self.effect = ModuleEffect('cannon 10 flash', [0,-self.radius])
+
+		elif self.moduleType == 'cannon 100':
+			self.mass = 2
+			self.active = False
+			self.quiescent = {
+				'electricity':0.01
+			}
+			self.resources = {
+				'cannonshell 100': 1,
+				'electricity':100
+			}
+			self.stores = {
+				'cannonshell 100': 10
+			}
+			self.initialStores = {
+				'cannonshell 100': 10
+			}
+			self.radius = 25
+			self.points = [[-0.5*self.radius, -self.radius], [-0.5*self.radius, self.radius], [0.5*self.radius,self.radius], [0.5*self.radius, -self.radius]]
+			self.color = [30,30,30,255]
+			self.outlineColor = [100,100,30,255]
+
+			self.barrelHole = [0,-self.radius + 1.5]					# the location that bullets are emitted from this module.
+			self.muzzleVelocity = 2500								# the speed that bullets come out at.
+			self.cooldownTime = 200										# how long it takes before the gun fires again.
+			self.cooldownValue = 0
+			self.effect = ModuleEffect('cannon 100 flash', [0,-self.radius])
 
 		elif self.moduleType == 'hyperdrive 10':
 			self.mass = 5
@@ -341,7 +407,7 @@ class Module():
 			self.effect = ModuleEffect('docking ring', [0,self.radius*5])
 
 
-		if self.moduleType == 'solar panel':
+		elif self.moduleType == 'solar panel':
 			self.mass = 1
 			self.active = True
 			self.quiescent = {}
@@ -358,3 +424,20 @@ class Module():
 			self.points = [[-self.radius, -self.radius*10], [-self.radius, self.radius*10], [self.radius,self.radius*10], [self.radius, -self.radius*10]]
 			self.color = [0,75,180,255]							
 			self.outlineColor = [50,200,255,255]		
+
+		elif self.moduleType == 'dome 100':
+			self.mass = 50
+			self.quiescent = {}
+			self.resources = {}
+			self.stores = {}
+			self.initialStores = {}
+			self.radius = 500
+			size = self.radius
+			self.points = []
+			circle = make_circle(size, 32, 0)
+			for i in range(0,len(circle)):
+				if i <= len(circle)/2:
+					self.points.append(circle[i])
+			self.color = [120,190,190,255]
+			self.outlineColor = [220,245,245,255]
+			self.momentArm = self.radius

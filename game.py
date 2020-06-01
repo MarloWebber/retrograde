@@ -616,7 +616,7 @@ class World():
 			# explode all the projectiles
 			destroyed = False
 			for module in actor.modules:
-				if module.moduleType == "cannonshell 10":
+				if module.moduleType == "cannonshell 10" or module.moduleType == 'cannonshell 100':
 					module.lifetime -= 1
 					if module.lifetime < 0:
 						self.destroyActor(actor)
@@ -628,7 +628,7 @@ class World():
 
 			# shoot the guns
 			for module in actor.modules:
-				if module.moduleType == 'cannon 10':
+				if module.moduleType == 'cannon 10' or module.moduleType == 'cannon 100':
 					if actor.keyStates['Fire']:
 						module.active= True
 						actor.keyStates['Fire'] = False
@@ -719,7 +719,7 @@ class World():
 							self.illuminators.append(module.effect.illuminator)
 
 				# turn the gun off until it has done a cooldown.
-				if module.moduleType == 'cannon 10':
+				if module.moduleType == 'cannon 10' or module.moduleType == 'cannon 100':
 					module.active = False
 	
 			# figure out if the actor is freefalling by seeing if any engines or collisions have moved it.
@@ -1392,6 +1392,7 @@ class World():
 
 		i = self.drawHUDListItemLabel('Spaceships are made up of many different modules stuck together. Each module provides and consumes resources, and has useful abilities.', i, 'top left', main_batch)
 		i = self.drawHUDListItemLabel('Vanquish enemies to smash them into parts. Collect single parts by flying into them. Add new parts to your ship in the build screen.', i, 'top left', main_batch)
+		i = self.drawHUDListItemLabel('Dock at stations by targeting them, then put part of your ship onto the white rectangle above the docking port, and hit the dock key.', i, 'top left', main_batch)
 
 
 
@@ -1403,6 +1404,13 @@ class World():
 				bulletPosition = rotate_point(bulletPosition, actor.body.angle, actor.body.position )
 				bulletVelocity = [gunModule.muzzleVelocity * math.cos(gunModule.angle + actor.body.angle - 0.5*math.pi) , gunModule.muzzleVelocity * math.sin(gunModule.angle + actor.body.angle- 0.5*math.pi)]
 				bullet = Actor('cannonshell 10', [Module('cannonshell 10', (0,0))], bulletPosition ,bulletVelocity,0 ,False)
+				self.add(bullet)
+			elif gunModule.moduleType == 'cannon 100':
+				bulletPosition = [actor.body.position[0] + gunModule.offset[0] + gunModule.barrelHole[0], actor.body.position[1] + gunModule.offset[1] + gunModule.barrelHole[1]]
+				bulletPosition = rotate_point(bulletPosition, gunModule.angle, actor.body.position + gunModule.offset )
+				bulletPosition = rotate_point(bulletPosition, actor.body.angle, actor.body.position )
+				bulletVelocity = [gunModule.muzzleVelocity * math.cos(gunModule.angle + actor.body.angle - 0.5*math.pi) , gunModule.muzzleVelocity * math.sin(gunModule.angle + actor.body.angle- 0.5*math.pi)]
+				bullet = Actor('cannonshell 100', [Module('cannonshell 100', (0,0))], bulletPosition ,bulletVelocity,0 ,False)
 				self.add(bullet)
 
 	def loadShipIntoBuildMenu(self, actor):
@@ -1795,7 +1803,9 @@ class World():
                       y=resolution[1]* 0.9,
                       color=color,
                       align="left",
-                      batch=main_batch)
+                      batch=main_batch,
+                      multiline=True,
+                      width=500)
 
 
 
@@ -1875,7 +1885,7 @@ class World():
 
 
 
-		for module in shipyard('sport parts'):
+		for module in shipyard('bigParts'):
 			self.availableModules.append(copy.deepcopy(module))
 
 		for solar_system in solarSystems:
@@ -1887,7 +1897,7 @@ class World():
 		for thing in self.currentSystem.contents:
 			self.add(thing)
 
-		loaddedbrige =  shipyard('starbridge')
+		loaddedbrige =  shipyard('rocket_1')
 
 		rockeyt =  shipyard('rocket_1')
 # [0,-700000], [-51500,0]

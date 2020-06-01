@@ -104,12 +104,23 @@ def shipyard(shipType):
 
 	elif shipType == 'bigParts':
 		return [
+			Module('spar 10',[0,-100],(0.5* math.pi)),
+			Module('spar 10',[0,-100],(0.5* math.pi)),
 			Module('spar 100',[0,-100],(0.5* math.pi)),
 			Module('spar 100',[0,-100],(0.5* math.pi)),
-			Module('box 100',[0,-100],(0.5* math.pi)),
 			Module('engine 100',[0,-100],(0.5* math.pi)),
 			Module('engine 100',[0,-100],(0.5* math.pi)),
+			Module('RCS 100',[0,-100],(0.5* math.pi)),
+			Module('RCS 100',[0,-100],(0.5* math.pi)),
+			Module('dome 100',[0,-100],(0.5* math.pi)),
 			
+			Module('docking port',[0,507.5]),
+
+			Module('docking port',[0,507.5]),
+			Module('solar panel',[0,-550]),
+			Module('solar panel',[200,-550]),
+			Module('solar panel',[0,-550]),
+			Module('solar panel',[200,-550]),
 
 
 			]
