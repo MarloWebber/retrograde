@@ -34,7 +34,7 @@ chikmagathur_instance = Actor('Chikmagalur', shipyard('space_station_1'),[0,-700
 chikmagathur_instance.dockMessage = "Chikmagalur\nThe people who live above the desert world grow coffee in these huge metal cans.\nThey are happy to trade with you and to share their delicious food.\nOn your first visit here, you met a domestic cat, the first living animal you had seen in your whole life."
 
 jellostation_instance = Actor('Jelly Pixel', shipyard('jellyStation'), [0,700000], [-51500,0], 0)
-jellostation_instance.dockMessage = "Jelly Pixel\nThe inhabitants of this beautiful station live in luxury, by unknown means.\nThey spend their time creating many forms of art.\n They have a symbiotic relationship with their more industrious neighbours."
+jellostation_instance.dockMessage = "Jelly Pixel\nThe inhabitants of this beautiful station live in luxury.\nThey spend their time creating sculptures and music.\n They have a symbiotic relationship with their more industrious neighbours."
 moon = Attractor(
 		'Munus',
 		160000,		

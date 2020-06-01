@@ -445,9 +445,10 @@ def renderAConvexPolygon(batch, polygon, viewpointObjectPosition, zoom, resoluti
 
 
 class SavedGame():
-	def __init__(actors, currentSystem):
+	def __init__(self, actors, currentSystem, availableModules):
 		self.actors = actors
 		self.currentSystem = currentSystem
+		self.availableModules = availableModules
 
 
 
@@ -1897,11 +1898,11 @@ class World():
 		for thing in self.currentSystem.contents:
 			self.add(thing)
 
-		loaddedbrige =  shipyard('rocket_1')
+		loaddedbrige =  shipyard('starbridge')
 
 		rockeyt =  shipyard('rocket_1')
 # [0,-700000], [-51500,0]
-		ida_frigate_instance = Actor('player ida_frigate', loaddedbrige,[0,-699000], [51500,0], 0.6 * math.pi, True)
+		ida_frigate_instance = Actor('player ida_frigate', loaddedbrige,[699000,-1], [1,51500], 0.6 * math.pi, True)
 
 		fojgesogj = Actor('psefse', rockeyt,(-800000, -100), [1,50000], 0.6 * math.pi)
 
@@ -1922,7 +1923,7 @@ def loadShipIntoBuildMenu():
 	Nirn.modulesInUse = dill.load(open('ships/playerShip', 'rb'))
 
 def save():
-	newSave = SavedGame(Nirn.actors, Nirn.currentSystem, Nirn.availableModules, Nirn.player)
+	newSave = SavedGame(Nirn.actors, Nirn.currentSystem, Nirn.availableModules)
 	dill.dump(newSave,open('save', 'wb'))
 
 
@@ -1931,9 +1932,28 @@ def load():
 	newSave=dill.load(open('save', 'rb'))
 
 	# exit the current system and load the one from the file
-	Nirn.hyperspaceJump(newSave.currentSystem.solarSystemName, Nirn.player)
-	Nirn.actors = newSave.actors
+	# Nirn.hyperspaceJump(newSave.currentSystem.solarSystemName, Nirn.player)
+
+	for actor in Nirn.actors:
+		Nirn.destroyActor(actor)
+	for attractor in Nirn.attractors:
+		Nirn.destroyAttractor(attractor)
+
+	Nirn.actors = []
+	Nirn.attractors = []
+
+	for thing in newSave.currentSystem.contents:
+		if thing.__class__ is Attractor:
+			Nirn.add(thing)
+
+	for actor in newSave.actors:
+		Nirn.add(actor)
+
+	Nirn.generateBackgroundStars()
+
+	# Nirn.actors = newSave.actors
 	Nirn.availableModules = newSave.availableModules
+	# Nirn.currentSystem = newSave.currentSystem
 	Nirn.player = Nirn._getPlayer()
 	Nirn.viewpointObject = Nirn.player
 
@@ -2026,6 +2046,8 @@ def on_key_press(symbol, modifiers):
 		if modifiers & key.MOD_CTRL:
 			if Nirn.buildMenu:
 				saveShipFromBuildMenu()
+			else:
+				save()
 		else:
 			if Nirn.player is not None:
 				Nirn.player.keyStates['face direction'] = 'retrograde'
@@ -2044,6 +2066,8 @@ def on_key_press(symbol, modifiers):
 		if modifiers & key.MOD_CTRL:
 			if Nirn.buildMenu:
 				loadShipIntoBuildMenu()
+			else:
+				load()
 	elif symbol == key.V:
 		if Nirn.player is not None:
 			Nirn.player.keyStates['hyperdrive engage'] = True
