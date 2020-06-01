@@ -31,6 +31,7 @@ earth = Attractor(
 		)
 
 chikmagathur_instance = Actor('Chikmagalur', shipyard('space_station_1'),[0,-700000], [51500,0], 0)
+chikmagathur_instance.dockMessage = "The people who live above the desert world grow coffee in these huge metal cans."
 moon = Attractor(
 		'Munus',
 		160000,		

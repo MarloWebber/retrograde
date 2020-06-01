@@ -609,9 +609,8 @@ class World():
 
 
 			if math.isnan(mag(actor.body.position)):
-				print(actor.body.position)
-				print(actor.modules[0].moduleType)
 				self.destroyActor(actor)
+				self.actors.remove(actor)
 				continue
 
 			# explode all the projectiles
@@ -1539,7 +1538,7 @@ class World():
 					self.drawAPOrbit(second_batch, actor, actor.orbit, actor.orbiting, (100,100,100))
 
 		# # this part draws color dots on where you and your target will be some distance into the future. it's used as a pilot aid for rendezvous.
-		if self.player is not None and self.player.target is not None and self.player.target.orbiting is not None:
+		if self.player is not None and self.player.target is not None and self.player.target.orbiting is not None and self.player.target.orbit is not None and self.showHUD:
 			# self.futureTime 
 
 			if self.scrollLockTargetFutureTime == '+':
@@ -1947,6 +1946,10 @@ def on_key_press(symbol, modifiers):
 			Nirn.player.keyStates['up'] = True
 	elif symbol == key.P:
 		Nirn.paused = not Nirn.paused
+
+		if not Nirn.paused and Nirn.player.dockedTo is not None:
+			Nirn.player.dockedTo = None
+
 	elif symbol == key.EQUAL:
 		Nirn.zoom = round_to_n(Nirn.zoom + (Nirn.zoom * 0.5), 2)
 	elif symbol == key.MINUS:
