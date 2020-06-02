@@ -330,8 +330,15 @@ class Maneuver():
 
 						if actor.orbit.isCrashing() or actor.orbit.getPeriapsis() < self.parameter2.radius or actor.orbit.getApoapsis() < self.parameter2.radius :
 							print('crashing. need to raise orbit')
-							actor.setPoint = actor.nadir + (math.pi * 0.5) +( math.pi * 0.5)
+
+							# actor.setPoint = actor.prograde + (math.pi * 0.5) +( math.pi * 0.5)
+
+							angleToTarget = math.atan2(self.parameter2.body.position[1]- actor.body.position[1] , self.parameter2.body.position[0]- actor.body.position[0])
+							actor.setPoint = addRadians(angleToTarget, math.pi * 1)
+
+							print(actor.setPoint)
 							angleDifference = actor.setPoint - actor.body.angle
+							print(angleDifference)
 							if (angleDifference < 0.3 and angleDifference > 0) or angleDifference > (2*math.pi - 0.3): # only fire engines if the ship is pointing vaguely in the right direction
 								actor.keyStates['up'] = True
 							else:
@@ -369,7 +376,7 @@ class Maneuver():
 
 							# you're not even orbiting the right thing, try to get there
 							if actor.orbiting is not self.parameter2 or actor.orbiting is None:
-
+								print('ended up in unexpected location, flying towards target now')
 								angleToTarget = math.atan2(self.parameter2.body.position[1] - actor.body.position[1], self.parameter2.body.position[0] - actor.body.position[0])
 								actor.setPoint = angleToTarget +( math.pi * 0.5)
 								angleDifference = differenceBetweenAngles( actor.setPoint, actor.body.angle)
