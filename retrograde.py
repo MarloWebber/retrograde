@@ -289,6 +289,7 @@ class Maneuver():
 					actor.setPoint = actor.prograde + math.pi * 0.5
 
 					positionDifference = [ self.parameter2.body.position[0]- self.parameter1.body.position[0], self.parameter2.body.position[1]- self.parameter1.body.position[1]]
+					print(positionDifference)
 					desiredPeriapsis = mag(numpy.array(positionDifference)) + self.parameter2.radius
 					if self.parameter2.atmosphere is not None:
 						desiredPeriapsis += self.parameter2.atmosphere.height
@@ -299,9 +300,13 @@ class Maneuver():
 					else:
 						actor.keyStates['up'] = False
 
-					print(actor.orbit.getApoapsis())
+					# print(actor.orbit.getApoapsis())
 					print(desiredPeriapsis)
-					if actor.orbit.getApoapsis() > desiredPeriapsis or actor.orbit.getPeriapsis() > desiredPeriapsis:
+
+					actualApoapsis = actor.orbit.cartesianCoordinates(math.pi)
+					actualApoapsis = mag(numpy.array(actualApoapsis))
+					print(actualApoapsis)
+					if actualApoapsis > desiredPeriapsis:# or actor.orbit.getPeriapsis() > desiredPeriapsis:
 						self.event3 = True
 						print('raised trajectory to target, ready to cruise')
 						actor.keyStates['up'] = False
