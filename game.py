@@ -790,13 +790,21 @@ class World():
 
 						# direction detection. clockwise or not?
 
-						# take the velocity vector and rotate it around the attractor until it lines up with the axis.
-						rotatedVelocity = rotate_point(actor.body.velocity, -actor.orbit.tAn)
-
-						if rotatedVelocity[1] > 0:
-							actor.orbit.clockwise = True
+						# if actor y is greater than attractor y, a clockwise orbit will have a positive x component. a counterclockwise one will have negative x.
+						if actor.body.position[1] > actor.orbiting.body.position[1]:
+							if actor.body.velocity[0] > 0:
+								clockwise = True
+							else:
+								clockwise = False
 						else:
-							actor.orbit.clockwise = False
+							if actor.body.velocity[0] < 0:
+								clockwise = True
+							else:
+								clockwise = False
+
+						print(clockwise)
+
+
 
 			# let the ai drive the ship. this comes after orbit calculation because it needs valid orbits
 			actor.flightComputer(self.actors)
@@ -1953,7 +1961,7 @@ class World():
 
 		rockeyt =  shipyard('rocket_1')
 # [0,-700000], [-51500,0]
-		ida_frigate_instance = Actor('player ida_frigate', loaddedbrige,[699000,-1], [1,51500], 0.6 * math.pi, True)
+		ida_frigate_instance = Actor('player ida_frigate', loaddedbrige,[699000,-1], [1,-51500], 0.6 * math.pi, True)
 
 		fojgesogj = Actor('psefse', rockeyt,(-800000, -100), [1,50000], 0.6 * math.pi)
 
