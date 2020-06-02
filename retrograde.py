@@ -541,7 +541,7 @@ class Actor():
 		self.zenith = 0
 
 		self.maneuverQueue = []
-		self.combatantType = 'defender' # defenders will shoot at you while still doing what they're doing. attackers will pursue you. missiles will pursue you with the intent to ram.
+		self.disposition = 'defender' # defenders will shoot at you while still doing what they're doing. attackers will pursue you. missiles will pursue you with the intent to ram.
 		self.autoPilotActive = False
 
 		self.autoPilotGoals = [] # a list of goals which the ai will use sequences of maneuvers to accomplish.
@@ -714,7 +714,7 @@ class Actor():
 
 		return ifThrustHasBeenApplied
 
-	def flightComputer(self):
+	def flightComputer(self, actors):
 		# this function describes the AI flight behaviour and player autopilot
 
 		# allow the player to hold attitude
@@ -728,6 +728,31 @@ class Actor():
 			if str.isnumeric(self.keyStates['face direction']): self.setpoint = float(self.keyStates['face direction'])
 
 		# perform autopilot maneuvers for the player and for NPCs
+
+
+		# AI controller
+		# first, check motive
+			# self.AIGoal ?
+
+		# check if hostiles nearby
+		inCombat = False
+		for actors in actors:
+			if actor.faction is not None:
+				if actor.faction.relationships[self.faction.name] is not None:
+					if actor.faction.relationships[self.faction.name] < -10:
+						if self.disposition == 'attacker':
+							# fly to the hostile and destroy it
+							inCombat = True
+						elif self.disposition == 'defender':
+							# work out distance
+							# keep doing what you're doing but shoot it if it gets too close
+						else:
+							# just ignore it and keep doing your thing
+
+
+		# second, define goal
+		# third, check that maneuver queue is aligned with goal
+		# fourth, execute maneuver
 		if self.autoPilotActive:
 			if len(self.maneuverQueue) > 0:
 				self.maneuverQueue[0].perform(self)
@@ -908,3 +933,24 @@ class BackgroundStar():
 
 
 # ida_frigate_instance = Actor('NPC lothar', ida_frigate,(1, 121000), [17000,0], 0.6 * math.pi, True)
+
+
+
+class Faction():
+	def __init__(self, name):
+		self.name = name
+		self.relationships = {}
+
+
+mormon_space_protectorate = Faction("Mormon Space Protectorate")
+space_band_club = Faction("Space Band Club")
+space_football_team = Faction("Space Football Team")
+
+space_band_club.relationships["Mormon Space Protectorate"] = 0
+space_band_club.relationships["Space Football Team"] = -11
+
+mormon_space_protectorate.relationships["Space Band Club"] = 0
+mormon_space_protectorate.relationships["Space Football Team"] = 0
+
+space_football_team.relationships["Space Band Club"] = -11
+space_football_team.relationships["Mormon Space Protectorate"] = 0

@@ -2095,7 +2095,7 @@ def on_key_press(symbol, modifiers):
 		if Nirn.player is not None:
 			Nirn.player.keyStates['face direction'] = 'prograde'
 	elif symbol == key.A:
-		if Nirn.player is not None:
+		if Nirn.player is not None: 
 			Nirn.player.keyStates['face direction'] = 'nadir'
 	elif symbol == key.T:
 		if Nirn.player is not None:
