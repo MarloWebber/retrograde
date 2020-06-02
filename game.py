@@ -791,18 +791,21 @@ class World():
 						# direction detection. clockwise or not?
 
 						# if actor y is greater than attractor y, a clockwise orbit will have a positive x component. a counterclockwise one will have negative x.
+						# this will probably fail on highly eccentric orbits.
 						if actor.body.position[1] > actor.orbiting.body.position[1]:
 							if actor.body.velocity[0] > 0:
-								clockwise = True
+								actor.orbit.clockwise = False
 							else:
-								clockwise = False
+								actor.orbit.clockwise = True
 						else:
 							if actor.body.velocity[0] < 0:
-								clockwise = True
+								actor.orbit.clockwise = False
 							else:
-								clockwise = False
+								actor.orbit.clockwise = True
 
-						print(clockwise)
+						# actor.orbit.clockwise = clockwise
+
+						# print(clockwise)
 
 
 
@@ -1961,7 +1964,7 @@ class World():
 
 		rockeyt =  shipyard('rocket_1')
 # [0,-700000], [-51500,0]
-		ida_frigate_instance = Actor('player ida_frigate', loaddedbrige,[699000,-1], [1,-51500], 0.6 * math.pi, True)
+		ida_frigate_instance = Actor('player ida_frigate', loaddedbrige,[699000,-1], [1,51500], 0.6 * math.pi, True)
 
 		fojgesogj = Actor('psefse', rockeyt,(-800000, -100), [1,50000], 0.6 * math.pi)
 

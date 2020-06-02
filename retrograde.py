@@ -265,43 +265,30 @@ class Maneuver():
 					# 	ejectionPointAngle -= 2 * math.pi
 					ejectionPointAngle = addRadians(actor.orbit.aPe, ejectionPointAngle)
 
-					clockwise = False
-					speedAtPeriapsis = actor.orbit.getSpeed(0)
-					print(speedAtPeriapsis)
-
-					# rotate the speed vector by the argument of periapsis to normalise it, so that 'down' at the periapsis lies along the y axis.
-					# normalized_speed = rotate_point(speedAtPeriapsis, actor.orbit.aPe)
-					# print(normalized_speed)
-
-					if normalized_speed[0] > 0:
-						clockwise = True
-					else:
-						clockwise = False
-
 
 					# 1.5 if you are going counter clockwise
-					if clockwise:
-						ejectionPointAngle = addRadians(1.5 * math.pi, ejectionPointAngle)
+					if actor.orbit.clockwise:
+						ejectionPointAngle = addRadians(0 * math.pi, ejectionPointAngle)
 					else:
-					# 0.5 if you are going clockwise?
-						ejectionPointAngle = addRadians(0.5 * math.pi, ejectionPointAngle)
+					# # 0.5 if you are going clockwise?
+						ejectionPointAngle = addRadians(0, ejectionPointAngle)
 
-
+					print('clockwise: '+str(actor.orbit.clockwise))
 					print('ejectionPointAngle: '+str(ejectionPointAngle))
 					print('addRadians(actor.orbit.tAn ,actor.orbit.aPe): '+str(addRadians(actor.orbit.tAn ,actor.orbit.aPe)))
 					# print(addRadians(actor.orbit.tAn ,actor.orbit.aPe))
 
 
 					actor.setPoint = actor.prograde + math.pi * 0.5
-
-					if (actor.orbit.tAn > ejectionPointAngle -0.1 and actor.orbit.tAn < ejectionPointAngle + 0.1):
+					normalizedAngle = addRadians(actor.orbit.tAn ,actor.orbit.aPe)
+					if (normalizedAngle > ejectionPointAngle -0.1 and normalizedAngle < ejectionPointAngle + 0.1):
 						print('reached burn point')
 						self.event2 = True
 
 				if self.event2 and not self.event3:
 					actor.setPoint = actor.prograde + math.pi * 0.5
 
-					positionDifference = [ self.parameter1.body.position[0]- self.parameter2.body.position[0], self.parameter1.body.position[1]- self.parameter2.body.position[1]]
+					positionDifference = [ self.parameter2.body.position[0]- self.parameter1.body.position[0], self.parameter2.body.position[1]- self.parameter1.body.position[1]]
 					desiredPeriapsis = mag(numpy.array(positionDifference)) + self.parameter2.radius
 					if self.parameter2.atmosphere is not None:
 						desiredPeriapsis += self.parameter2.atmosphere.height
@@ -314,7 +301,7 @@ class Maneuver():
 
 					print(actor.orbit.getApoapsis())
 					print(desiredPeriapsis)
-					if actor.orbit.getApoapsis() > desiredPeriapsis:
+					if actor.orbit.getApoapsis() > desiredPeriapsis or actor.orbit.getPeriapsis() > desiredPeriapsis:
 						self.event3 = True
 						print('raised trajectory to target, ready to cruise')
 						actor.keyStates['up'] = False
