@@ -264,7 +264,28 @@ class Maneuver():
 					# if ejectionPointAngle > 2 * math.pi:
 					# 	ejectionPointAngle -= 2 * math.pi
 					ejectionPointAngle = addRadians(actor.orbit.aPe, ejectionPointAngle)
-					ejectionPointAngle = addRadians(1.5 * math.pi, ejectionPointAngle)
+
+					clockwise = False
+					speedAtPeriapsis = actor.orbit.getSpeed(0)
+					print(speedAtPeriapsis)
+
+					# rotate the speed vector by the argument of periapsis to normalise it, so that 'down' at the periapsis lies along the y axis.
+					# normalized_speed = rotate_point(speedAtPeriapsis, actor.orbit.aPe)
+					# print(normalized_speed)
+
+					if normalized_speed[0] > 0:
+						clockwise = True
+					else:
+						clockwise = False
+
+
+					# 1.5 if you are going counter clockwise
+					if clockwise:
+						ejectionPointAngle = addRadians(1.5 * math.pi, ejectionPointAngle)
+					else:
+					# 0.5 if you are going clockwise?
+						ejectionPointAngle = addRadians(0.5 * math.pi, ejectionPointAngle)
+
 
 					print('ejectionPointAngle: '+str(ejectionPointAngle))
 					print('addRadians(actor.orbit.tAn ,actor.orbit.aPe): '+str(addRadians(actor.orbit.tAn ,actor.orbit.aPe)))
@@ -421,6 +442,35 @@ class Maneuver():
 					print('rendezvous')
 					self.event1 = True
 				elif not self.event2:
+
+					# if the target period is not too much more or less than your own:
+					if True:
+						# phase the target until the distance to target at the next periapsis is small
+
+
+						# figure out how far around the orbit you are, as a natural number. Then multiply it by the period. that's how much time is left until you reach the periapsis
+						targetFutureTime = ((2* math.pi) / self.orbit.tAn ) * self.orbit.getPeriod()
+
+						playerFuturetAn = self.player.orbit.tAnAtTime(targetfutureTime)
+						playerFutureCoordinates = self.player.orbit.cartesianCoordinates(playerFuturetAn)	
+						playerFutureCoordinates = [playerFutureCoordinates[0], playerFutureCoordinates[1]]
+						playerFutureCoordinates[0] += self.player.orbiting.body.position[0]
+						playerFutureCoordinates[1] += self.player.orbiting.body.position[1]
+
+						targetFuturetAn = self.player.target.orbit.tAnAtTime(targetfutureTime)
+						targetFutureCoordinates = self.player.target.orbit.cartesianCoordinates(targetFuturetAn)	
+						targetFutureCoordinates = [targetFutureCoordinates[0], targetFutureCoordinates[1]]
+						targetFutureCoordinates[0] += self.player.target.orbiting.body.position[0]
+						targetFutureCoordinates[1] += self.player.target.orbiting.body.position[1]
+
+						self.drawColorIndicator([200,80,20,255], playerFutureCoordinates, int(2), second_batch)
+						self.drawColorIndicator([200,80,20,255], targetFutureCoordinates, int(2), second_batch)
+
+						futureDistanceToTarget = mag(targetDutureCoordindates - playerFutureCoordinates )
+
+					# point retrograde
+					# then wait until you are close to the target, and then match velocity
+
 					pass
 
 
@@ -543,8 +593,9 @@ class Actor():
 		self.maneuverQueue = []
 		self.disposition = 'defender' # defenders will shoot at you while still doing what they're doing. attackers will pursue you. missiles will pursue you with the intent to ram.
 		self.autoPilotActive = False
+		self.AIGoal = None
 
-		self.autoPilotGoals = [] # a list of goals which the ai will use sequences of maneuvers to accomplish.
+		# self.autoPilotGoals = [] # a list of goals which the ai will use sequences of maneuvers to accomplish.
 
 		self.target = None # another actor that this one can lock with radar and scanners.
 		self.selectedWeapon = None
@@ -552,6 +603,7 @@ class Actor():
 		self.jumping = False
 
 		self.dockedTo = None
+		self.faction = None
 
 	def leaveFreefall(self, stepsToFreefall=1):
 		self.stepsToFreefall = stepsToFreefall
@@ -716,41 +768,52 @@ class Actor():
 
 	def flightComputer(self, actors):
 		# this function describes the AI flight behaviour and player autopilot
+		if False:
+			# allow the player to hold attitude
+			if self.keyStates['face direction'] is not None:
+				if self.keyStates['face direction'] == 'retrograde': self.setPoint = self.retrograde + 0.5 * math.pi
+				if self.keyStates['face direction'] == 'prograde': self.setPoint = self.prograde +  0.5 * math.pi
+				if self.keyStates['face direction'] == 'nadir': self.setPoint = self.nadir +  0.5 * math.pi
+				if self.keyStates['face direction'] == 'zenith': self.setPoint = self.zenith +  0.5 * math.pi
+				if self.target is not None:
+					if self.keyStates['face direction'] == 'target': self.setPoint = math.atan2(self.target.body.position[1] - self.body.position[1],(self.target.body.position[0] - self.body.position[0])) + 0.5 * math.pi
+				if str.isnumeric(self.keyStates['face direction']): self.setpoint = float(self.keyStates['face direction'])
 
-		# allow the player to hold attitude
-		if self.keyStates['face direction'] is not None:
-			if self.keyStates['face direction'] == 'retrograde': self.setPoint = self.retrograde + 0.5 * math.pi
-			if self.keyStates['face direction'] == 'prograde': self.setPoint = self.prograde +  0.5 * math.pi
-			if self.keyStates['face direction'] == 'nadir': self.setPoint = self.nadir +  0.5 * math.pi
-			if self.keyStates['face direction'] == 'zenith': self.setPoint = self.zenith +  0.5 * math.pi
-			if self.target is not None:
-				if self.keyStates['face direction'] == 'target': self.setPoint = math.atan2(self.target.body.position[1] - self.body.position[1],(self.target.body.position[0] - self.body.position[0])) + 0.5 * math.pi
-			if str.isnumeric(self.keyStates['face direction']): self.setpoint = float(self.keyStates['face direction'])
-
-		# perform autopilot maneuvers for the player and for NPCs
-
-
-		# AI controller
-		# first, check motive
-			# self.AIGoal ?
-
-		# check if hostiles nearby
-		inCombat = False
-		for actors in actors:
-			if actor.faction is not None:
-				if actor.faction.relationships[self.faction.name] is not None:
-					if actor.faction.relationships[self.faction.name] < -10:
-						if self.disposition == 'attacker':
-							# fly to the hostile and destroy it
-							inCombat = True
-						elif self.disposition == 'defender':
-							# work out distance
-							# keep doing what you're doing but shoot it if it gets too close
-						else:
-							# just ignore it and keep doing your thing
+			# perform autopilot maneuvers for the player and for NPCs
 
 
-		# second, define goal
+			# AI controller
+			# first, check motive
+				# self.AIGoal ?
+
+			# check if hostiles nearby
+			inCombat = False
+			for actor in actors:
+				if actor.faction is not None:
+					if actor.faction.relationships[self.faction.name] is not None:
+						if actor.faction.relationships[self.faction.name] < -10:
+							if self.disposition == 'attacker':
+								# fly to the hostile and destroy it
+								inCombat = True
+							elif self.disposition == 'defender':
+								pass
+								# work out distance
+								# keep doing what you're doing but shoot it if it gets too close
+							else:
+								pass
+								# just ignore it and keep doing your thing
+
+
+			# second, define goal
+			if self.AIGoal == 'dock with':
+				pass
+			elif self.AIGoal == 'destroy':
+				pass
+			elif self.AIGoal == 'patrol':
+				pass
+			elif self.AIGoal == 'chill':
+				pass
+
 		# third, check that maneuver queue is aligned with goal
 		# fourth, execute maneuver
 		if self.autoPilotActive:
@@ -759,7 +822,7 @@ class Actor():
 
 
 class FakeBody():
-	def __init__(self, position):
+	def __init__(self, position): 
 		self.position = position
 
 class Cloud():

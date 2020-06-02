@@ -784,11 +784,22 @@ class World():
 						futureStepCoordinates = actor.orbit.cartesianCoordinates(futureSteptAn)
 						adjustedFutureStep = [futureStepCoordinates[0] + actor.orbiting.body.position[0] , futureStepCoordinates[1] + actor.orbiting.body.position[1]]
 						actor.prograde = math.atan2( adjustedFutureStep[1] - actor.body.position[1], adjustedFutureStep[0] - actor.body.position[0] )
+
 						actor.retrograde = actor.prograde + math.pi
 						actor.body.velocity = [trackSpeed * math.cos(actor.prograde), trackSpeed * math.sin(actor.prograde)]
 
+						# direction detection. clockwise or not?
+
+						# take the velocity vector and rotate it around the attractor until it lines up with the axis.
+						rotatedVelocity = rotate_point(actor.body.velocity, -actor.orbit.tAn)
+
+						if rotatedVelocity[1] > 0:
+							actor.orbit.clockwise = True
+						else:
+							actor.orbit.clockwise = False
+
 			# let the ai drive the ship. this comes after orbit calculation because it needs valid orbits
-			actor.flightComputer()
+			actor.flightComputer(self.actors)
 
 			# perform hyperspace travel.
 			if actor.jumping:
@@ -1946,7 +1957,7 @@ class World():
 
 		fojgesogj = Actor('psefse', rockeyt,(-800000, -100), [1,50000], 0.6 * math.pi)
 
-		# ida_frigate_instance.maneuverQueue.append(Maneuver('transfer',earth, moon))
+		ida_frigate_instance.maneuverQueue.append(Maneuver('transfer',earth, moon))
 
 		self.add(ida_frigate_instance)
 		self.add(fojgesogj)

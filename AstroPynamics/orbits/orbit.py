@@ -14,6 +14,7 @@ class OrbitalElements:
         self._primBody = primBody
         self._id = name
         self._epoch = epoch
+        self.clockwise = False
 
     @property
     def a(self):
