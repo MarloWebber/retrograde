@@ -43,7 +43,7 @@ moon = Attractor(
 		[45,45,45,255],
 		[145,145,145,255],
 		None,
-		[3000000,-3000000] 
+		[-4000000,-4000000] 
 		)
 
 alpha_centauri = SolarSystem(

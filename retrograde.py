@@ -361,10 +361,11 @@ class Maneuver():
 
 									actor.keyStates['up'] = False
 									self.completed = True
-									actor.maneuverQueue.remove(self)
-									actor.maneuverQueue.append(Maneuver('circularize', 2 * self.parameter2.radius))
 
-									print(actor.maneuverQueue)
+									actor.maneuverQueue.append(Maneuver('circularize', 2 * self.parameter2.radius))
+									actor.maneuverQueue.remove(self)
+
+									print(actor.maneuverQueue[0].maneuverType)
 
 							# you're not even orbiting the right thing, try to get there
 							if actor.orbiting is not self.parameter2 or actor.orbiting is None:
@@ -401,22 +402,40 @@ class Maneuver():
 
 
 			if self.maneuverType == 'circularize':
-				# true to circ at periapsis. false to circ at apoapsis.
-				if self.parameter1:
-					actor.setPoint = actor.prograde + 0.5 * math.pi
-				else:
+				
+
+				if not self.event1:
+					print('transfer')
+					self.event1 = True
+
+					# actor.setPoint = actor.prograde + math.pi * 0.5
+
+				elif not self.event2:
+					# if : # true to circ at periapsis. false to circ at apoapsis.
+					# 	actor.setPoint = actor.prograde + 0.5 * math.pi
+					# else:
 					actor.setPoint = actor.retrograde + 0.5 * math.pi
 
-				if actor.orbit is not None:
-					if (actor.orbit.tAn > 0 and actor.orbit.tAn < 0.1 and self.parameter1) or (actor.orbit.tAn > math.pi -0.1 and actor.orbit.tAn < math.pi + 0.1 and not self.parameter1): # the ship is near the apoapsis
-						self.event2 = True
-					if self.event2:
-						angleDifference = actor.setPoint - actor.body.angle
-						if (angleDifference < 0.1 and angleDifference > 0) or angleDifference > (2*math.pi - 0.1): # only fire engines if the ship is pointing vaguely in the right direction
-							actor.keyStates['up'] = True
-						else:
-							actor.keyStates['up'] = False
-					if actor.orbit.getApoapsis() < actor.orbit.getPeriapsis() + (actor.orbit.getPeriapsis()* 0.01):
+					if actor.orbit is not None:
+						if (actor.orbit.tAn > -0.05 and actor.orbit.tAn < 0.05): # the ship is near the apoapsis
+							self.event2 = True
+							print('reached near the periapsis for circ.')
+							self.parameter2 = actor.orbit.getApoapsis()
+							print(self.parameter2)
+						# if self.event2:
+
+
+				elif not self.event3:
+					actor.setPoint = actor.retrograde + 0.5 * math.pi
+					angleDifference = actor.setPoint - actor.body.angle
+					if (angleDifference < 0.1 and angleDifference > 0) or angleDifference > (2*math.pi - 0.1): # only fire engines if the ship is pointing vaguely in the right direction
+						actor.keyStates['up'] = True
+					else:
+						actor.keyStates['up'] = False
+
+					print('apo: ' + str(actor.orbit.getApoapsis()) )
+					print('peri: ' + str(actor.orbit.getPeriapsis()) )
+					if actor.orbit.getPeriapsis() < self.parameter2:
 						actor.keyStates['up'] = False
 						self.completed = True
 
