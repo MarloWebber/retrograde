@@ -108,6 +108,12 @@ def shipyard(shipType):
 			Module('spar 10',[0,-100],(0.5* math.pi)),
 			Module('spar 100',[0,-100],(0.5* math.pi)),
 			Module('spar 100',[0,-100],(0.5* math.pi)),
+			
+			Module('spar 100',[0,-100],(0.5* math.pi)),
+			Module('spar 100',[0,-100],(0.5* math.pi)),
+			Module('engine 100',[0,-100],(0.5* math.pi)),
+			Module('engine 100',[0,-100],(0.5* math.pi)),
+
 			Module('engine 100',[0,-100],(0.5* math.pi)),
 			Module('engine 100',[0,-100],(0.5* math.pi)),
 			Module('RCS 100',[0,-100],(0.5* math.pi)),

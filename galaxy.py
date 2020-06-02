@@ -52,7 +52,7 @@ alpha_centauri = SolarSystem(
 		[-180,-90],													
 		[240,200,120,255],										
 		[255,255,255,255],									
-		["Barnard's Star", "Wolf 359", "Lalande 21185"],									
+		["Barnard's Star", "Wolf 359", "Lalande 21185","Sirius"],									
 		1000000												
 		)
 solarSystems.append(alpha_centauri)
@@ -189,7 +189,7 @@ wolf_359 = SolarSystem(
 		[-380,80],													
 		[70,65,245,255],										
 		[255,255,255,255],									
-		["α Centauri", "Sirius"],									
+		["α Centauri"],									
 		1000000												
 		)
 solarSystems.append(wolf_359)
@@ -211,7 +211,7 @@ sirius = SolarSystem(
 		[-90,273],													
 		[130,250,255,255],										
 		[255,255,255,255],									
-		["Procyon", "Wolf 359", "ε Eridani"],									
+		["Procyon", "ε Eridani", "α Centauri"],									
 		1000000												
 		)
 solarSystems.append(sirius)
@@ -240,7 +240,7 @@ epsilon_eridani = SolarSystem(
 		[315,275],													
 		[245,105,65,255],										
 		[255,255,255,255],									
-		["Sirius", "GJ 1061"],									
+		["Sirius", "GJ 1061", "τ Ceti"],									
 		1000000												
 		)
 solarSystems.append(epsilon_eridani)
@@ -274,7 +274,7 @@ gj_1061 = SolarSystem(
 		[348,311],													
 		[10,165,255,255],										
 		[255,255,255,255],									
-		["τ Ceti", "ε Eridani"],									
+		["ε Eridani"],									
 		1000000												
 		)
 solarSystems.append(gj_1061)
@@ -285,7 +285,7 @@ tau_ceti = SolarSystem(
 		[531,168],													
 		[245,155,255,255],										
 		[255,255,255,255],									
-		["GJ 1061"],									
+		["ε Eridani"],									
 		1000000												
 		)
 solarSystems.append(tau_ceti)

@@ -53,8 +53,8 @@ xCompensation = 200					# how big the HUD menus on the left and right are.
 
 topLimit = [0,0]
 bottomLimit = [0,0]
-window = pyglet.window.Window(width=1600, height=900, fullscreen=True)
-# window = pyglet.window.Window(width=1600, height=900)
+# window = pyglet.window.Window(width=1600, height=900, fullscreen=True)
+window = pyglet.window.Window(width=1600, height=900)
 label = pyglet.text.Label('Abc', x=5, y=5)
 
 white = [255]*4 
@@ -501,6 +501,8 @@ class World():
 		self.playerTargetIndex = None # index of which actor in the list the player is targeting.
 		self.targetfutureTime = 1
 		self.scrollLockTargetFutureTime = None
+
+		self.buildMenuListScrollIndex = 1
 
 	def gravityForce(self, actorPosition, attractorPosition, attractorMass):
 		# this function returns the force of gravity between an actor and an attractor.
@@ -1209,6 +1211,18 @@ class World():
 
 		return index + 1
 
+	# def drawLabel(self,string, color, size, position, main_batch):
+	
+		
+	# 	label = pyglet.text.Label(string ,
+ #                      font_name='Times New Roman',
+ #                      font_size=fontSize,
+ #                      x=listXPosition, y=HUDlistItemSpacing * index,
+ #                      color=color,
+ #                      align="left",
+ #                      batch=main_batch)
+
+	
 	def createHUDNavCircle(self): # this function predraws the nav circle. because it is just static lines, it does not need to be recalculated every frame.
 		for n in range(0,self.n_navcircle_lines):
 			angle = n * (2 * math.pi / self.n_navcircle_lines)
@@ -1321,6 +1335,11 @@ class World():
 
 		i = self.drawHUDListItemLabel('Game Commands', i, 'top left', main_batch)
 		i = self.drawHUDListItemLabel('unpause / pause and view instructions: p', i, 'top left', main_batch)
+
+		i = self.drawHUDListItemLabel("save game (one save slot only. file 'save' in game folder): ctrl + s", i, 'top left', main_batch)
+
+		i = self.drawHUDListItemLabel('load game: ctrl + l', i, 'top left', main_batch)
+
 		i = self.drawHUDListItemLabel('accelerate time: ,', i, 'top left', main_batch)
 		i = self.drawHUDListItemLabel('decelerate time: .', i, 'top left', main_batch)
 		i = self.drawHUDListItemLabel('zoom view in: =', i, 'top left', main_batch)
@@ -1346,6 +1365,9 @@ class World():
 		i = self.drawHUDListItemLabel('nadir: a', i, 'top left', main_batch)
 		i = self.drawHUDListItemLabel('target: x', i, 'top left', main_batch)
 
+		i = self.drawHUDListItemLabel('scroll meatball forward: numpad *', i, 'top left', main_batch)
+		i = self.drawHUDListItemLabel('scroll meatball back: numpad /', i, 'top left', main_batch)
+
 		i = self.drawHUDListItemLabel(' ', i, 'top left', main_batch)
 
 		i = self.drawHUDListItemLabel('Astral Navigation', i, 'top left', main_batch)
@@ -1365,7 +1387,10 @@ class World():
 
 		i = self.drawHUDListItemLabel('toggle build menu: b', i, 'top left', main_batch)
 
-		i = self.drawHUDListItemLabel('save to file (ships/playerShip): ctrl + s', i, 'top left', main_batch)
+		i = self.drawHUDListItemLabel("save ship to file (file 'playerShip' in ships folder. build menu only): ctrl + s", i, 'top left', main_batch)
+
+		i = self.drawHUDListItemLabel("load ship from file (loads 'playerShip' from ships folder. build menu only): ctrl + l", i, 'top left', main_batch)
+
 
 		i = self.drawHUDListItemLabel('accept and fly ship: y', i, 'top left', main_batch)
 
@@ -1373,7 +1398,10 @@ class World():
 		i = self.drawHUDListItemLabel('rotate part left: q', i, 'top left', main_batch)
 		i = self.drawHUDListItemLabel('rotate part right: e', i, 'top left', main_batch)
 		i = self.drawHUDListItemLabel('mirror part: x', i, 'top left', main_batch)
-		i = self.drawHUDListItemLabel('put part back in inventory: d', i, 'top left', main_batch)
+		i = self.drawHUDListItemLabel('put part back into inventory: d', i, 'top left', main_batch)
+
+		i = self.drawHUDListItemLabel('scroll inventory forward: numpad *', i, 'top left', main_batch)
+		i = self.drawHUDListItemLabel('scroll inventory back: numpad /', i, 'top left', main_batch)
 
 		i = self.drawHUDListItemLabel(' ', i, 'top left', main_batch)
 		i = self.drawHUDListItemLabel(' ', i, 'top left', main_batch)
@@ -1393,7 +1421,8 @@ class World():
 
 		i = self.drawHUDListItemLabel('Spaceships are made up of many different modules stuck together. Each module provides and consumes resources, and has useful abilities.', i, 'top left', main_batch)
 		i = self.drawHUDListItemLabel('Vanquish enemies to smash them into parts. Collect single parts by flying into them. Add new parts to your ship in the build screen.', i, 'top left', main_batch)
-		i = self.drawHUDListItemLabel('Dock at stations by targeting them, then put part of your ship onto the white rectangle above the docking port, and hit the dock key.', i, 'top left', main_batch)
+		i = self.drawHUDListItemLabel('Dock at stations by targeting them. Fly into the white rectangle above the docking port, then hit the dock key.', i, 'top left', main_batch)
+		i = self.drawHUDListItemLabel('The meatball is a visual indicator of where you and your target will be in the future. Use it to plan a rendezvous.', i, 'top left', main_batch)
 
 
 
@@ -1449,7 +1478,7 @@ class World():
 			self.drawModuleForBuild(main_batch, module)
 
 		# draw the inventory list up the left hand side
-		i = 1
+		i = self.buildMenuListScrollIndex
 		for listItem in self.availableModuleListItems:
 			self.drawModuleListItem(main_batch, listItem, i)
 			i += 1
@@ -1508,6 +1537,17 @@ class World():
 
 		for key, solar_system in self.galaxy.items():
 			self.drawSolarSystemInMapView(solar_system, mapBatch)
+
+		mapBaseFontSize = 12
+		for key, solar_system in self.galaxy.items():
+			label = pyglet.text.Label(solar_system.solarSystemName ,
+	                  font_name='Times New Roman',
+	                  font_size=mapBaseFontSize * self.zoom,
+	                  x=solar_system.position[0]*self.zoom + (0.5 * resolution[0]), y=((solar_system.position[1] * self.zoom + mapBaseFontSize * 1.5) + (0.5 * resolution[1])),
+	                  color=[100,100,100,255],
+	                  align="left",
+	                  batch=mapBatch)
+
 
 		mapBatch.draw()
 
@@ -2074,6 +2114,7 @@ def on_key_press(symbol, modifiers):
 	elif symbol == key.M:
 		Nirn.mapView = not Nirn.mapView
 	elif symbol == key.R:
+		Nirn.targetfutureTime = 0
 		if Nirn.playerTargetIndex == None:
 			Nirn.playerTargetIndex = 0
 		else:
@@ -2121,10 +2162,16 @@ def on_key_press(symbol, modifiers):
 		# Nirn.player.keyStates['strafe right'] = True
 	elif symbol == key.NUM_MULTIPLY:
 		# Nirn.targetfutureTime += 0.5
-		Nirn.scrollLockTargetFutureTime = '+'
+		if Nirn.buildMenu:
+			Nirn.buildMenuListScrollIndex += 1
+		else:
+			Nirn.scrollLockTargetFutureTime = '+'
 	elif symbol == key.NUM_DIVIDE:
 		# Nirn.targetfutureTime -= 0.5
-		Nirn.scrollLockTargetFutureTime = '-'
+		if Nirn.buildMenu:
+			Nirn.buildMenuListScrollIndex -= 1
+		else:
+			Nirn.scrollLockTargetFutureTime = '-'
 	elif symbol == key.G:
 		Nirn.dock(Nirn.player)
 		# dock the ship to a docking port that it is near
