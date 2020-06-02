@@ -35,6 +35,12 @@ chikmagathur_instance.dockMessage = "Chikmagalur\nThe people who live above the 
 
 jellostation_instance = Actor('Jelly Pixel', shipyard('jellyStation'), [0,700000], [-51500,0], 0)
 jellostation_instance.dockMessage = "Jelly Pixel\nThe inhabitants of this beautiful station live in luxury.\nThey spend their time creating sculptures and music.\n They have a symbiotic relationship with their more industrious neighbours."
+
+
+fishmonger = Actor('Fishmonger', shipyard('starbridge'),[-700000,-1], [0,-51500], 0)
+fishmonger.AIGoal = 'patrol'
+fishmonger.autoPilotActive = True
+
 moon = Attractor(
 		'Munus',
 		160000,		
@@ -48,7 +54,7 @@ moon = Attractor(
 
 alpha_centauri = SolarSystem(
 		"α Centauri",												
-		[earth, moon,chikmagathur_instance, jellostation_instance],											
+		[earth, moon,chikmagathur_instance, jellostation_instance, fishmonger],											
 		[-180,-90],													
 		[240,200,120,255],										
 		[255,255,255,255],									

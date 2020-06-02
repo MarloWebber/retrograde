@@ -364,15 +364,15 @@ class Maneuver():
 								else:
 
 									#event5 is circularization around target
-									print('arrived at target. adding circularization to queue.')
+									print('arrived in target SoI')
 
 									actor.keyStates['up'] = False
 									self.completed = True
 
-									actor.maneuverQueue.append(Maneuver('circularize', 2 * self.parameter2.radius))
-									actor.maneuverQueue.remove(self)
+									# actor.maneuverQueue.append(Maneuver('circularize', 2 * self.parameter2.radius))
+									# actor.maneuverQueue.remove(self)
 
-									print(actor.maneuverQueue[0].maneuverType)
+									# print(actor.maneuverQueue[0].maneuverType)
 
 							# you're not even orbiting the right thing, try to get there
 							if actor.orbiting is not self.parameter2 or actor.orbiting is None:
@@ -409,7 +409,7 @@ class Maneuver():
 
 
 			if self.maneuverType == 'circularize':
-				
+				#parameter2 is used internally to store the circ height
 
 				if not self.event1:
 					print('transfer')
@@ -443,6 +443,7 @@ class Maneuver():
 					print('apo: ' + str(actor.orbit.getApoapsis()) )
 					print('peri: ' + str(actor.orbit.getPeriapsis()) )
 					if actor.orbit.getPeriapsis() < self.parameter2:
+						print('circularization complete ')
 						actor.keyStates['up'] = False
 						self.completed = True
 
@@ -611,7 +612,7 @@ class Actor():
 		self.maneuverQueue = []
 		self.disposition = 'defender' # defenders will shoot at you while still doing what they're doing. attackers will pursue you. missiles will pursue you with the intent to ram.
 		self.autoPilotActive = False
-		self.AIGoal = None
+		# self.AIGoal = None
 
 		# self.autoPilotGoals = [] # a list of goals which the ai will use sequences of maneuvers to accomplish.
 
@@ -622,6 +623,8 @@ class Actor():
 
 		self.dockedTo = None
 		self.faction = None
+		self.disposition = 'defender'
+		self.AIGoal = 'chill'
 
 	def leaveFreefall(self, stepsToFreefall=1):
 		self.stepsToFreefall = stepsToFreefall
@@ -784,26 +787,29 @@ class Actor():
 
 		return ifThrustHasBeenApplied
 
-	def flightComputer(self, actors):
+	def flightComputer(self, actors, attractors):
 		# this function describes the AI flight behaviour and player autopilot
-		if False:
-			# allow the player to hold attitude
-			if self.keyStates['face direction'] is not None:
-				if self.keyStates['face direction'] == 'retrograde': self.setPoint = self.retrograde + 0.5 * math.pi
-				if self.keyStates['face direction'] == 'prograde': self.setPoint = self.prograde +  0.5 * math.pi
-				if self.keyStates['face direction'] == 'nadir': self.setPoint = self.nadir +  0.5 * math.pi
-				if self.keyStates['face direction'] == 'zenith': self.setPoint = self.zenith +  0.5 * math.pi
-				if self.target is not None:
-					if self.keyStates['face direction'] == 'target': self.setPoint = math.atan2(self.target.body.position[1] - self.body.position[1],(self.target.body.position[0] - self.body.position[0])) + 0.5 * math.pi
-				if str.isnumeric(self.keyStates['face direction']): self.setpoint = float(self.keyStates['face direction'])
+	
+		# allow the player to hold attitude
+		if self.keyStates['face direction'] is not None:
+			if self.keyStates['face direction'] == 'retrograde': self.setPoint = self.retrograde + 0.5 * math.pi
+			if self.keyStates['face direction'] == 'prograde': self.setPoint = self.prograde +  0.5 * math.pi
+			if self.keyStates['face direction'] == 'nadir': self.setPoint = self.nadir +  0.5 * math.pi
+			if self.keyStates['face direction'] == 'zenith': self.setPoint = self.zenith +  0.5 * math.pi
+			if self.target is not None:
+				if self.keyStates['face direction'] == 'target': self.setPoint = math.atan2(self.target.body.position[1] - self.body.position[1],(self.target.body.position[0] - self.body.position[0])) + 0.5 * math.pi
+			if str.isnumeric(self.keyStates['face direction']): self.setpoint = float(self.keyStates['face direction'])
 
-			# perform autopilot maneuvers for the player and for NPCs
+		# perform autopilot maneuvers for the player and for NPCs
 
 
-			# AI controller
-			# first, check motive
-				# self.AIGoal ?
+		# AI controller
+		# first, check motive
+			# self.AIGoal ?
 
+		if self.autoPilotActive:
+			print(self.maneuverQueue)
+			print(self.AIGoal)
 			# check if hostiles nearby
 			inCombat = False
 			for actor in actors:
@@ -823,18 +829,48 @@ class Actor():
 
 
 			# second, define goal
-			if self.AIGoal == 'dock with':
+			if self.AIGoal == 'trade': # go dock at one station, fly to another station, dock there
 				pass
-			elif self.AIGoal == 'destroy':
+			elif self.AIGoal == 'destroy': 
 				pass
 			elif self.AIGoal == 'patrol':
-				pass
+				if len(self.maneuverQueue) > 0:
+					if self.maneuverQueue[0].completed:
+						if self.maneuverQueue[0].maneuverType == 'circularize':
+							if self.orbiting is not None:
+								nextPatrolTargetIndex = 0
+								for index, attractor in enumerate(attractors):
+									if attractor is self.orbiting:
+										nextPatrolTargetIndex = index+1
+										if nextPatrolTargetIndex >= len(attractors):
+											nextPatrolTargetIndex = 0
+								self.maneuverQueue.remove(self.maneuverQueue[0])
+								self.maneuverQueue.append(Maneuver('transfer',self.orbiting, attractors[nextPatrolTargetIndex]))
+								# ida_frigate_instance.maneuverQueue.append(Maneuver('transfer',earth, moon))
+						elif self.maneuverQueue[0].maneuverType == 'transfer':
+								self.maneuverQueue.append(Maneuver('circularize'))
+				else:
+					if self.orbiting is not None:
+									nextPatrolTargetIndex = 0
+									for index, attractor in enumerate(attractors):
+										if attractor is self.orbiting:
+											nextPatrolTargetIndex = index+1
+											if nextPatrolTargetIndex >= len(attractors):
+												nextPatrolTargetIndex = 0
+									# self.maneuverQueue.remove(self.maneuverQueue[0])
+									self.maneuverQueue.append(Maneuver('transfer',self.orbiting, attractors[nextPatrolTargetIndex]))
+
+
+
+
+
+
 			elif self.AIGoal == 'chill':
 				pass
 
-		# third, check that maneuver queue is aligned with goal
-		# fourth, execute maneuver
-		if self.autoPilotActive:
+			# third, check that maneuver queue is aligned with goal
+			# fourth, execute maneuver
+			
 			if len(self.maneuverQueue) > 0:
 				self.maneuverQueue[0].perform(self)
 

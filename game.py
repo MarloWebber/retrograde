@@ -810,7 +810,7 @@ class World():
 
 
 			# let the ai drive the ship. this comes after orbit calculation because it needs valid orbits
-			actor.flightComputer(self.actors)
+			actor.flightComputer(self.actors, self.attractors)
 
 			# perform hyperspace travel.
 			if actor.jumping:
@@ -1609,7 +1609,7 @@ class World():
 					self.drawAPOrbit(second_batch, actor, actor.orbit, actor.orbiting, (100,100,100))
 
 		# # this part draws color dots on where you and your target will be some distance into the future. it's used as a pilot aid for rendezvous.
-		if self.player is not None and self.player.target is not None and self.player.target.orbiting is not None and self.player.target.orbit is not None and self.showHUD:
+		if self.player is not None and player.orbit is not None and player.orbiting is not None and self.player.target is not None and self.player.target.orbiting is not None and self.player.target.orbit is not None and self.showHUD:
 			# self.futureTime 
 
 			if self.scrollLockTargetFutureTime == '+':
@@ -1968,7 +1968,7 @@ class World():
 
 		fojgesogj = Actor('psefse', rockeyt,(-800000, -100), [1,50000], 0.6 * math.pi)
 
-		ida_frigate_instance.maneuverQueue.append(Maneuver('transfer',earth, moon))
+		# ida_frigate_instance.maneuverQueue.append(Maneuver('transfer',earth, moon))
 
 		self.add(ida_frigate_instance)
 		self.add(fojgesogj)
